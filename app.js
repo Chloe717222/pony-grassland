@@ -526,20 +526,43 @@ function buildCellPreviewEl(item, id) {
   return wrap;
 }
 
+function isMobileGridBatching() {
+  try {
+    if (typeof window.matchMedia !== "function") return false;
+    if (window.matchMedia("(pointer: coarse)").matches) return true;
+    if (window.matchMedia("(max-width: 768px)").matches) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/**
+ * 移动端一次插入 1000 个格子 + 缩略图易导致 WKWebView/微信内核闪屏、内存尖峰；分帧追加减轻主线程与解码压力。
+ */
 function renderGrid() {
   mosaicEl.innerHTML = "";
-  for (let i = 1; i <= TOTAL; i++) {
-    const id = i.toString().padStart(4, "0");
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = "cell";
-    const item = contentMap.get(id);
-    cell.classList.toggle("has-content", Boolean(item));
-    cell.classList.toggle("cell--placeholder", !item);
-    cell.appendChild(buildCellPreviewEl(item, id));
-    cell.addEventListener("click", () => openById(id));
-    mosaicEl.appendChild(cell);
+  const chunk = isMobileGridBatching() ? 32 : 250;
+  let i = 1;
+  function step() {
+    const end = Math.min(i + chunk - 1, TOTAL);
+    const frag = document.createDocumentFragment();
+    for (; i <= end; i++) {
+      const id = i.toString().padStart(4, "0");
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cell";
+      const item = contentMap.get(id);
+      cell.classList.toggle("has-content", Boolean(item));
+      cell.classList.toggle("cell--placeholder", !item);
+      cell.appendChild(buildCellPreviewEl(item, id));
+      cell.addEventListener("click", () => openById(id));
+      frag.appendChild(cell);
+    }
+    mosaicEl.appendChild(frag);
+    if (i <= TOTAL) requestAnimationFrame(step);
   }
+  requestAnimationFrame(step);
 }
 
 /**
@@ -1496,8 +1519,13 @@ function initCanvasPanZoom() {
     applyCanvasView();
   }
 
+  let roRaf = null;
   const ro = new ResizeObserver(() => {
-    applyCanvasView();
+    if (roRaf != null) cancelAnimationFrame(roRaf);
+    roRaf = requestAnimationFrame(() => {
+      roRaf = null;
+      applyCanvasView();
+    });
   });
   ro.observe(wrap);
 

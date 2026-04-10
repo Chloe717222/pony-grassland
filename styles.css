@@ -1481,6 +1481,35 @@ button.ghost {
   pointer-events: none;
 }
 
+/* 手机/触摸：减少合成层与 1000 格同时 opacity 过渡，降低微信、Safari 闪屏、掉帧 */
+@media (max-width: 768px), (pointer: coarse) {
+  .canvas-stage {
+    will-change: auto;
+  }
+
+  .mosaic {
+    transform: none;
+  }
+
+  .cell-preview-wrap {
+    transition: none;
+  }
+}
+
+/* 主输入框占位「0001-1000」不被挤没；16px 避免 iOS 聚焦整页缩放 */
+@media (max-width: 768px) {
+  .primary-controls__input#codeInput {
+    flex: 1 1 10rem;
+    min-width: min(11rem, 100%);
+    font-size: 16px;
+  }
+
+  #jumpInput {
+    min-width: 10rem;
+    font-size: 16px;
+  }
+}
+
 .modal {
   border: none;
   padding: 0;
@@ -1784,8 +1813,8 @@ button.ghost {
 }
 
 .jump-row input[type="text"] {
-  flex: 1 1 100px;
-  min-width: 0;
+  flex: 1 1 120px;
+  min-width: min(10rem, 40vw);
 }
 
 .blessing-close-dialog {

@@ -28,7 +28,7 @@
           class="primary-controls__input"
           type="text"
           maxlength="4"
-          placeholder="输入编号（0001-1000）"
+          placeholder="0001-1000"
           inputmode="numeric"
           autocomplete="off"
           enterkeyhint="search"
@@ -39,12 +39,12 @@
         </button>
       </section>
       <p class="controls-help stage-width" id="controlsHelp">
-        点击图片随机领祝福；填编号会到指定祝福；按第一条将按序接收祝福。
+        填编号会到指定祝福；按第一条将按序接收祝福。
       </p>
 
       <section class="canvas-wrap" id="canvasWrap" data-canvas-zoom="fit" aria-label="祝福主图">
         <div id="canvasStage" class="canvas-stage">
-          <img id="heroImage" class="hero-image" alt="生贺主视觉" />
+          <img id="heroImage" class="hero-image" alt="生贺主视觉" decoding="async" />
           <div id="mosaic" class="mosaic" aria-label="祝福热区"></div>
         </div>
         <div class="canvas-view-controls" role="group" aria-label="主图视图">
@@ -53,7 +53,7 @@
           </button>
         </div>
       </section>
-      <p class="hint stage-width canvas-view-hint">电脑：在画面上滚轮缩放；手机：双指捏合缩放。放大后可拖动查看。</p>
+      <p class="hint stage-width canvas-view-hint">双指捏合缩放。放大后可拖动查看。</p>
       <section class="special-entry-line special-entry-line--highlight stage-width">
         <p class="special-entry-text">还有小彩蛋~刘恋没事别看</p>
         <button id="quizEntryBtn" class="tiny special-entry-btn" type="button">我要看彩蛋</button>
@@ -146,7 +146,7 @@
         <p id="blessingOwnerId" class="blessing-owner-id" hidden aria-hidden="true"></p>
         <div class="jump-row">
           <label for="jumpInput">跳转：</label>
-          <input id="jumpInput" type="text" maxlength="4" placeholder="输入编号（0001-1000）" />
+          <input id="jumpInput" type="text" maxlength="4" placeholder="0001-1000" />
           <button id="jumpBtn" type="button">跳转</button>
           <button id="prevBlessingBtn" class="ghost" type="button">上一条</button>
           <button id="nextBlessingBtn" class="ghost" type="button">下一条</button>
