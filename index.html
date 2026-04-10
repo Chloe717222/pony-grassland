@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hi 恋恋宝贝</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="stage-width hero-header">
+        <button type="button" id="adminKickerBtn" class="hero-kicker" aria-label="Happy Birthday">Happy Birthday</button>
+        <div class="hero-split">
+          <div class="hero-col hero-col-intro">
+            <h1>Hi 恋恋宝贝</h1>
+            <p class="hero-subtitle">今天有好多爱想紧紧拥抱你</p>
+          </div>
+          <div class="hero-col hero-col-guide">
+            <div class="hero-guide" role="note">
+              <p class="hero-guide-row">点图片随意位置，随机领取祝福；按第一条，从0001祝福按序浏览；填编号（0001-1000）看对应内容。</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls primary-controls stage-width">
+        <label for="codeInput">输入编号：</label>
+        <input id="codeInput" type="text" maxlength="4" placeholder="例如 0007" />
+        <button id="openBtn">查看内容</button>
+        <button id="randomBtn" class="ghost" type="button" title="从0001起按顺序浏览">第一条</button>
+        <button id="exportBlessingsBtn" class="ghost hidden" type="button">导出全部祝福</button>
+      </section>
+      <p id="loadStatus" class="hint stage-width"></p>
+
+      <section class="canvas-wrap">
+        <img id="heroImage" class="hero-image" alt="生贺主视觉" />
+        <div id="mosaic" class="mosaic" aria-label="祝福热区"></div>
+      </section>
+      <section class="special-entry-line special-entry-line--highlight stage-width">
+        <p class="special-entry-text">给刘恋的小提醒：还有个礼物得答完题才能拿，哈哈哈~</p>
+        <button id="quizEntryBtn" class="tiny special-entry-btn" type="button">专属入口</button>
+      </section>
+    </main>
+
+    <dialog id="contentModal" class="modal">
+      <form method="dialog" class="modal-card">
+        <div class="modal-head">
+          <h2 id="modalTitle">编号 0001</h2>
+          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+        <p id="blessingOwnerId" class="blessing-owner-id">祝福ID：-</p>
+        <div class="jump-row">
+          <label for="jumpInput">跳转编号：</label>
+          <input id="jumpInput" type="text" maxlength="4" placeholder="0001-1000" />
+          <button id="jumpBtn" type="button">跳转</button>
+          <button id="prevBlessingBtn" class="ghost" type="button">上一条</button>
+          <button id="nextBlessingBtn" class="ghost" type="button">下一条</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="emptyTemplate">
+      <div class="empty-msg">
+        <p>这个编号暂时还没有内容。</p>
+        <p>可以换一个编号试试。</p>
+      </div>
+    </template>
+
+    <dialog id="adminModal" class="modal">
+      <form method="dialog" class="modal-card">
+        <div class="modal-head">
+          <h2>运营管理</h2>
+          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
+        </div>
+        <div class="controls">
+          <label for="csvFile">上传 CSV：</label>
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+        </div>
+        <div class="controls">
+          <label for="imageFile">上传底图：</label>
+          <input id="imageFile" type="file" accept="image/*" />
+        </div>
+        <div class="controls">
+          <label for="dataFile">导入 data.json：</label>
+          <input id="dataFile" type="file" accept=".json,application/json" />
+        </div>
+        <div class="controls">
+          <button id="saveLocalBtn" type="button">保存到当前浏览器</button>
+          <button id="downloadDataBtn" class="ghost" type="button">下载 data.json</button>
+          <button id="clearLocalBtn" class="ghost" type="button">清空本地运营数据</button>
+          <button id="exportQuizLogBtn" class="ghost" type="button">导出答题记录</button>
+        </div>
+        <p id="adminStatus" class="hint">状态：未进入运营模式。</p>
+      </form>
+    </dialog>
+
+    <dialog id="quizAccessModal" class="modal">
+      <div class="modal-card quiz-access-card">
+        <div class="modal-head">
+          <h2>刘恋专属入口</h2>
+          <button type="button" class="close-btn" id="quizAccessCloseBtn" aria-label="关闭">×</button>
+        </div>
+        <p class="quiz-access-question">爱我们吗？</p>
+        <div class="quiz-access-btns">
+          <button type="button" id="quizLoveBtn" class="quiz-access-btn quiz-access-btn--love">爱</button>
+          <button type="button" id="quizMehBtn" class="quiz-access-btn quiz-access-btn--meh ghost">一般吧</button>
+          <button type="button" id="quizNopeBtn" class="quiz-access-btn quiz-access-btn--nope ghost">不爱</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="quizModal" class="modal">
+      <form id="quizForm" class="modal-card quiz-modal-card">
+        <div class="modal-head">
+          <h2 id="quizTitle">第 1 题 / 8</h2>
+          <button type="button" class="close-btn" id="quizModalCloseBtn" aria-label="关闭">×</button>
+        </div>
+        <div id="quizBody" class="modal-body quiz-body"></div>
+        <div id="quizActionRow" class="controls">
+          <button id="quizSubmitBtn" type="button">提交答案</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

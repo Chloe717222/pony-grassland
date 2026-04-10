@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>运营后台 - 恋恋生贺墙</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>运营后台（内部）</h1>
+        <p>上传 CSV 与底图，确认预览后下载 `data.json` 覆盖发布。</p>
+      </header>
+
+      <section class="controls">
+        <label for="csvFile">上传 CSV：</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+      </section>
+
+      <section class="controls">
+        <label for="imageFile">上传底图：</label>
+        <input id="imageFile" type="file" accept="image/*" />
+      </section>
+
+      <section class="controls">
+        <button id="downloadDataBtn" type="button">下载 data.json</button>
+        <span id="adminStatus">状态：等待导入内容</span>
+      </section>
+
+      <section class="canvas-wrap">
+        <img id="heroImage" class="hero-image" alt="底图预览" />
+        <div id="mosaic" class="mosaic" aria-label="预览热区"></div>
+      </section>
+    </main>
+
+    <script src="./admin.js"></script>
+  </body>
+</html>
