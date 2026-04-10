@@ -1159,7 +1159,8 @@ button.ghost {
 
   .primary-controls input[type="text"],
   .primary-controls__input {
-    flex: 1 1 0;
+    /* 默认由下方 #codeInput 规则收窄；非主输入仍略可伸缩 */
+    flex: 0 1 auto;
     min-width: 3.5rem;
     min-height: 44px;
     font-size: 16px;
@@ -1497,10 +1498,12 @@ button.ghost {
 }
 
 /* 主输入框占位「0001-1000」不被挤没；16px 避免 iOS 聚焦整页缩放 */
+/* 宽度约为原约 11rem 的 2/3，减轻单行横向滑动才能露出「第一条」 */
 @media (max-width: 768px) {
   .primary-controls__input#codeInput {
-    flex: 1 1 10rem;
-    min-width: min(11rem, 100%);
+    flex: 0 1 6.67rem;
+    min-width: min(3.5rem, 100%);
+    max-width: 7.33rem;
     font-size: 16px;
   }
 
