@@ -33,8 +33,7 @@
         </div>
       </header>
 
-      <section class="controls primary-controls stage-width" aria-label="查找祝福">
-        <label class="primary-controls__label" for="codeInput">查找：</label>
+      <section class="controls primary-controls primary-controls--row stage-width" aria-label="查找祝福">
         <input
           id="codeInput"
           class="primary-controls__input"
@@ -44,8 +43,9 @@
           inputmode="numeric"
           autocomplete="off"
           enterkeyhint="search"
+          aria-label="祝福编号"
         />
-        <button id="openBtn" class="primary-controls__open" type="button">查看内容</button>
+        <button id="openBtn" class="primary-controls__open" type="button">查找</button>
         <button id="randomBtn" class="ghost primary-controls__first" type="button" title="从0001起按顺序浏览">
           第一条
         </button>
@@ -59,13 +59,15 @@
           <img id="heroImage" class="hero-image" alt="生贺主视觉" decoding="async" />
           <div id="mosaic" class="mosaic" aria-label="祝福热区"></div>
         </div>
-        <div class="canvas-view-controls" role="group" aria-label="主图视图">
+      </section>
+      <div class="canvas-view-hint-row stage-width" role="group" aria-label="主图视图说明与操作">
+        <p class="hint canvas-view-hint">双指捏合缩放，放大后可拖动查看。</p>
+        <div class="canvas-view-controls">
           <button type="button" id="canvasResetBtn" class="canvas-view-btn" title="还原缩放与位置">
             还原视图
           </button>
         </div>
-      </section>
-      <p class="hint stage-width canvas-view-hint">双指捏合缩放，放大后可拖动查看。</p>
+      </div>
       <section class="special-entry-line special-entry-line--highlight stage-width">
         <p class="special-entry-text">还有小彩蛋~刘恋没事别看</p>
         <button id="quizEntryBtn" class="tiny special-entry-btn" type="button">我要看彩蛋</button>
@@ -182,7 +184,6 @@
             <img id="blessingImageViewerImg" alt="" draggable="false" decoding="async" />
           </div>
         </div>
-        <p class="blessing-img-viewer__hint" id="blessingImageViewerHint">双指捏合放大 · 单指拖动 · 双击还原</p>
       </div>
     </dialog>
 

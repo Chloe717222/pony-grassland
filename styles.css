@@ -458,9 +458,15 @@ p {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: #fbfcfd;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px 12px;
   box-sizing: border-box;
+}
+
+.primary-controls--row {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .primary-controls__label {
@@ -471,7 +477,7 @@ p {
 
 .primary-controls input[type="text"],
 .primary-controls__input {
-  flex: 1 1 140px;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -484,7 +490,7 @@ p {
   flex-shrink: 0;
 }
 
-/* 与 .hint / .canvas-view-hint（画布下方说明）同字号 */
+/* 与 .canvas-view-hint-row / .controls-help（画布下方说明）同字号 */
 .controls-help {
   margin: 10px auto 0;
   padding: 0 4px;
@@ -637,12 +643,41 @@ button.ghost {
   touch-action: none;
 }
 
+/* 与 .canvas-view-hint-row 内说明文案同行；勿叠在主图画布上 */
 .canvas-view-controls {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 8;
+  position: static;
+  flex-shrink: 0;
+  z-index: auto;
   pointer-events: auto;
+}
+
+.canvas-view-hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-top: 10px;
+  margin-left: auto;
+  margin-right: auto;
+  width: var(--stage-width);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5f6a75;
+}
+
+.canvas-view-hint-row .canvas-view-hint {
+  margin-top: 0;
+  margin-bottom: 0;
+  flex: 1 1 12rem;
+  min-width: 0;
+  text-align: left;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
 }
 
 /* —— 全屏生日门：盖在整个页面之上，吹灭蜡烛后关闭 —— */
@@ -1092,31 +1127,31 @@ button.ghost {
   }
 }
 
-.canvas-view-btn {
-  padding: 8px 12px;
-  font-size: 13px;
+.canvas-view-hint-row .canvas-view-btn {
+  padding: 4px 10px;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
   font-weight: 600;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(20, 23, 28, 0.08);
+  font-family: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(197, 202, 211, 0.85);
+  border-radius: 8px;
+  box-shadow: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.canvas-view-btn:hover {
-  background: #fff;
+.canvas-view-hint-row .canvas-view-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
   border-color: #c5cad3;
 }
 
-.canvas-view-btn:focus-visible {
+.canvas-view-hint-row .canvas-view-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.canvas-view-hint {
-  margin-top: 10px;
-  text-align: left;
 }
 
 .hero-image {
@@ -1227,6 +1262,11 @@ button.ghost {
     margin-top: 8px;
   }
 
+  .canvas-view-hint-row {
+    padding: 0 2px;
+    margin-top: 8px;
+  }
+
   .special-entry-line--highlight {
     padding: 6px 0 8px;
     gap: 10px;
@@ -1312,10 +1352,6 @@ button.ghost {
     line-height: 1.6;
   }
 
-  .canvas-view-controls {
-    right: max(10px, env(safe-area-inset-right, 0px));
-    bottom: max(10px, env(safe-area-inset-bottom, 0px));
-  }
 }
 
 /*
@@ -1389,15 +1425,15 @@ button.ghost {
     border-radius: 16px;
   }
 
-  .canvas-view-btn {
-    min-height: 44px;
-    padding: 10px 14px;
-    font-size: 14px;
-  }
-
-  .canvas-view-hint {
+  .canvas-view-hint-row {
     font-size: 14px;
     line-height: 1.5;
+  }
+
+  .canvas-view-hint-row .canvas-view-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    box-sizing: border-box;
   }
 
   .controls-help {
@@ -1637,6 +1673,35 @@ button.ghost {
   pointer-events: none;
 }
 
+.cell-preview-wrap--audio .cell-preview--thumb,
+.cell-preview-wrap--video .cell-preview--thumb {
+  opacity: 0.88;
+}
+
+.cell-preview-media-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(14px, 4.2vw, 22px);
+  line-height: 1;
+  color: rgba(32, 40, 48, 0.72);
+  text-shadow: 0 0 0.35em rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cell-preview-wrap--audio .cell-preview-media-badge {
+  letter-spacing: 0.02em;
+}
+
+.cell-preview-wrap--video .cell-preview-media-badge {
+  font-size: clamp(12px, 3.6vw, 18px);
+  padding: 0.2em 0.45em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
 /* 手机/触摸：减少合成层与 1000 格同时 opacity 过渡，降低微信、Safari 闪屏、掉帧 */
 @media (max-width: 768px), (pointer: coarse) {
   .canvas-stage {
@@ -1656,12 +1721,11 @@ button.ghost {
 /* 宽度约为原约 11rem 的 2/3，减轻单行横向滑动才能露出「第一条」 */
 @media (max-width: 768px) {
   .primary-controls__input#codeInput {
-    flex: 0 1 6.67rem;
+    flex: 1 1 0;
     min-width: min(3.5rem, 100%);
-    max-width: 7.33rem;
+    max-width: none;
     font-size: 16px;
   }
-
 }
 
 .modal {
@@ -1860,21 +1924,7 @@ button.ghost {
   pointer-events: auto;
 }
 
-.blessing-img-viewer__hint {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 8px 4px 0;
-  font-size: 13px;
-  line-height: 1.45;
-  text-align: center;
-  color: rgba(241, 245, 249, 0.72);
-}
-
 @media (max-width: 768px) {
-  .blessing-img-viewer__hint {
-    font-size: 12px;
-  }
-
   .blessing-img-viewer__transform img {
     max-height: min(82dvh, 1200px);
   }
@@ -2309,7 +2359,7 @@ button.ghost {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /* 高于 .canvas-stage 内主图/格子，低于 .canvas-view-controls(8) 以免挡按钮 */
+  /* 高于 .canvas-stage 内主图/格子；还原视图在主图下方说明行，不在画布叠层 */
   z-index: 7;
   overflow: hidden;
   contain: paint;

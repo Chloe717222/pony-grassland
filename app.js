@@ -22,6 +22,9 @@ const LOCAL_KEY = "lianlian-bday-data-v1";
 const SURPRISE_VIDEO_URL = "./content/surprise.mp4";
 /** 主视图两侧祝福字幕飘起时的 BGM（彩蛋流程结束后与 `startBlessingSidesShower` 同步） */
 const BLESSING_SIDES_BGM_URL = "./content/happybirthday.aac";
+/** 弹幕阶段 HTML5 `<audio>` BGM 的目标音量与浅入时长（Web Audio 分支用同一毫秒数做 gain 斜坡） */
+const BLESSING_BGM_HTML_TARGET_VOL = 0.38;
+const BLESSING_BGM_FADE_IN_MS = 1250;
 
 /**
  * 六个小彩蛋（刘恋点「爱」后出现标题列表，任选其一）。
@@ -170,6 +173,7 @@ const STRICT_LOCAL_MEDIA_ONLY = false;
 /**
  * 为 true：格子在 data.json 里未写 url / imageUrl / thumbnail 时，仍尝试用内链
  * `./content/0001.jpg`（四位编号与格子 id 一致）作为首张候选；加载失败会自动按 CONTENT_IMAGE_EXTS 顺序换扩展名再试。
+ * 纯音频 / 纯视频格勿探测同编号 jpg，否则会误把任意配图当成「格子缩略图」。
  * 音频 / 视频在仅有 type、无 url 时同理，按 CONTENT_AUDIO_EXTS / CONTENT_VIDEO_EXTS 链式尝试。
  */
 const IMPLICIT_GRID_IMAGE_FROM_CONTENT_DIR = true;
@@ -422,7 +426,9 @@ function normalizeBlessingItem(id, raw) {
 
   let imageUrl = extractBlessingImageFromRaw(r);
   if (!imageUrl && IMPLICIT_GRID_IMAGE_FROM_CONTENT_DIR) {
-    imageUrl = contentUrlFor(id, CONTENT_IMAGE_EXTS[0]);
+    if (type !== "audio" && type !== "video") {
+      imageUrl = contentUrlFor(id, CONTENT_IMAGE_EXTS[0]);
+    }
   }
   if (!imageUrl) imageUrl = fallbackGridImageUrl();
 
@@ -560,6 +566,19 @@ function buildCellPreviewEl(item, id) {
   }
 
   wrap.appendChild(img);
+
+  const thumbIsPlaceholder =
+    !realSrc || realSrc === GRID_PLACEHOLDER_IMAGE || String(realSrc).startsWith("data:image/svg+xml");
+  const cellType = String(item?.type || "text").toLowerCase();
+  if (thumbIsPlaceholder && (cellType === "audio" || cellType === "video")) {
+    wrap.classList.add(`cell-preview-wrap--${cellType}`);
+    const badge = document.createElement("span");
+    badge.className = "cell-preview-media-badge";
+    badge.setAttribute("aria-hidden", "true");
+    badge.textContent = cellType === "audio" ? "♪" : "▶";
+    wrap.appendChild(badge);
+  }
+
   return wrap;
 }
 
@@ -832,6 +851,7 @@ function renderBlessingModal(item, cellId) {
     audio.preload = "none";
     audio.src = audioSrc;
     bindAudioContentFallback(audio, cellId);
+    attachBlessingModalMediaBgmDuck(audio);
     wrap.appendChild(audio);
   }
 
@@ -843,6 +863,7 @@ function renderBlessingModal(item, cellId) {
     video.preload = "metadata";
     video.src = videoSrc;
     bindVideoContentFallback(video, cellId);
+    attachBlessingModalMediaBgmDuck(video);
     wrap.appendChild(video);
   }
 
@@ -1041,6 +1062,8 @@ function initBlessingImageViewer() {
 
   if (modalEl) {
     modalEl.addEventListener("close", () => {
+      pauseBlessingModalEmbeddedMedia();
+      syncBlessingBgmWithModalEmbeddedMedia();
       closeBlessingImageViewer();
       clearBlessingSaveBar();
     });
@@ -1448,6 +1471,25 @@ function isDownloadLikelySameOrigin(src) {
   }
 }
 
+/**
+ * iOS / 微信内置浏览器 / 触摸环境：对同源静态资源用 `a[download]` 常得到 0kb 或只跳转不存盘；
+ * 先 fetch 再 Blob 链接触发保存更可靠（仍在用户点击发起的调用栈/ Promise 内）。
+ */
+function shouldSaveSameOriginViaFetchBlob() {
+  try {
+    const ua = navigator.userAgent || "";
+    if (/MicroMessenger/i.test(ua)) return true;
+    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+    if (navigator.maxTouchPoints > 0 && /MacIntel|Macintosh/.test(ua)) return true;
+    if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches) {
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 function tryProgrammaticDownloadSync(url, fallbackFilename) {
   const src = String(url || "").trim();
   const name = guessFilenameFromMediaUrl(src, fallbackFilename);
@@ -1467,6 +1509,10 @@ async function saveMediaUrlToLocalFileViaFetch(src, fallbackFilename) {
     const res = await fetch(src, { mode: "cors", credentials: "omit", cache: "force-cache" });
     if (!res.ok) throw new Error(String(res.status));
     const blob = await res.blob();
+    if (!blob || blob.size < 1) {
+      alert("无法保存：未读取到文件内容，请稍后重试。");
+      return;
+    }
     let name = guessFilenameFromMediaUrl(src, fallbackFilename);
     if (!/\.[a-z0-9]{2,6}$/i.test(name)) {
       const base = String(fallbackFilename || "file").replace(/\.[^/.]+$/, "");
@@ -1493,7 +1539,7 @@ async function saveMediaUrlToLocalFileViaFetch(src, fallbackFilename) {
 }
 
 /**
- * 保存单个媒体：同源 / blob / data 走同步 a[download]，避免先 await fetch 导致用户手势失效、下载不触发。
+ * 保存单个媒体：data: / 桌面同源可走同步 a[download]；移动端同源易 0kb 时改 fetch+Blob。
  * 跨源且允许 CORS 时用 fetch 拉取后再存。
  */
 function saveMediaUrlToLocalFile(url, fallbackFilename) {
@@ -1511,6 +1557,9 @@ function saveMediaUrlToLocalFile(url, fallbackFilename) {
     return Promise.resolve();
   }
   if (isDownloadLikelySameOrigin(src)) {
+    if (shouldSaveSameOriginViaFetchBlob()) {
+      return saveMediaUrlToLocalFileViaFetch(src, fallbackFilename);
+    }
     tryProgrammaticDownloadSync(src, fallbackFilename);
     return Promise.resolve();
   }
@@ -1707,6 +1756,121 @@ let happyBirthdayDecodeFailed = false;
 let blessingSidesBgmAudio = null;
 /** `runBlessingBgmPlaybackCore` 完成后供弹幕层使用（对白与弹幕分段时复用同一轨） */
 let blessingBgmRuntime = null;
+/** 弹窗内音视频播放时压低或暂停祝福 BGM，避免与格子媒体叠放 */
+let blessingBgmModalDuck = null;
+
+function rampHtmlMediaVolume(el, from, to, durationMs) {
+  if (!(el instanceof HTMLMediaElement)) return;
+  if (durationMs <= 0) {
+    el.volume = to;
+    return;
+  }
+  const steps = Math.max(6, Math.ceil(durationMs / 45));
+  let step = 0;
+  const tick = durationMs / steps;
+  const iv = window.setInterval(() => {
+    step += 1;
+    const u = Math.min(1, step / steps);
+    el.volume = from + (to - from) * u;
+    if (step >= steps) {
+      window.clearInterval(iv);
+      el.volume = to;
+    }
+  }, tick);
+}
+
+function duckBlessingSidesBgmForModalMedia() {
+  const rt = blessingBgmRuntime;
+  if (!rt || blessingBgmModalDuck) return;
+
+  if (rt.songMedia) {
+    const a = rt.songMedia;
+    if (a.paused || a.ended) return;
+    blessingBgmModalDuck = { mode: "html" };
+    try {
+      a.pause();
+    } catch (_) {}
+    return;
+  }
+  if (rt.waGainNode && blessingAudioCtx) {
+    const g = rt.waGainNode.gain;
+    const now = blessingAudioCtx.currentTime;
+    let v = 0;
+    try {
+      v = g.value;
+    } catch (_) {
+      v = 0;
+    }
+    if (v < 0.012) return;
+    blessingBgmModalDuck = { mode: "wa", waGainBefore: v };
+    try {
+      g.cancelScheduledValues(now);
+      g.setValueAtTime(v, now);
+      g.linearRampToValueAtTime(0.00008, now + 0.1);
+    } catch (_) {}
+  }
+}
+
+function unduckBlessingSidesBgmFromModalMedia() {
+  if (!blessingBgmModalDuck) return;
+  const duck = blessingBgmModalDuck;
+  blessingBgmModalDuck = null;
+  const rt = blessingBgmRuntime;
+  if (!rt) return;
+  if (duck.mode === "html" && rt.songMedia) {
+    const a = rt.songMedia;
+    if (a.ended) return;
+    const target = Number.isFinite(rt.htmlTargetVol) ? rt.htmlTargetVol : BLESSING_BGM_HTML_TARGET_VOL;
+    a.volume = 0.0001;
+    void a.play().then(() => {
+      rampHtmlMediaVolume(a, 0.0001, target, 480);
+    }).catch(() => {});
+    return;
+  }
+  if (duck.mode === "wa" && rt.waGainNode && blessingAudioCtx) {
+    const g = rt.waGainNode.gain;
+    const now = blessingAudioCtx.currentTime;
+    const cap = rt.waTargetGain != null ? rt.waTargetGain : 0.38;
+    const before = duck.waGainBefore != null ? duck.waGainBefore : cap;
+    const target = Math.min(cap, Math.max(0.0001, before));
+    try {
+      g.cancelScheduledValues(now);
+      g.setValueAtTime(Math.max(g.value, 0.00008), now);
+      g.linearRampToValueAtTime(target, now + 0.35);
+    } catch (_) {}
+  }
+}
+
+function syncBlessingBgmWithModalEmbeddedMedia() {
+  if (!modalBodyEl) return;
+  const anyPlaying = Array.from(modalBodyEl.querySelectorAll("video,audio")).some(
+    (el) => el instanceof HTMLMediaElement && !el.paused && !el.ended
+  );
+  if (anyPlaying) duckBlessingSidesBgmForModalMedia();
+  else unduckBlessingSidesBgmFromModalMedia();
+}
+
+function pauseBlessingModalEmbeddedMedia() {
+  if (!modalBodyEl) return;
+  modalBodyEl.querySelectorAll("video,audio").forEach((el) => {
+    try {
+      el.pause();
+    } catch (_) {}
+  });
+}
+
+function attachBlessingModalMediaBgmDuck(el) {
+  if (!(el instanceof HTMLMediaElement)) return;
+  el.addEventListener("play", () => {
+    syncBlessingBgmWithModalEmbeddedMedia();
+  });
+  el.addEventListener("pause", () => {
+    window.setTimeout(() => syncBlessingBgmWithModalEmbeddedMedia(), 0);
+  });
+  el.addEventListener("ended", () => {
+    window.setTimeout(() => syncBlessingBgmWithModalEmbeddedMedia(), 0);
+  });
+}
 
 /** 《祝你生日快乐》简谱旋律（与常见中文版同调），单遍时长约 14s */
 function getZhuNiShengRiNoteList() {
@@ -1851,6 +2015,7 @@ function primeBlessingWebAudio() {
  */
 function startBlessingSidesBgmPlayback() {
   primeBlessingWebAudio();
+  blessingBgmModalDuck = null;
   blessingBgmRuntime = null;
   void runBlessingBgmPlaybackCore().catch(() => {});
 }
@@ -1859,6 +2024,7 @@ function startBlessingSidesBgmPlayback() {
  * 解码 / 播放 happybirthday 或合成旋律，写入 `blessingBgmRuntime`。
  */
 async function runBlessingBgmPlaybackCore() {
+  blessingBgmModalDuck = null;
   const fallbackMs = 120000;
   const tryHtmlAudioBgm = async () => {
     const a = getBlessingSidesBgmAudioEl();
@@ -1873,7 +2039,7 @@ async function runBlessingBgmPlaybackCore() {
           setTimeout(fin, 1500);
         }
       });
-      a.volume = 0.38;
+      a.volume = 0.0001;
       a.loop = false;
       const playP = a.play();
       if (playP) await playP.catch(() => {
@@ -1884,7 +2050,13 @@ async function runBlessingBgmPlaybackCore() {
       /** 与单曲播放对齐；弹幕层时长同步，播完由 `ended` 或定时器收尾 */
       let durationMs = Math.floor(singleMs);
       durationMs = Math.min(120000, Math.max(3000, durationMs));
-      blessingBgmRuntime = { durationMs, songMedia: a, songControl: null };
+      blessingBgmRuntime = {
+        durationMs,
+        songMedia: a,
+        songControl: null,
+        htmlTargetVol: BLESSING_BGM_HTML_TARGET_VOL,
+      };
+      rampHtmlMediaVolume(a, 0.0001, BLESSING_BGM_HTML_TARGET_VOL, BLESSING_BGM_FADE_IN_MS);
       return true;
     } catch {
       try {
@@ -1924,7 +2096,10 @@ async function runBlessingBgmPlaybackCore() {
     src.buffer = buf;
     src.loop = false;
     const master = ctx.createGain();
-    master.gain.value = usedFileBgm ? 0.38 : 0.32;
+    const targetGain = usedFileBgm ? 0.38 : 0.32;
+    const tStart = ctx.currentTime;
+    master.gain.setValueAtTime(0.0001, tStart);
+    master.gain.linearRampToValueAtTime(targetGain, tStart + BLESSING_BGM_FADE_IN_MS / 1000);
     src.connect(master);
     master.connect(ctx.destination);
     src.start(0);
@@ -1939,7 +2114,13 @@ async function runBlessingBgmPlaybackCore() {
         master.disconnect();
       },
     };
-    blessingBgmRuntime = { durationMs, songMedia: null, songControl: control };
+    blessingBgmRuntime = {
+      durationMs,
+      songMedia: null,
+      songControl: control,
+      waGainNode: master,
+      waTargetGain: targetGain,
+    };
   } catch {
     blessingBgmRuntime = { durationMs: fallbackMs, songMedia: null, songControl: null };
   }
