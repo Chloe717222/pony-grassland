@@ -39,6 +39,9 @@ if (fs.existsSync(contentDir)) {
   }
 }
 
+/** 格子配图内链：需与 content/ 下实际扩展名对齐（旧逻辑曾跳过「已是 ./content/… 的 text」导致 JSON 写 .jpg 磁盘只有 .png） */
+const CONTENT_ITEM_URL = /^\.\/content\/\d{4}\.[a-z0-9]+$/i;
+
 let n = 0;
 for (const [id, item] of Object.entries(data.items)) {
   if (!item || typeof item !== "object") continue;
@@ -48,6 +51,9 @@ for (const [id, item] of Object.entries(data.items)) {
   if (t === "text") {
     const u = String(item.url || "").trim();
     if (!u || /^https?:\/\//i.test(u)) {
+      const ext = pickExtFromDisk(CONTENT_IMAGE_EXTS, disk);
+      next = contentUrlFor(id, ext);
+    } else if (CONTENT_ITEM_URL.test(u)) {
       const ext = pickExtFromDisk(CONTENT_IMAGE_EXTS, disk);
       next = contentUrlFor(id, ext);
     }

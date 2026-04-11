@@ -12,7 +12,19 @@
   <body>
     <main class="container">
       <header class="stage-width hero-header">
-        <button type="button" id="adminKickerBtn" class="hero-kicker" aria-label="Happy Birthday">Happy Birthday</button>
+        <div class="hero-header__row">
+          <button type="button" id="adminKickerBtn" class="hero-kicker" aria-label="Happy Birthday">
+            Happy Birthday
+          </button>
+          <button
+            type="button"
+            id="exportBlessingsTextBtn"
+            class="hero-export-text-btn hero-export-text-btn--prominent tiny"
+            hidden
+          >
+            导出祝福文案
+          </button>
+        </div>
         <div class="hero-split">
           <div class="hero-col hero-col-intro">
             <h1>Hi 恋恋宝贝</h1>
@@ -144,14 +156,34 @@
         </div>
         <div id="modalBody" class="modal-body"></div>
         <p id="blessingOwnerId" class="blessing-owner-id" hidden aria-hidden="true"></p>
-        <div class="jump-row">
-          <label for="jumpInput">跳转：</label>
-          <input id="jumpInput" type="text" maxlength="4" placeholder="0001-1000" />
-          <button id="jumpBtn" type="button">跳转</button>
-          <button id="prevBlessingBtn" class="ghost" type="button">上一条</button>
-          <button id="nextBlessingBtn" class="ghost" type="button">下一条</button>
+        <div class="blessing-nav-bar" id="blessingJumpRow">
+          <button id="prevBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
+            上一条
+          </button>
+          <div id="blessingSaveBar" class="blessing-nav-save" role="group" aria-label="保存到本地"></div>
+          <button id="nextBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
+            下一条
+          </button>
         </div>
       </form>
+    </dialog>
+
+    <!-- 祝福弹窗配图全屏放大（手机双指捏合 / 桌面 Ctrl+滚轮） -->
+    <dialog id="blessingImageViewer" class="blessing-img-viewer" aria-label="放大查看图片">
+      <div class="blessing-img-viewer__shell">
+        <button type="button" class="blessing-img-viewer__save" id="blessingImageViewerSaveBtn" title="保存图片到本地">
+          保存图片到本地
+        </button>
+        <button type="button" class="blessing-img-viewer__close" id="blessingImageViewerCloseBtn" aria-label="关闭大图">
+          ×
+        </button>
+        <div class="blessing-img-viewer__stage" id="blessingImageViewerStage">
+          <div class="blessing-img-viewer__transform" id="blessingImageViewerTransform">
+            <img id="blessingImageViewerImg" alt="" draggable="false" decoding="async" />
+          </div>
+        </div>
+        <p class="blessing-img-viewer__hint" id="blessingImageViewerHint">双指捏合放大 · 单指拖动 · 双击还原</p>
+      </div>
     </dialog>
 
     <template id="emptyTemplate">
@@ -280,8 +312,7 @@
 
     <dialog id="quizAccessModal" class="modal">
       <div class="modal-card quiz-access-card">
-        <div class="modal-head">
-          <h2>前情提要</h2>
+        <div class="modal-head modal-head--close-only">
           <button type="button" class="close-btn" id="quizAccessCloseBtn" aria-label="关闭">×</button>
         </div>
         <p class="quiz-access-question">爱我们吗？</p>

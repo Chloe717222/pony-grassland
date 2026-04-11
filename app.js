@@ -1,10 +1,27 @@
 const GRID_COLS = 40;
 const GRID_ROWS = 25;
 const TOTAL = GRID_COLS * GRID_ROWS;
+
+/** 祝福格插入顺序：由主视图几何中心向外扩散（配合每格显式 grid 行列），避免「先角落后中心」长时间灰块 */
+const MOSAIC_IDS_CENTER_FIRST = (function buildMosaicIdsCenterFirst() {
+  const gx = (GRID_COLS - 1) / 2;
+  const gy = (GRID_ROWS - 1) / 2;
+  const cells = [];
+  for (let n = 0; n < TOTAL; n++) {
+    const cx = (n % GRID_COLS) + 0.5;
+    const cy = Math.floor(n / GRID_COLS) + 0.5;
+    const d2 = (cx - gx) ** 2 + (cy - gy) ** 2;
+    cells.push({ n, d2 });
+  }
+  cells.sort((a, b) => a.d2 - b.d2 || a.n - b.n);
+  return cells.map(({ n }) => (n + 1).toString().padStart(4, "0"));
+})();
 const ADMIN_PASSWORD = "LIULIAN20260426";
 const LOCAL_KEY = "lianlian-bday-data-v1";
 /** 彩蛋视频示例路径：与格子一样放在 content/，可自行替换文件 */
 const SURPRISE_VIDEO_URL = "./content/surprise.mp4";
+/** 主视图两侧祝福字幕飘起时的 BGM（彩蛋流程结束后与 `startBlessingSidesShower` 同步） */
+const BLESSING_SIDES_BGM_URL = "./content/happybirthday.aac";
 
 /**
  * 六个小彩蛋（刘恋点「爱」后出现标题列表，任选其一）。
@@ -27,8 +44,14 @@ const randomBtnEl = document.getElementById("randomBtn");
 const adminKickerBtnEl = document.getElementById("adminKickerBtn");
 const modalEl = document.getElementById("contentModal");
 const modalBodyEl = document.getElementById("modalBody");
-const jumpInputEl = document.getElementById("jumpInput");
-const jumpBtnEl = document.getElementById("jumpBtn");
+const blessingImageViewerEl = document.getElementById("blessingImageViewer");
+const blessingImageViewerStageEl = document.getElementById("blessingImageViewerStage");
+const blessingImageViewerTransformEl = document.getElementById("blessingImageViewerTransform");
+const blessingImageViewerImgEl = document.getElementById("blessingImageViewerImg");
+const blessingImageViewerCloseBtnEl = document.getElementById("blessingImageViewerCloseBtn");
+const blessingImageViewerSaveBtnEl = document.getElementById("blessingImageViewerSaveBtn");
+const blessingSaveBarEl = document.getElementById("blessingSaveBar");
+const exportBlessingsTextBtnEl = document.getElementById("exportBlessingsTextBtn");
 const prevBlessingBtnEl = document.getElementById("prevBlessingBtn");
 const nextBlessingBtnEl = document.getElementById("nextBlessingBtn");
 const emptyTpl = document.getElementById("emptyTemplate");
@@ -60,8 +83,10 @@ const canvasStageEl = document.getElementById("canvasStage");
 const canvasResetBtnEl = document.getElementById("canvasResetBtn");
 /** 全屏生日门：完成后写入本地，刷新不再出现（须用函数取节点，避免脚本在 DOM 之前执行得到 null） */
 const CEREMONY_STORAGE_KEY = "lianlian-candle-ceremony-v1";
+/** 彩蛋弹窗流程结束（关闭 quizModal）后显示「导出祝福文案」 */
+const EXPORT_BLESSINGS_AFTER_EGG_KEY = "lianlian-export-after-egg-v1";
 /** 开幕页无操作则自动进入祝福页的等待时长（毫秒） */
-const BIRTHDAY_GATE_AUTO_MS = 5000;
+const BIRTHDAY_GATE_AUTO_MS = 8000;
 
 function getBirthdayGateEl() {
   return document.getElementById("birthdayGate");
@@ -517,17 +542,19 @@ function buildCellPreviewEl(item, id) {
   const img = document.createElement("img");
   img.className = "cell-preview cell-preview--thumb";
   img.alt = "";
-  img.loading = "lazy";
   img.decoding = "async";
 
   const realSrc = blessingImageSrc(item, id);
   if (isMobileGridBatching()) {
+    /** 已由 IO + 并发队列控制起载时机；勿再用原生 lazy（相对视口）否则赋 src 后仍可能被二次推迟 */
+    img.loading = "eager";
     /** 先占位，真实 src 由 IntersectionObserver 在进入可视区域后再设，避免 1000 路同时解码撑爆内存 */
     img.dataset.deferSrc = realSrc;
     img.dataset.blessingCellId = id;
     img.src = GRID_PLACEHOLDER_IMAGE;
     img.classList.add("cell-preview--defer");
   } else {
+    img.loading = "lazy";
     img.src = realSrc;
     bindImageContentFallback(img, id);
   }
@@ -549,9 +576,83 @@ function isMobileGridBatching() {
 
 /** 格子缩略图延迟加载（仅移动端）：与 renderGrid 生命周期一致，重绘前 disconnect */
 let mosaicThumbIo = null;
+/** IntersectionObserver 不可用或创建失败时置 true，改成立即赋 src，避免整页格子永远灰块 */
+let mosaicThumbIoUnavailable = false;
 let mosaicIoNudgeTimer = null;
 
+/** 待赋真实 src 的缩略图（仅仍带 deferSrc）；按距视口中心由近到远出队，避免全景时千路并发把连接与解码堵死 */
+const mosaicThumbPendingList = [];
+let mosaicThumbInflight = 0;
+/** 与 HTTP 并发量级接近；过大仍易尖峰，过小首屏完成慢 */
+const MOSAIC_THUMB_MAX_PARALLEL = 8;
+let mosaicThumbFetchPriorityBudget = 0;
+
+function mosaicThumbResetQueue() {
+  mosaicThumbPendingList.length = 0;
+  mosaicThumbInflight = 0;
+  mosaicThumbFetchPriorityBudget = 0;
+}
+
+function mosaicThumbDistanceSqToCanvasCenter(img) {
+  const root = canvasWrapEl && canvasWrapEl instanceof Element ? canvasWrapEl : null;
+  if (!root) return 0;
+  const rr = root.getBoundingClientRect();
+  if (rr.width < 1 || rr.height < 1) return 0;
+  const cx = rr.left + rr.width * 0.5;
+  const cy = rr.top + rr.height * 0.5;
+  const ir = img.getBoundingClientRect();
+  const ix = ir.left + ir.width * 0.5;
+  const iy = ir.top + ir.height * 0.5;
+  const dx = ix - cx;
+  const dy = iy - cy;
+  return dx * dx + dy * dy;
+}
+
+function mosaicThumbEnqueueVisible(img) {
+  if (!(img instanceof HTMLImageElement) || !img.dataset.deferSrc) return;
+  const d2 = mosaicThumbDistanceSqToCanvasCenter(img);
+  if (img.dataset.mosaicQueued === "1") {
+    const row = mosaicThumbPendingList.find((o) => o.img === img);
+    if (row) row.d2 = d2;
+    return;
+  }
+  img.dataset.mosaicQueued = "1";
+  mosaicThumbPendingList.push({ img, d2 });
+}
+
+function mosaicThumbDequeVisible(img) {
+  if (!(img instanceof HTMLImageElement)) return;
+  delete img.dataset.mosaicQueued;
+  const idx = mosaicThumbPendingList.findIndex((o) => o.img === img);
+  if (idx >= 0) mosaicThumbPendingList.splice(idx, 1);
+}
+
+function mosaicThumbTryDrain() {
+  while (mosaicThumbInflight < MOSAIC_THUMB_MAX_PARALLEL && mosaicThumbPendingList.length) {
+    const { img } = mosaicThumbPendingList.shift();
+    if (!(img instanceof HTMLImageElement) || !img.dataset.deferSrc) continue;
+    if (!img.isConnected) continue;
+    mosaicThumbInflight++;
+    const done = () => {
+      mosaicThumbInflight--;
+      mosaicThumbTryDrain();
+    };
+    img.addEventListener("load", done, { once: true });
+    img.addEventListener("error", done, { once: true });
+    if (mosaicThumbFetchPriorityBudget < 16 && "fetchPriority" in img) {
+      try {
+        img.fetchPriority = "high";
+        mosaicThumbFetchPriorityBudget++;
+      } catch {
+        /* ignore */
+      }
+    }
+    activateDeferredMosaicThumb(img);
+  }
+}
+
 function disconnectMosaicThumbIo() {
+  mosaicThumbResetQueue();
   if (mosaicThumbIo) {
     try {
       mosaicThumbIo.disconnect();
@@ -562,38 +663,61 @@ function disconnectMosaicThumbIo() {
   }
 }
 
+function activateDeferredMosaicThumb(img) {
+  if (!(img instanceof HTMLImageElement)) return;
+  const rawSrc = img.dataset.deferSrc;
+  const bid = img.dataset.blessingCellId;
+  if (!rawSrc) return;
+  try {
+    if (mosaicThumbIo) mosaicThumbIo.unobserve(img);
+  } catch {
+    /* ignore */
+  }
+  delete img.dataset.mosaicQueued;
+  delete img.dataset.deferSrc;
+  delete img.dataset.blessingCellId;
+  img.classList.remove("cell-preview--defer");
+  img.src = rawSrc;
+  if (bid) bindImageContentFallback(img, bid);
+}
+
 function ensureMosaicThumbIo() {
-  if (mosaicThumbIo) return;
+  if (mosaicThumbIo || mosaicThumbIoUnavailable) return;
+  if (typeof IntersectionObserver !== "function") {
+    mosaicThumbIoUnavailable = true;
+    return;
+  }
   const root = canvasWrapEl && canvasWrapEl instanceof Element ? canvasWrapEl : null;
-  mosaicThumbIo = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const img = entry.target;
-        if (!(img instanceof HTMLImageElement)) continue;
-        const rawSrc = img.dataset.deferSrc;
-        const bid = img.dataset.blessingCellId;
-        if (!rawSrc) continue;
-        try {
-          mosaicThumbIo.unobserve(img);
-        } catch {
-          /* ignore */
+  try {
+    mosaicThumbIo = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const img = entry.target;
+          if (!(img instanceof HTMLImageElement)) continue;
+          if (entry.isIntersecting) mosaicThumbEnqueueVisible(img);
+          else mosaicThumbDequeVisible(img);
         }
-        delete img.dataset.deferSrc;
-        delete img.dataset.blessingCellId;
-        img.classList.remove("cell-preview--defer");
-        img.src = rawSrc;
-        if (bid) bindImageContentFallback(img, bid);
-      }
-    },
-    { root, rootMargin: "48px", threshold: 0 }
-  );
+        mosaicThumbPendingList.sort((a, b) => a.d2 - b.d2);
+        mosaicThumbTryDrain();
+      },
+      { root, rootMargin: "80px", threshold: 0 }
+    );
+  } catch {
+    mosaicThumbIoUnavailable = true;
+    mosaicThumbIo = null;
+  }
 }
 
 function registerMosaicDeferredThumb(img) {
   if (!(img instanceof HTMLImageElement)) return;
   ensureMosaicThumbIo();
-  if (mosaicThumbIo) mosaicThumbIo.observe(img);
+  if (mosaicThumbIo) {
+    mosaicThumbIo.observe(img);
+  } else {
+    mosaicThumbEnqueueVisible(img);
+    mosaicThumbPendingList.sort((a, b) => a.d2 - b.d2);
+    mosaicThumbTryDrain();
+  }
 }
 
 /** 部分 WebView 在父级 transform 更新后不会立刻重算 IO，轻量 unobserve/observe 触发补载 */
@@ -611,43 +735,36 @@ function scheduleMosaicIoNudge() {
     } catch {
       /* ignore */
     }
+    mosaicThumbPendingList.sort((a, b) => a.d2 - b.d2);
+    mosaicThumbTryDrain();
   }, 72);
 }
 
+/** 移动端：仅用 rAF 分帧，避免 requestIdleCallback 在 WebView 里长时间不调度、中心格迟迟不进 DOM */
 function scheduleNextGridStep(stepFn) {
-  if (isMobileGridBatching()) {
-    const ric = window.requestIdleCallback;
-    if (typeof ric === "function") {
-      ric(
-        () => {
-          requestAnimationFrame(stepFn);
-        },
-        { timeout: 140 }
-      );
-    } else {
-      window.setTimeout(() => requestAnimationFrame(stepFn), 0);
-    }
-  } else {
-    requestAnimationFrame(stepFn);
-  }
+  requestAnimationFrame(stepFn);
 }
 
 /**
  * 移动端一次插入 1000 个格子 + 缩略图易导致 WKWebView/微信内核闪屏、内存尖峰；分帧追加减轻主线程与解码压力。
+ * 插入顺序由 MOSAIC_IDS_CENTER_FIRST 决定，每格显式 grid 行列，缩略图由 IO + 并发队列按「离视口中心近者优先」加载。
  */
 function renderGrid() {
   disconnectMosaicThumbIo();
   mosaicEl.innerHTML = "";
-  const chunk = isMobileGridBatching() ? 16 : 250;
-  let i = 1;
+  const chunk = isMobileGridBatching() ? 48 : 250;
+  let idx = 0;
   function step() {
-    const end = Math.min(i + chunk - 1, TOTAL);
+    const end = Math.min(idx + chunk, TOTAL);
     const frag = document.createDocumentFragment();
-    for (; i <= end; i++) {
-      const id = i.toString().padStart(4, "0");
+    for (; idx < end; idx++) {
+      const id = MOSAIC_IDS_CENTER_FIRST[idx];
+      const n0 = parseInt(id, 10) - 1;
       const cell = document.createElement("button");
       cell.type = "button";
       cell.className = "cell";
+      cell.style.gridColumn = String((n0 % GRID_COLS) + 1);
+      cell.style.gridRow = String(Math.floor(n0 / GRID_COLS) + 1);
       const item = contentMap.get(id);
       cell.classList.toggle("has-content", Boolean(item));
       cell.classList.toggle("cell--placeholder", !item);
@@ -660,7 +777,11 @@ function renderGrid() {
       frag.appendChild(cell);
     }
     mosaicEl.appendChild(frag);
-    if (i <= TOTAL) scheduleNextGridStep(step);
+    if (isMobileGridBatching()) {
+      mosaicThumbPendingList.sort((a, b) => a.d2 - b.d2);
+      mosaicThumbTryDrain();
+    }
+    if (idx < TOTAL) scheduleNextGridStep(step);
   }
   requestAnimationFrame(step);
 }
@@ -682,9 +803,17 @@ function renderBlessingModal(item, cellId) {
     img.className = "blessing-modal-image";
     img.src = blessingImageSrc(item, cellId);
     img.alt = modalImageAlt(item);
+    /** 弹窗主图须与弹窗同时尽快出现：lazy/low 会推迟数秒级加载，体感「只有文案」 */
     img.loading = "eager";
     img.decoding = "async";
+    if ("fetchPriority" in img) img.fetchPriority = "high";
+    img.title = "点击查看大图（可双指放大）";
     bindImageContentFallback(img, cellId);
+    img.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openBlessingImageViewerFromImg(img);
+    });
     wrap.appendChild(img);
   } else {
     wrap.classList.add("blessing-modal-body--media-only");
@@ -700,6 +829,7 @@ function renderBlessingModal(item, cellId) {
     const audio = document.createElement("audio");
     audio.className = "blessing-modal-audio";
     audio.controls = true;
+    audio.preload = "none";
     audio.src = audioSrc;
     bindAudioContentFallback(audio, cellId);
     wrap.appendChild(audio);
@@ -710,12 +840,265 @@ function renderBlessingModal(item, cellId) {
     video.className = "blessing-modal-video";
     video.controls = true;
     video.playsInline = true;
+    video.preload = "metadata";
     video.src = videoSrc;
     bindVideoContentFallback(video, cellId);
     wrap.appendChild(video);
   }
 
   return wrap;
+}
+
+function clearBlessingSaveBar() {
+  if (!blessingSaveBarEl) return;
+  blessingSaveBarEl.innerHTML = "";
+}
+
+/**
+ * 与底部「跳转 / 上一条 / 下一条」同一行：按类型展示「保存视频/音频/图片到本地」。
+ */
+function syncBlessingSaveBar(item, cellId) {
+  if (!blessingSaveBarEl) return;
+  clearBlessingSaveBar();
+  const audioSrc = String(item.audioUrl || "").trim();
+  const videoSrc = String(item.videoUrl || "").trim();
+  const addSaveBtn = (label, url, fallbackFilename) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "blessing-nav-save-btn";
+    b.textContent = label;
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void saveMediaUrlToLocalFile(url, fallbackFilename);
+    });
+    blessingSaveBarEl.appendChild(b);
+  };
+  if (videoSrc) addSaveBtn("保存视频到本地", videoSrc, `blessing_${cellId}_video.mp4`);
+  if (audioSrc) addSaveBtn("保存音频到本地", audioSrc, `blessing_${cellId}_audio.mp3`);
+  if (!videoSrc && !audioSrc) {
+    const imgUrl = blessingImageSrc(item, cellId);
+    if (!isGridPlaceholderImageSrc(imgUrl)) {
+      addSaveBtn("保存图片到本地", imgUrl, `blessing_${cellId}_image.jpg`);
+    }
+  }
+  if (!blessingSaveBarEl.childElementCount) {
+    const empty = document.createElement("span");
+    empty.className = "blessing-nav-save-empty";
+    empty.textContent = "暂无可保存";
+    blessingSaveBarEl.appendChild(empty);
+  }
+}
+
+/** 祝福弹窗配图全屏查看：双指缩放、拖动；桌面 Ctrl+滚轮缩放 */
+const blessingImageViewerView = {
+  scale: 1,
+  tx: 0,
+  ty: 0,
+  pinchLastDist: 0,
+  panLast: null,
+  mousePan: false,
+};
+
+function blessingImageViewerTouchDist(a, b) {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+function applyBlessingImageViewerTransform() {
+  if (!blessingImageViewerTransformEl) return;
+  const { scale, tx, ty } = blessingImageViewerView;
+  blessingImageViewerTransformEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+}
+
+function resetBlessingImageViewerTransform() {
+  blessingImageViewerView.scale = 1;
+  blessingImageViewerView.tx = 0;
+  blessingImageViewerView.ty = 0;
+  blessingImageViewerView.pinchLastDist = 0;
+  blessingImageViewerView.panLast = null;
+  blessingImageViewerView.mousePan = false;
+  applyBlessingImageViewerTransform();
+}
+
+function closeBlessingImageViewer() {
+  if (blessingImageViewerEl && blessingImageViewerEl.open) blessingImageViewerEl.close();
+  resetBlessingImageViewerTransform();
+}
+
+function openBlessingImageViewerFromImg(sourceEl) {
+  if (!blessingImageViewerEl || !blessingImageViewerImgEl || !(sourceEl instanceof HTMLImageElement)) return;
+  const src = String(sourceEl.currentSrc || sourceEl.src || "").trim();
+  if (!src || src === GRID_PLACEHOLDER_IMAGE) return;
+  blessingImageViewerImgEl.src = src;
+  blessingImageViewerImgEl.alt = sourceEl.alt || "";
+  resetBlessingImageViewerTransform();
+  blessingImageViewerEl.showModal();
+}
+
+function initBlessingImageViewer() {
+  if (!blessingImageViewerStageEl || !blessingImageViewerImgEl || !blessingImageViewerTransformEl) return;
+
+  const stage = blessingImageViewerStageEl;
+
+  stage.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length === 2) {
+        blessingImageViewerView.pinchLastDist = blessingImageViewerTouchDist(e.touches[0], e.touches[1]);
+        blessingImageViewerView.panLast = null;
+      } else if (e.touches.length === 1 && blessingImageViewerView.scale > 1.02) {
+        blessingImageViewerView.panLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    },
+    { passive: true }
+  );
+
+  stage.addEventListener(
+    "touchmove",
+    (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = blessingImageViewerTouchDist(e.touches[0], e.touches[1]);
+        const last = blessingImageViewerView.pinchLastDist;
+        if (last > 1e-3) {
+          const ratio = d / last;
+          blessingImageViewerView.scale = Math.min(5, Math.max(1, blessingImageViewerView.scale * ratio));
+          blessingImageViewerView.pinchLastDist = d;
+          applyBlessingImageViewerTransform();
+        }
+      } else if (e.touches.length === 1 && blessingImageViewerView.scale > 1.02 && blessingImageViewerView.panLast) {
+        e.preventDefault();
+        const t = e.touches[0];
+        const pl = blessingImageViewerView.panLast;
+        blessingImageViewerView.tx += t.clientX - pl.x;
+        blessingImageViewerView.ty += t.clientY - pl.y;
+        blessingImageViewerView.panLast = { x: t.clientX, y: t.clientY };
+        applyBlessingImageViewerTransform();
+      }
+    },
+    { passive: false }
+  );
+
+  stage.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) blessingImageViewerView.pinchLastDist = 0;
+    if (e.touches.length === 0) {
+      blessingImageViewerView.panLast = null;
+    } else if (e.touches.length === 1) {
+      blessingImageViewerView.panLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  });
+
+  stage.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    if (blessingImageViewerView.scale > 1.02) {
+      blessingImageViewerView.mousePan = true;
+      blessingImageViewerView.panLast = { x: e.clientX, y: e.clientY };
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!blessingImageViewerView.mousePan || !blessingImageViewerEl || !blessingImageViewerEl.open) return;
+    if (!blessingImageViewerView.panLast) return;
+    const pl = blessingImageViewerView.panLast;
+    blessingImageViewerView.tx += e.clientX - pl.x;
+    blessingImageViewerView.ty += e.clientY - pl.y;
+    blessingImageViewerView.panLast = { x: e.clientX, y: e.clientY };
+    applyBlessingImageViewerTransform();
+  });
+
+  window.addEventListener("mouseup", () => {
+    blessingImageViewerView.mousePan = false;
+    blessingImageViewerView.panLast = null;
+  });
+
+  stage.addEventListener(
+    "wheel",
+    (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.06 : 0.94;
+      blessingImageViewerView.scale = Math.min(5, Math.max(1, blessingImageViewerView.scale * factor));
+      applyBlessingImageViewerTransform();
+    },
+    { passive: false }
+  );
+
+  blessingImageViewerImgEl.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    resetBlessingImageViewerTransform();
+  });
+
+  if (blessingImageViewerCloseBtnEl) {
+    blessingImageViewerCloseBtnEl.addEventListener("click", () => closeBlessingImageViewer());
+  }
+
+  if (blessingImageViewerSaveBtnEl && blessingImageViewerImgEl) {
+    blessingImageViewerSaveBtnEl.addEventListener("click", () => {
+      const src = String(blessingImageViewerImgEl.currentSrc || blessingImageViewerImgEl.src || "").trim();
+      void saveMediaUrlToLocalFile(src, "blessing_image.jpg");
+    });
+  }
+
+  if (modalEl) {
+    modalEl.addEventListener("close", () => {
+      closeBlessingImageViewer();
+      clearBlessingSaveBar();
+    });
+  }
+}
+
+/**
+ * 祝福详情弹窗打开时：在弹窗内左右滑切换上一条 / 下一条（左滑下一条、右滑上一条）。
+ * 从按钮、音视频控件、输入等起手的触摸不触发，避免误切。
+ */
+function initBlessingModalSwipe() {
+  if (!modalEl) return;
+  let arm = null;
+  const MIN_DX = 52;
+  const MAX_MS = 720;
+  function swipeAllowed() {
+    if (!modalEl.open) return false;
+    if (blessingImageViewerEl && blessingImageViewerEl.open) return false;
+    if (quizModalEl && quizModalEl.open) return false;
+    const gate = getBirthdayGateEl && getBirthdayGateEl();
+    if (gate && !gate.hidden) return false;
+    return true;
+  }
+  function targetAllowsSwipe(el) {
+    if (!el || !modalEl.contains(el)) return false;
+    if (el.closest("button, input, textarea, select, a, video, audio, label, [role='slider']")) return false;
+    return true;
+  }
+  function clearArm() {
+    arm = null;
+  }
+  modalEl.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (!swipeAllowed()) return;
+      if (!targetAllowsSwipe(e.target)) return;
+      arm = { x: e.clientX, y: e.clientY, id: e.pointerId, t: Date.now() };
+    },
+    true
+  );
+  function onPointerUp(e) {
+    if (!arm || arm.id !== e.pointerId) return;
+    const st = arm;
+    clearArm();
+    if (!swipeAllowed()) return;
+    const dt = Date.now() - st.t;
+    const dx = e.clientX - st.x;
+    const dy = e.clientY - st.y;
+    if (dt > MAX_MS) return;
+    if (Math.abs(dx) < MIN_DX) return;
+    if (Math.abs(dy) > 0.52 * Math.abs(dx)) return;
+    if (!getBlessingIdsSorted().length) return;
+    if (dx < 0) gotoNeighborBlessing(1);
+    else gotoNeighborBlessing(-1);
+  }
+  modalEl.addEventListener("pointerup", onPointerUp, true);
+  modalEl.addEventListener("pointercancel", clearArm, true);
 }
 
 function openById(rawId) {
@@ -725,6 +1108,7 @@ function openById(rawId) {
     return;
   }
   currentModalId = id;
+
   modalBodyEl.innerHTML = "";
   const item = contentMap.get(id);
   if (!item) {
@@ -736,10 +1120,11 @@ function openById(rawId) {
       url: fallbackGridImageUrl(),
     });
     modalBodyEl.appendChild(renderBlessingModal(placeholder, id));
+    syncBlessingSaveBar(placeholder, id);
   } else {
     modalBodyEl.appendChild(renderBlessingModal(item, id));
+    syncBlessingSaveBar(item, id);
   }
-  jumpInputEl.value = id;
   if (!modalEl.open) modalEl.showModal();
 }
 
@@ -794,7 +1179,10 @@ function openAdminAfterPasswordPrompt() {
 
 function syncBirthdayGateVisibility() {
   const gate = getBirthdayGateEl();
-  if (!gate) return;
+  if (!gate) {
+    updateExportBlessingsTextButton();
+    return;
+  }
   const done = localStorage.getItem(CEREMONY_STORAGE_KEY) === "1";
   gate.hidden = done;
   if (!done) {
@@ -805,6 +1193,7 @@ function syncBirthdayGateVisibility() {
     gate.setAttribute("aria-hidden", "true");
   }
   document.body.style.overflow = done ? "" : "hidden";
+  updateExportBlessingsTextButton();
 }
 
 function resetBirthdayGateCandles() {
@@ -1011,9 +1400,161 @@ function downloadData() {
   setAdminStatus("已下载 data.json。");
 }
 
+function isGridPlaceholderImageSrc(src) {
+  const s = String(src || "").trim();
+  return !s || s === GRID_PLACEHOLDER_IMAGE || s.startsWith("data:image/svg+xml");
+}
+
+function guessFilenameFromMediaUrl(url, fallbackBase) {
+  const s = String(url || "").trim();
+  try {
+    const u = new URL(s, document.baseURI);
+    const seg = u.pathname.split("/").filter(Boolean).pop();
+    if (seg && /\.[a-z0-9]{2,6}$/i.test(seg)) return decodeURIComponent(seg);
+  } catch {
+    /* ignore */
+  }
+  const fb = String(fallbackBase || "download").trim();
+  return fb.includes(".") ? fb : `${fb}.bin`;
+}
+
+function extensionFromMime(mime) {
+  const m = String(mime || "").toLowerCase();
+  const map = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/aac": ".aac",
+    "audio/wav": ".wav",
+    "audio/ogg": ".ogg",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+  };
+  return map[m] || ".bin";
+}
+
+function isDownloadLikelySameOrigin(src) {
+  const s = String(src || "").trim();
+  if (!s) return false;
+  if (s.startsWith("blob:") || s.startsWith("data:")) return true;
+  try {
+    return new URL(s, document.baseURI).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function tryProgrammaticDownloadSync(url, fallbackFilename) {
+  const src = String(url || "").trim();
+  const name = guessFilenameFromMediaUrl(src, fallbackFilename);
+  const a = document.createElement("a");
+  a.href = src;
+  a.download = name;
+  a.setAttribute("download", name);
+  a.rel = "noopener";
+  a.style.cssText = "position:fixed;left:-9999px;top:0;";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function saveMediaUrlToLocalFileViaFetch(src, fallbackFilename) {
+  try {
+    const res = await fetch(src, { mode: "cors", credentials: "omit", cache: "force-cache" });
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    let name = guessFilenameFromMediaUrl(src, fallbackFilename);
+    if (!/\.[a-z0-9]{2,6}$/i.test(name)) {
+      const base = String(fallbackFilename || "file").replace(/\.[^/.]+$/, "");
+      name = `${base}${extensionFromMime(blob.type)}`;
+    }
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = obj;
+    a.download = name;
+    a.style.cssText = "position:fixed;left:-9999px;top:0;";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(obj);
+  } catch {
+    try {
+      tryProgrammaticDownloadSync(src, fallbackFilename);
+    } catch {
+      alert(
+        "无法保存到本地。跨域资源需对方允许跨域；也可换系统浏览器，或对音视频长按选「另存」。"
+      );
+    }
+  }
+}
+
+/**
+ * 保存单个媒体：同源 / blob / data 走同步 a[download]，避免先 await fetch 导致用户手势失效、下载不触发。
+ * 跨源且允许 CORS 时用 fetch 拉取后再存。
+ */
+function saveMediaUrlToLocalFile(url, fallbackFilename) {
+  const src = String(url || "").trim();
+  if (!src) {
+    alert("没有可保存的资源。");
+    return Promise.resolve();
+  }
+  if (isGridPlaceholderImageSrc(src)) {
+    alert("当前为占位图，无法保存。");
+    return Promise.resolve();
+  }
+  if (src.startsWith("data:")) {
+    tryProgrammaticDownloadSync(src, fallbackFilename);
+    return Promise.resolve();
+  }
+  if (isDownloadLikelySameOrigin(src)) {
+    tryProgrammaticDownloadSync(src, fallbackFilename);
+    return Promise.resolve();
+  }
+  return saveMediaUrlToLocalFileViaFetch(src, fallbackFilename);
+}
+
+/** 开幕吹蜡烛完成后显示：一键导出当前已加载数据中全部祝福正文（仅文案，按编号排序） */
+function exportAllBlessingTextsToFile() {
+  const ids = getBlessingIdsSorted();
+  if (!ids.length) {
+    alert("当前没有可导出的祝福文案。");
+    return;
+  }
+  const chunks = [];
+  for (const id of ids) {
+    const item = contentMap.get(id);
+    const text = item ? String(item.text || "").trim() : "";
+    chunks.push(id);
+    chunks.push(text || "（空）");
+    chunks.push("");
+  }
+  const body = chunks.join("\n").replace(/\n+$/, "");
+  const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "祝福文案.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateExportBlessingsTextButton() {
+  if (!exportBlessingsTextBtnEl) return;
+  if (localStorage.getItem(EXPORT_BLESSINGS_AFTER_EGG_KEY) === "1") {
+    exportBlessingsTextBtnEl.removeAttribute("hidden");
+  } else {
+    exportBlessingsTextBtnEl.setAttribute("hidden", "");
+  }
+}
+
 async function clearLocal() {
   localStorage.removeItem(LOCAL_KEY);
   localStorage.removeItem(CEREMONY_STORAGE_KEY);
+  localStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
   /** 原生 dialog 在顶层，不关会盖住开幕页，看起来像「门没了」 */
   if (adminModalEl && adminModalEl.open) {
     try {
@@ -1025,11 +1566,11 @@ async function clearLocal() {
   resetBirthdayGateUi();
   await loadData();
   setAdminStatus(
-    "已清空本地运营数据（含开幕状态）。开幕页已重新出现：请点蛋糕进入；本次不会自动跳过（防误记为已完成）。刷新页面后约 5 秒无操作会自动进入。"
+    "已清空本地运营数据（含开幕状态）。开幕页已重新出现：请点蛋糕进入；本次不会自动跳过（防误记为已完成）。刷新页面后约 8 秒无操作会自动进入。"
   );
 }
 
-/** 前情提要里点「爱」后：不再答题，直接你棒棒 + 彩蛋视频 */
+/** 彩蛋入口弹窗里点「爱」后：不再答题，直接你棒棒 + 彩蛋视频 */
 function escapeHtmlEgg(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -1049,7 +1590,7 @@ function showEggTitlePicker() {
     (egg, i) =>
       `<button type="button" class="egg-picker-btn" data-egg-index="${i}">${escapeHtmlEgg(egg.title)}</button>`
   ).join("");
-  quizBodyEl.innerHTML = `<p class="egg-picker-hint">点标题打开对应彩蛋（文字 / 图 / 语音 / 视频）。</p><div class="egg-picker-grid">${btns}</div>`;
+  quizBodyEl.innerHTML = `<div class="egg-picker-grid">${btns}</div>`;
   quizBodyEl.querySelectorAll(".egg-picker-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const i = Number(btn.getAttribute("data-egg-index"));
@@ -1088,6 +1629,7 @@ function openEasterEggAtIndex(index) {
 }
 
 function showEggSurpriseFromAccess() {
+  warmBlessingSidesBgmFromUserGesture();
   if (quizAccessModalEl && quizAccessModalEl.open) quizAccessModalEl.close();
   quizAnswersForBlessing = [];
   if (quizSubmitBtnEl) quizSubmitBtnEl.disabled = true;
@@ -1125,7 +1667,12 @@ function showBlessingLinesThenMeteorRain() {
     document.body.appendChild(dlg);
     dlg.showModal();
     const lineStaggerMs = 2000;
-    const holdAllVisibleMs = 5000;
+    const holdAllVisibleMs = 3000;
+    /** 背景音在最后一句「恋姐生日快乐」显现时开启（与该行 is-visible 同步）；弹幕仍在整段对白结束后再起 */
+    window.setTimeout(
+      () => startBlessingSidesBgmPlayback(),
+      (lines.length - 1) * lineStaggerMs
+    );
     const ps = card.querySelectorAll(".blessing-reveal-line");
     ps.forEach((p, i) => {
       window.setTimeout(() => p.classList.add("is-visible"), i * lineStaggerMs);
@@ -1134,7 +1681,7 @@ function showBlessingLinesThenMeteorRain() {
     window.setTimeout(() => {
       if (dlg.open) dlg.close();
       dlg.remove();
-      startBlessingSongAndRisingShower();
+      startBlessingRisingShowerFromRuntime();
     }, closeAt);
   }, 1000);
 }
@@ -1154,6 +1701,12 @@ function getBlessingTextsFromContent() {
 
 let blessingAudioCtx = null;
 let zhuNiShengRiBuffer = null;
+let happyBirthdayDecodedBuffer = null;
+let happyBirthdayDecodeFailed = false;
+/** 弹幕 BGM：在用户手势里 play→pause 预热后，延迟数十秒再 play 仍可能被部分浏览器放行 */
+let blessingSidesBgmAudio = null;
+/** `runBlessingBgmPlaybackCore` 完成后供弹幕层使用（对白与弹幕分段时复用同一轨） */
+let blessingBgmRuntime = null;
 
 /** 《祝你生日快乐》简谱旋律（与常见中文版同调），单遍时长约 14s */
 function getZhuNiShengRiNoteList() {
@@ -1216,51 +1769,206 @@ async function ensureZhuNiShengRiBuffer() {
   return zhuNiShengRiBuffer;
 }
 
-/** 在用户手势里解锁 Web Audio，否则十余秒后再播会被浏览器拦截 */
-function primeBlessingWebAudio() {
-  blessingAudioCtx = blessingAudioCtx || new AudioContext();
-  if (blessingAudioCtx.state === "suspended") {
-    blessingAudioCtx.resume().catch(() => {});
+/**
+ * 解码 `happybirthday.aac` 供两侧字幕飘起时播放；失败则回退合成旋律（仅尝试一次解码，避免重复打日志）。
+ */
+async function ensureHappyBirthdayBuffer(ctx) {
+  if (happyBirthdayDecodedBuffer) return happyBirthdayDecodedBuffer;
+  if (happyBirthdayDecodeFailed) throw new Error("happy birthday skipped");
+  const res = await fetch(BLESSING_SIDES_BGM_URL, { cache: "force-cache" });
+  if (!res.ok) throw new Error("happy birthday fetch failed");
+  const ab = await res.arrayBuffer();
+  happyBirthdayDecodedBuffer = await ctx.decodeAudioData(ab.slice(0));
+  return happyBirthdayDecodedBuffer;
+}
+
+function getBlessingSidesBgmAudioEl() {
+  if (blessingSidesBgmAudio && blessingSidesBgmAudio.isConnected) return blessingSidesBgmAudio;
+  const a = document.createElement("audio");
+  a.preload = "auto";
+  a.playsInline = true;
+  a.setAttribute("playsinline", "");
+  a.style.display = "none";
+  a.setAttribute("aria-hidden", "true");
+  document.body.appendChild(a);
+  blessingSidesBgmAudio = a;
+  return a;
+}
+
+/**
+ * 必须在用户手势同步栈内调用（点「爱」/关彩蛋弹窗等）。
+ * 先极短 play 再 pause，后续延迟播放同一 `<audio>` 时 iOS/Chrome 才易放行。
+ */
+function warmBlessingSidesBgmFromUserGesture() {
+  try {
+    const a = getBlessingSidesBgmAudioEl();
+    a.src = BLESSING_SIDES_BGM_URL;
+    a.volume = 0.001;
+    void a.play().then(
+      () => {
+        try {
+          a.pause();
+          a.currentTime = 0;
+          a.volume = 1;
+        } catch (_) {
+          /* ignore */
+        }
+      },
+      () => {}
+    );
+  } catch {
+    /* ignore */
   }
 }
 
-function startBlessingSongAndRisingShower() {
-  primeBlessingWebAudio();
-  const fallbackMs = 120000;
-  void (async () => {
-    try {
-      const buf = await ensureZhuNiShengRiBuffer();
-      const ctx = blessingAudioCtx;
-      if (!ctx) {
-        startBlessingSidesShower(fallbackMs, null, null);
-        return;
-      }
-      const loops = 4;
-      const durationMs = Math.floor(buf.duration * loops * 1000);
-      if (ctx.state === "suspended") await ctx.resume();
+/** 在用户手势里解锁 Web Audio；短静音脉冲避免延迟播放被静音策略拦死 */
+function primeBlessingWebAudio() {
+  blessingAudioCtx = blessingAudioCtx || new AudioContext();
+  const ctx = blessingAudioCtx;
+  try {
+    if (!ctx.__blessingSilentUnlocked) {
+      const buf = ctx.createBuffer(1, 2, ctx.sampleRate);
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.loop = true;
-      const master = ctx.createGain();
-      master.gain.value = 0.32;
-      src.connect(master);
-      master.connect(ctx.destination);
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      src.connect(g);
+      g.connect(ctx.destination);
       src.start(0);
-      const control = {
-        stop() {
-          try {
-            src.stop();
-          } catch (_) {
-            /* ignore */
-          }
-          src.disconnect();
-          master.disconnect();
-        },
-      };
-      startBlessingSidesShower(durationMs, null, control);
-    } catch {
-      startBlessingSidesShower(fallbackMs, null, null);
+      src.stop(ctx.currentTime + 0.05);
+      ctx.__blessingSilentUnlocked = true;
     }
+  } catch {
+    /* ignore */
+  }
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
+}
+
+/**
+ * 仅启动 BGM（不启弹幕），供对白弹窗 `showModal` 后立即调用。
+ */
+function startBlessingSidesBgmPlayback() {
+  primeBlessingWebAudio();
+  blessingBgmRuntime = null;
+  void runBlessingBgmPlaybackCore().catch(() => {});
+}
+
+/**
+ * 解码 / 播放 happybirthday 或合成旋律，写入 `blessingBgmRuntime`。
+ */
+async function runBlessingBgmPlaybackCore() {
+  const fallbackMs = 120000;
+  const tryHtmlAudioBgm = async () => {
+    const a = getBlessingSidesBgmAudioEl();
+    try {
+      a.src = BLESSING_SIDES_BGM_URL;
+      await new Promise((resolve) => {
+        const fin = () => resolve();
+        if (a.readyState >= 1 && Number.isFinite(a.duration) && a.duration > 0) fin();
+        else {
+          a.addEventListener("loadedmetadata", fin, { once: true });
+          a.addEventListener("error", fin, { once: true });
+          setTimeout(fin, 1500);
+        }
+      });
+      a.volume = 0.38;
+      a.loop = false;
+      const playP = a.play();
+      if (playP) await playP.catch(() => {
+        throw new Error("bgm play blocked");
+      });
+      const singleSec = Number.isFinite(a.duration) && a.duration > 0 ? a.duration : 45;
+      const singleMs = singleSec * 1000;
+      /** 与单曲播放对齐；弹幕层时长同步，播完由 `ended` 或定时器收尾 */
+      let durationMs = Math.floor(singleMs);
+      durationMs = Math.min(120000, Math.max(3000, durationMs));
+      blessingBgmRuntime = { durationMs, songMedia: a, songControl: null };
+      return true;
+    } catch {
+      try {
+        a.pause();
+      } catch (_) {
+        /* ignore */
+      }
+      return false;
+    }
+  };
+
+  if (await tryHtmlAudioBgm()) return;
+
+  try {
+    const ctx = blessingAudioCtx;
+    if (!ctx) {
+      blessingBgmRuntime = { durationMs: fallbackMs, songMedia: null, songControl: null };
+      return;
+    }
+    if (ctx.state === "suspended") await ctx.resume();
+
+    let buf;
+    let usedFileBgm = false;
+    try {
+      buf = await ensureHappyBirthdayBuffer(ctx);
+      usedFileBgm = true;
+    } catch {
+      happyBirthdayDecodeFailed = true;
+      buf = await ensureZhuNiShengRiBuffer();
+    }
+
+    const singleMs = buf.duration * 1000;
+    let durationMs = Math.floor(singleMs);
+    durationMs = Math.min(120000, Math.max(3000, durationMs));
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = false;
+    const master = ctx.createGain();
+    master.gain.value = usedFileBgm ? 0.38 : 0.32;
+    src.connect(master);
+    master.connect(ctx.destination);
+    src.start(0);
+    const control = {
+      stop() {
+        try {
+          src.stop();
+        } catch (_) {
+          /* ignore */
+        }
+        src.disconnect();
+        master.disconnect();
+      },
+    };
+    blessingBgmRuntime = { durationMs, songMedia: null, songControl: control };
+  } catch {
+    blessingBgmRuntime = { durationMs: fallbackMs, songMedia: null, songControl: null };
+  }
+}
+
+function startBlessingRisingShowerSync() {
+  const rt = blessingBgmRuntime;
+  const dm = rt && Number.isFinite(Number(rt.durationMs)) ? Number(rt.durationMs) : 120000;
+  startBlessingSidesShower(dm, rt && rt.songMedia ? rt.songMedia : null, rt && rt.songControl ? rt.songControl : null);
+}
+
+/**
+ * 对白结束后再启弹幕；若 BGM 异步尚未写入 runtime，短暂等待（解码慢时）。
+ */
+function startBlessingRisingShowerFromRuntime() {
+  void (async () => {
+    for (let i = 0; i < 80 && !blessingBgmRuntime; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    startBlessingRisingShowerSync();
+  })();
+}
+
+/** 连续执行：先 BGM 再弹幕（当前仅保留作兜底，主流程已分段） */
+function startBlessingSongAndRisingShower() {
+  primeBlessingWebAudio();
+  void (async () => {
+    await runBlessingBgmPlaybackCore();
+    startBlessingRisingShowerSync();
   })();
 }
 
@@ -1293,10 +2001,19 @@ function startBlessingSidesShower(durationMs, songMedia, songControl) {
     window.setTimeout(() => layer.remove(), 3200);
   };
 
-  if (songMedia) {
+  if (songMedia && !songMedia.loop) {
     songMedia.addEventListener("ended", finishSpawn, { once: true });
   }
 
+  /** 同时飘动的行数上限，避免 DOM 与合成层过多导致掉帧 */
+  const MAX_SIDE_LINES = 44;
+  /** 略缩短节拍 + 提高单次概率，减少「空窗连拍」；仍用随机避免机械感 */
+  const SPAWN_TICK_MS = 175;
+  const SPAWN_PROB = 0.82;
+  /** 连续多拍因随机未出条时强制补一条，避免弹幕「断档、衔接不上」 */
+  const MAX_MISS_TICKS_BEFORE_FORCE = 3;
+
+  let missTicks = 0;
   const t0 = Date.now();
   intervalId = window.setInterval(() => {
     if (stopped) return;
@@ -1304,28 +2021,44 @@ function startBlessingSidesShower(durationMs, songMedia, songControl) {
       finishSpawn();
       return;
     }
-    if (Math.random() < 0.58 && entries.length > 0) {
-      const pick = entries[Math.floor(Math.random() * entries.length)];
-      const el = document.createElement("div");
-      el.className = pick.source === "user" ? "blessing-side-line blessing-side-line--user" : "blessing-side-line";
-      el.textContent = pick.text;
-      el.style.fontSize = `${randomSideFontPx(pick.source)}px`;
-      const fromLeft = Math.random() < 0.5;
-      if (fromLeft) {
-        el.style.left = `${1 + Math.random() * 9}%`;
-        el.style.right = "auto";
-        el.style.textAlign = "left";
-      } else {
-        el.style.right = `${1 + Math.random() * 9}%`;
-        el.style.left = "auto";
-        el.style.textAlign = "right";
-      }
-      const dur = 2.2 + Math.random() * 2.2;
-      el.style.animationDuration = `${dur}s`;
-      layer.appendChild(el);
-      window.setTimeout(() => el.remove(), dur * 1000 + 120);
+    if (entries.length === 0) return;
+    if (layer.childElementCount >= MAX_SIDE_LINES) {
+      missTicks = 0;
+      return;
     }
-  }, 110);
+
+    let spawn = Math.random() < SPAWN_PROB;
+    if (!spawn) {
+      missTicks += 1;
+      if (missTicks >= MAX_MISS_TICKS_BEFORE_FORCE) {
+        spawn = true;
+        missTicks = 0;
+      }
+    } else {
+      missTicks = 0;
+    }
+    if (!spawn) return;
+
+    const pick = entries[Math.floor(Math.random() * entries.length)];
+    const el = document.createElement("div");
+    el.className = pick.source === "user" ? "blessing-side-line blessing-side-line--user" : "blessing-side-line";
+    el.textContent = pick.text;
+    el.style.fontSize = `${randomSideFontPx(pick.source)}px`;
+    const fromLeft = Math.random() < 0.5;
+    if (fromLeft) {
+      el.style.left = `${1 + Math.random() * 9}%`;
+      el.style.right = "auto";
+      el.style.textAlign = "left";
+    } else {
+      el.style.right = `${1 + Math.random() * 9}%`;
+      el.style.left = "auto";
+      el.style.textAlign = "right";
+    }
+    const dur = 2.2 + Math.random() * 2.2;
+    el.style.animationDuration = `${dur}s`;
+    layer.appendChild(el);
+    window.setTimeout(() => el.remove(), dur * 1000 + 120);
+  }, SPAWN_TICK_MS);
 }
 
 function showTimedPopup(message, duration = 5000) {
@@ -1347,6 +2080,22 @@ function showTimedPopup(message, duration = 5000) {
 }
 
 async function loadData() {
+  /** 线上分享链接必须以同目录 data.json 为准；若先读 localStorage，曾「保存到当前浏览器」的设备会一直看到旧稿/空稿，与他人不一致。 */
+  let networkJson = null;
+  try {
+    const dataHref = new URL("data.json", document.baseURI || window.location.href).href;
+    const res = await fetch(dataHref, { cache: "no-store" });
+    if (res.ok) networkJson = await res.json();
+  } catch {
+    networkJson = null;
+  }
+
+  if (networkJson) {
+    applyData(networkJson);
+    renderGrid();
+    return;
+  }
+
   const local = localStorage.getItem(LOCAL_KEY);
   if (local) {
     try {
@@ -1357,18 +2106,13 @@ async function loadData() {
       localStorage.removeItem(LOCAL_KEY);
     }
   }
-  try {
-    const res = await fetch("./data.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("data.json missing");
-    applyData(await res.json());
-  } catch {
-    applyData({
-      heroImage: fallbackHero,
-      items: {
-        "0001": { type: "text", text: "愿你平安喜乐，万事顺心。（演示：无图时用灰色占位，不请求外网。）" },
-      },
-    });
-  }
+
+  applyData({
+    heroImage: fallbackHero,
+    items: {
+      "0001": { type: "text", text: "愿你平安喜乐，万事顺心。（演示：无图时用灰色占位，不请求外网。）" },
+    },
+  });
   renderGrid();
 }
 
@@ -1381,20 +2125,29 @@ if (document.readyState === "loading") {
 
 openBtnEl.addEventListener("click", () => openById(codeInputEl.value));
 randomBtnEl.addEventListener("click", () => openById(nextSequentialBlessingId()));
-jumpBtnEl.addEventListener("click", () => openById(jumpInputEl.value));
 prevBlessingBtnEl.addEventListener("click", () => gotoNeighborBlessing(-1));
 nextBlessingBtnEl.addEventListener("click", () => gotoNeighborBlessing(1));
 codeInputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") openById(codeInputEl.value);
 });
-jumpInputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") openById(jumpInputEl.value);
-  if (e.key === "ArrowLeft") gotoNeighborBlessing(-1);
-  if (e.key === "ArrowRight") gotoNeighborBlessing(1);
-});
+if (modalEl) {
+  modalEl.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      gotoNeighborBlessing(-1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      gotoNeighborBlessing(1);
+    }
+  });
+}
 
 if (adminKickerBtnEl) {
   adminKickerBtnEl.addEventListener("click", () => openAdminAfterPasswordPrompt());
+}
+
+if (exportBlessingsTextBtnEl) {
+  exportBlessingsTextBtnEl.addEventListener("click", () => exportAllBlessingTextsToFile());
 }
 
 csvFileEl.addEventListener("change", async (e) => {
@@ -1530,6 +2283,7 @@ if (quizModalCloseBtnEl) {
 if (quizEntryBtnEl && quizAccessModalEl) {
   quizEntryBtnEl.addEventListener("click", () => {
     primeBlessingWebAudio();
+    warmBlessingSidesBgmFromUserGesture();
     quizAccessModalEl.showModal();
   });
 }
@@ -1562,7 +2316,14 @@ if (quizNopeBtnEl) {
 quizModalEl.addEventListener("close", () => {
   if (eggFlowActive) {
     eggFlowActive = false;
+    try {
+      localStorage.setItem(EXPORT_BLESSINGS_AFTER_EGG_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    updateExportBlessingsTextButton();
     primeBlessingWebAudio();
+    warmBlessingSidesBgmFromUserGesture();
     showBlessingLinesThenMeteorRain();
   }
 });
@@ -1940,8 +2701,10 @@ function initCanvasPanZoom() {
 
 initCanvasPanZoom();
 loadData();
+initBlessingImageViewer();
+initBlessingModalSwipe();
 
-/** 首帧后再挂一次自动进入定时，避免个别环境下首轮 setTimeout 与布局竞态；会清掉首轮并重新计 5 秒 */
+/** 首帧后再挂一次自动进入定时，避免个别环境下首轮 setTimeout 与布局竞态；会清掉首轮并重新计 8 秒 */
 requestAnimationFrame(() => {
   try {
     if (localStorage.getItem(CEREMONY_STORAGE_KEY) === "1") return;
