@@ -213,8 +213,8 @@ const HERO_PLACEHOLDER_IMAGE =
 const fallbackHero = HERO_PLACEHOLDER_IMAGE;
 /** 与 CSV / 运营约定一致：格子配图默认文件名 */
 const CONTENT_MEDIA_DIR = "./content";
-/** 格用小图子目录（相对 content/）；`scripts/generate-content-thumbs.mjs` 批量写入；弹窗大图仍用 `imageUrl` */
-const CONTENT_THUMB_SUBDIR = "thumbs";
+/** 格用小图子目录（相对 content/）；与 `generate-content-thumbs.mjs --out=...` 一致；弹窗大图仍用 `imageUrl` */
+const CONTENT_THUMB_SUBDIR = "thumbs512";
 /** 小图扩展名尝试顺序（与生成脚本默认 webp 一致） */
 const CONTENT_THUMB_EXTS = ["webp", "jpg", "jpeg", "png"];
 
@@ -434,6 +434,33 @@ function looksLikeImageAsset(u) {
   return /\.(jpe?g|png|gif|webp|svg|bmp)(\?|$)/i.test(s);
 }
 
+/** 配图字段：拒绝把「标题/文案」等非 URL 误当作 imageUrl（常见于 id,type,title,text,url 表头与列索引错位） */
+function isPlausibleBlessingImageUrl(u) {
+  const s = String(u || "").trim();
+  if (!s) return false;
+  if (s.startsWith("data:image/") || s.startsWith("blob:")) return true;
+  if (looksLikeImageAsset(s)) return true;
+  if (isHttpUrl(s) || s.startsWith("./") || s.startsWith("../")) {
+    if (/\.(mp3|m4a|aac|wav|ogg|opus|flac|mp4|webm|ogv|mov|m4v)(\?|$)/i.test(s)) return false;
+    return true;
+  }
+  return false;
+}
+
+function looksLikeAudioUrl(u) {
+  const s = String(u || "").trim();
+  if (!s) return false;
+  if (s.startsWith("data:audio/") || s.startsWith("blob:")) return true;
+  return /\.(mp3|m4a|aac|wav|ogg|opus|flac)(\?|$)/i.test(s);
+}
+
+function looksLikeVideoUrl(u) {
+  const s = String(u || "").trim();
+  if (!s) return false;
+  if (s.startsWith("data:video/") || s.startsWith("blob:")) return true;
+  return /\.(mp4|webm|ogv|mov|m4v)(\?|$)/i.test(s);
+}
+
 /**
  * 在 STRICT_LOCAL_MEDIA_ONLY 时：把外网演示链改写成 content/ 相对路径并去掉外链音视频。
  * 默认关闭，避免线上托管时因仓库里没有 `./content/0001.jpg` 而导致整格只剩灰块、音视频消失。
@@ -475,10 +502,14 @@ function coerceGridItemUrlsToLocalContent(id, raw) {
 function extractBlessingImageFromRaw(r) {
   const t = String(r.type || "text").toLowerCase();
   const legacy = String(r.url || "").trim();
+  const imgField = String(r.imageUrl || "").trim();
+  const thumbField = String(r.thumbnail || "").trim();
+  const img = imgField && isPlausibleBlessingImageUrl(imgField) ? imgField : "";
+  const thumb = thumbField && isPlausibleBlessingImageUrl(thumbField) ? thumbField : "";
   return (
-    String(r.imageUrl || "").trim() ||
-    String(r.thumbnail || "").trim() ||
-    (t === "image" ? legacy : "") ||
+    img ||
+    thumb ||
+    (t === "image" && legacy && isPlausibleBlessingImageUrl(legacy) ? legacy : "") ||
     (t !== "audio" && t !== "video" && legacy && looksLikeImageAsset(legacy) ? legacy : "")
   );
 }
@@ -486,20 +517,38 @@ function extractBlessingImageFromRaw(r) {
 /** 音频：显式 audioUrl，或 legacy type=audio 时的主 url */
 function extractBlessingAudioFromRaw(r) {
   const explicit = String(r.audioUrl || "").trim();
-  if (explicit) return explicit;
+  if (explicit && looksLikeAudioUrl(explicit)) return explicit;
   const t = String(r.type || "text").toLowerCase();
   const legacy = String(r.url || "").trim();
-  if (t === "audio" && legacy) return legacy;
+  if (t === "audio" && legacy) {
+    if (looksLikeAudioUrl(legacy)) return legacy;
+    if (
+      (isHttpUrl(legacy) || legacy.startsWith("./") || legacy.startsWith("../")) &&
+      !looksLikeVideoUrl(legacy) &&
+      !isPlausibleBlessingImageUrl(legacy)
+    ) {
+      return legacy;
+    }
+  }
   return "";
 }
 
 /** 视频：显式 videoUrl，或 legacy type=video 时的主 url */
 function extractBlessingVideoFromRaw(r) {
   const explicit = String(r.videoUrl || "").trim();
-  if (explicit) return explicit;
+  if (explicit && looksLikeVideoUrl(explicit)) return explicit;
   const t = String(r.type || "text").toLowerCase();
   const legacy = String(r.url || "").trim();
-  if (t === "video" && legacy) return legacy;
+  if (t === "video" && legacy) {
+    if (looksLikeVideoUrl(legacy)) return legacy;
+    if (
+      (isHttpUrl(legacy) || legacy.startsWith("./") || legacy.startsWith("../")) &&
+      !looksLikeAudioUrl(legacy) &&
+      !isPlausibleBlessingImageUrl(legacy)
+    ) {
+      return legacy;
+    }
+  }
   return "";
 }
 
@@ -696,13 +745,17 @@ function buildCellPreviewEl(item, id) {
   img.decoding = "async";
 
   const realSrc = blessingGridImageSrc(item, id);
+  const fullSrc = blessingImageSrc(item, id);
+  img.dataset.mosaicThumbSrc = realSrc;
+  img.dataset.mosaicFullSrc = fullSrc;
+  img.dataset.mosaicCellId = id;
   /**
    * 本地 file:// 千图瞬间可读盘；线上需经 HTTP，若每格立刻 `src=` 会触发近千路并发，TLS/连接排队反更慢。
    * 全端统一：占位 + IO 进视口再赋真实 src（优先 `content/thumbs` 小图）；并发上限见 `getMosaicThumbMaxParallel`。
+   * 缩放较大时由 `syncMosaicPreviewHiRes` 换用 `mosaicFullSrc`（与弹窗同清晰度）。
    */
   img.loading = "eager";
   img.dataset.deferSrc = realSrc;
-  img.dataset.blessingCellId = id;
   img.src = GRID_PLACEHOLDER_IMAGE;
   img.classList.add("cell-preview--defer");
 
@@ -731,6 +784,168 @@ let mosaicIoNudgeTimer = null;
 const mosaicThumbPendingList = [];
 let mosaicThumbInflight = 0;
 let mosaicThumbFetchPriorityBudget = 0;
+
+/** 主画布缩放 ≥ 该倍时，视口内格图改用高清 `imageUrl`（定住与捏合过程观感一致） */
+const MOSAIC_PREVIEW_HIRES_MIN_SCALE = 1.12;
+let mosaicHiResSyncRaf = null;
+/** 由 `applyCanvasView` 每帧更新，供 rAF 内 `syncMosaicPreviewHiRes` 读取 */
+let mosaicCanvasLiveScale = 1;
+
+function mosaicHiResUpgradeBudget() {
+  return isMobileGridBatching() ? 10 : 22;
+}
+
+function cancelMosaicHiResSync() {
+  if (mosaicHiResSyncRaf != null) {
+    cancelAnimationFrame(mosaicHiResSyncRaf);
+    mosaicHiResSyncRaf = null;
+  }
+}
+
+function rectsOverlap(a, b) {
+  return !(a.bottom < b.top || a.top > b.bottom || a.right < b.left || a.left > b.right);
+}
+
+/** 略扩张画区矩形，便于边缘格提前换高清 */
+function canvasWrapRectInflatedForHiRes(root) {
+  const r = root.getBoundingClientRect();
+  const pad = 0.14;
+  const dw = r.width * pad;
+  const dh = r.height * pad;
+  return {
+    left: r.left - dw,
+    top: r.top - dh,
+    right: r.right + dw,
+    bottom: r.bottom + dh,
+  };
+}
+
+/**
+ * 先同步跑一轮高清格图（与 `applyCanvasView` 同帧，避免松手当帧仍整屏小图），未完成则 rAF 续跑。
+ * @param {boolean} [holdOffWhilePinching] 双指捏合过程中为 true：暂停换高清并取消排队，避免每帧 replace + 大图解码导致整段捏合发糊。
+ */
+function runMosaicPreviewHiResPass(holdOffWhilePinching) {
+  if (!mosaicEl || !canvasWrapEl) return;
+  if (holdOffWhilePinching) {
+    cancelMosaicHiResSync();
+    return;
+  }
+  const more = syncMosaicPreviewHiRes(mosaicCanvasLiveScale);
+  if (!more) {
+    cancelMosaicHiResSync();
+    return;
+  }
+  if (mosaicHiResSyncRaf != null) return;
+  const drain = () => {
+    mosaicHiResSyncRaf = null;
+    if (syncMosaicPreviewHiRes(mosaicCanvasLiveScale)) {
+      mosaicHiResSyncRaf = requestAnimationFrame(drain);
+    }
+  };
+  mosaicHiResSyncRaf = requestAnimationFrame(drain);
+}
+
+function upgradeMosaicCellPreviewHiRes(img, id, item) {
+  const thumb = String(img.dataset.mosaicThumbSrc || "").trim();
+  const full = String(img.dataset.mosaicFullSrc || blessingImageSrc(item, id)).trim();
+  if (!full || !thumb || full === thumb) return;
+  const wrap = img.parentElement;
+  if (!wrap || !wrap.classList.contains("cell-preview-wrap")) return;
+  const nu = document.createElement("img");
+  nu.className = "cell-preview cell-preview--thumb";
+  nu.alt = "";
+  nu.decoding = "async";
+  nu.loading = "eager";
+  nu.dataset.mosaicCellId = id;
+  nu.dataset.mosaicThumbSrc = thumb;
+  nu.dataset.mosaicFullSrc = full;
+  nu.dataset.mosaicHiRes = "1";
+  nu.src = full;
+  try {
+    if ("fetchPriority" in nu) nu.fetchPriority = "high";
+  } catch {
+    /* ignore */
+  }
+  bindImageContentFallback(nu, id);
+  img.replaceWith(nu);
+}
+
+function downgradeMosaicCellPreviewThumb(img, id, item) {
+  const thumb = String(img.dataset.mosaicThumbSrc || "").trim();
+  if (!thumb) return;
+  const wrap = img.parentElement;
+  if (!wrap || !wrap.classList.contains("cell-preview-wrap")) return;
+  const full = String(img.dataset.mosaicFullSrc || blessingImageSrc(item, id)).trim();
+  const nu = document.createElement("img");
+  nu.className = "cell-preview cell-preview--thumb";
+  nu.alt = "";
+  nu.decoding = "async";
+  nu.loading = "eager";
+  nu.dataset.mosaicCellId = id;
+  nu.dataset.mosaicThumbSrc = thumb;
+  nu.dataset.mosaicFullSrc = full || thumb;
+  nu.src = thumb;
+  bindGridCellImageFallback(nu, id, item);
+  img.replaceWith(nu);
+}
+
+/**
+ * 缩放较大时把「仍在用 thumbs 的格」换成高清图；缩回或格滚出视口再换回小图，避免千格常驻大图。
+ */
+/** @returns {boolean} 是否仍有待升级的格（因单帧预算未跑完） */
+function syncMosaicPreviewHiRes(scale) {
+  const wrap = canvasWrapEl;
+  const root = mosaicEl;
+  if (!(wrap instanceof Element) || !(root instanceof Element)) return false;
+  const useHi = scale >= MOSAIC_PREVIEW_HIRES_MIN_SCALE - 1e-6;
+  const inflated = canvasWrapRectInflatedForHiRes(wrap);
+  const imgs = Array.from(root.querySelectorAll("img.cell-preview"));
+
+  if (!useHi) {
+    for (const img of imgs) {
+      if (!img.isConnected || img.dataset.mosaicHiRes !== "1") continue;
+      const id = img.dataset.mosaicCellId;
+      if (!id) continue;
+      downgradeMosaicCellPreviewThumb(img, id, contentMap.get(id));
+    }
+    return false;
+  }
+
+  for (const img of imgs) {
+    if (!img.isConnected || img.dataset.mosaicHiRes !== "1") continue;
+    const id = img.dataset.mosaicCellId;
+    if (!id) continue;
+    const ir = img.getBoundingClientRect();
+    if (!rectsOverlap(ir, inflated)) {
+      downgradeMosaicCellPreviewThumb(img, id, contentMap.get(id));
+    }
+  }
+
+  const candidates = [];
+  for (const img of Array.from(root.querySelectorAll("img.cell-preview"))) {
+    if (!img.isConnected || img.classList.contains("cell-preview--defer")) continue;
+    if (img.dataset.mosaicHiRes === "1") continue;
+    const id = img.dataset.mosaicCellId;
+    if (!id) continue;
+    const item = contentMap.get(id);
+    const thumb = String(img.dataset.mosaicThumbSrc || "").trim();
+    const full = String(img.dataset.mosaicFullSrc || blessingImageSrc(item, id)).trim();
+    if (!full || !thumb || full === thumb) continue;
+    const ir = img.getBoundingClientRect();
+    if (!rectsOverlap(ir, inflated)) continue;
+    candidates.push({ img, id, item, d2: mosaicThumbDistanceSqToCanvasCenter(img) });
+  }
+  candidates.sort((a, b) => a.d2 - b.d2);
+  const budget = mosaicHiResUpgradeBudget() * 2;
+  let n = 0;
+  for (const c of candidates) {
+    if (n >= budget) return true;
+    if (!c.img.isConnected || c.img.dataset.mosaicHiRes === "1") continue;
+    upgradeMosaicCellPreviewHiRes(c.img, c.id, c.item);
+    n += 1;
+  }
+  return false;
+}
 
 /** 线上缩略图并发：触控保守，键鼠可提高以更快铺满整幅马赛克 */
 function getMosaicThumbMaxParallel() {
@@ -820,7 +1035,7 @@ function disconnectMosaicThumbIo() {
 function activateDeferredMosaicThumb(img) {
   if (!(img instanceof HTMLImageElement)) return;
   const rawSrc = img.dataset.deferSrc;
-  const bid = img.dataset.blessingCellId;
+  const bid = img.dataset.mosaicCellId;
   if (!rawSrc) return;
   try {
     if (mosaicThumbIo) mosaicThumbIo.unobserve(img);
@@ -829,10 +1044,14 @@ function activateDeferredMosaicThumb(img) {
   }
   delete img.dataset.mosaicQueued;
   delete img.dataset.deferSrc;
-  delete img.dataset.blessingCellId;
+  img.dataset.mosaicThumbSrc = String(img.dataset.mosaicThumbSrc || rawSrc).trim() || rawSrc;
+  if (bid && !String(img.dataset.mosaicFullSrc || "").trim()) {
+    img.dataset.mosaicFullSrc = blessingImageSrc(contentMap.get(bid), bid);
+  }
   img.classList.remove("cell-preview--defer");
   img.src = rawSrc;
   if (bid) bindGridCellImageFallback(img, bid, contentMap.get(bid));
+  runMosaicPreviewHiResPass();
 }
 
 function ensureMosaicThumbIo() {
@@ -904,6 +1123,7 @@ function scheduleNextGridStep(stepFn) {
  * 插入顺序由 MOSAIC_IDS_CENTER_FIRST 决定；缩略图由 IO + 并发队列按「离画区中心近者优先」加载。
  */
 function renderGrid() {
+  cancelMosaicHiResSync();
   disconnectMosaicThumbIo();
   mosaicEl.innerHTML = "";
   const chunk = isMobileGridBatching() ? 48 : 96;
@@ -1502,11 +1722,44 @@ function importCsv(text) {
     ]);
     let audioUrl = pickValue(row, ["audioUrl", "audio_url", "音频url", "音频URL", "音频链接", "音频"]);
     let videoUrl = pickValue(row, ["videoUrl", "video_url", "视频url", "视频URL", "视频链接", "视频"]);
-    if (!imageUrl) imageUrl = csvRowCol(row, 2);
-    if (!audioUrl) audioUrl = csvRowCol(row, 3);
-    if (!videoUrl) videoUrl = csvRowCol(row, 4);
-    const legacyUrl = pickValue(row, ["url", "链接", "资源链接", "媒体链接"]);
+    const legacyUrl = String(pickValue(row, ["url", "链接", "资源链接", "媒体链接"]) || "").trim();
+    /** 仅当该列「像」对应资源时才用列索引兜底，避免 id,type,title,text,url 表头下把标题/文案塞进 image/audio/video */
+    if (!imageUrl) {
+      const c2 = String(csvRowCol(row, 2) || "").trim();
+      if (c2 && isPlausibleBlessingImageUrl(c2)) imageUrl = c2;
+    }
+    if (!audioUrl) {
+      const c3 = String(csvRowCol(row, 3) || "").trim();
+      if (c3 && looksLikeAudioUrl(c3)) audioUrl = c3;
+    }
+    if (!videoUrl) {
+      const c4 = String(csvRowCol(row, 4) || "").trim();
+      if (c4 && looksLikeVideoUrl(c4)) videoUrl = c4;
+    }
     const type = typeMap[typeRaw] || "text";
+    if (type === "audio" && !audioUrl && legacyUrl) {
+      if (looksLikeAudioUrl(legacyUrl)) audioUrl = legacyUrl;
+      else if (
+        (isHttpUrl(legacyUrl) || legacyUrl.startsWith("./") || legacyUrl.startsWith("../")) &&
+        !looksLikeVideoUrl(legacyUrl) &&
+        !isPlausibleBlessingImageUrl(legacyUrl)
+      ) {
+        audioUrl = legacyUrl;
+      }
+    }
+    if (type === "video" && !videoUrl && legacyUrl) {
+      if (looksLikeVideoUrl(legacyUrl)) videoUrl = legacyUrl;
+      else if (
+        (isHttpUrl(legacyUrl) || legacyUrl.startsWith("./") || legacyUrl.startsWith("../")) &&
+        !looksLikeAudioUrl(legacyUrl) &&
+        !isPlausibleBlessingImageUrl(legacyUrl)
+      ) {
+        videoUrl = legacyUrl;
+      }
+    }
+    if (type === "image" && !imageUrl && legacyUrl && isPlausibleBlessingImageUrl(legacyUrl)) {
+      imageUrl = legacyUrl;
+    }
     const url = imageUrl || legacyUrl || "";
     let text = pickValue(row, ["text", "文案", "祝福", "祝福内容", "陌"]);
     if (!text) text = csvRowCol(row, 1);
@@ -2775,6 +3028,7 @@ function initCanvasPanZoom() {
 
   function applyCanvasView() {
     clampPan();
+    mosaicCanvasLiveScale = scale;
     stage.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) translateZ(0)`;
     const t = (scale - MIN_SCALE) / (MAX_SCALE - MIN_SCALE);
     const u = Math.min(1, Math.max(0, t));
@@ -2786,6 +3040,8 @@ function initCanvasPanZoom() {
       wrap.dataset.canvasZoom = "in";
     }
     scheduleMosaicIoNudge();
+    /** 捏合中不换高清；滚轮缩放仍会换 */
+    runMosaicPreviewHiResPass(Boolean(pinchActive || touchPinchActive));
   }
 
   function clampScale(s) {

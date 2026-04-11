@@ -1656,6 +1656,11 @@ html.birthday-gate-boot #birthdayGate[hidden] {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /**
+   * 桌面：opacity 略滞后于 --grid-blend，捏合时格子半透明、下层主图多透出，观感更「清楚」。
+   * 松手后清晰度主要靠 JS 在捏合结束后换高清格图（勿在捏合中每帧 replace img）。
+   * 触控端见下方 media query：为防微信/Safari 闪屏仍用 transition: none。
+   */
   opacity: var(--grid-blend, 0);
   transition: opacity 0.12s ease;
 }
