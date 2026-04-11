@@ -88,10 +88,38 @@ const quizSubmitBtnEl = document.getElementById("quizSubmitBtn");
 const canvasWrapEl = document.getElementById("canvasWrap") || document.querySelector(".canvas-wrap");
 const canvasStageEl = document.getElementById("canvasStage");
 const canvasResetBtnEl = document.getElementById("canvasResetBtn");
-/** 全屏生日门：完成后写入本地，刷新不再出现（须用函数取节点，避免脚本在 DOM 之前执行得到 null） */
+/**
+ * 以下键仅存 sessionStorage：关标签/再开链接 = 新会话，体验流程从头开始；
+ * 不写入 localStorage，与运营稿（LOCAL_KEY / data.json）彻底分离。
+ */
 const CEREMONY_STORAGE_KEY = "lianlian-candle-ceremony-v1";
 /** 彩蛋弹窗流程结束（关闭 quizModal）后显示「导出祝福文案」 */
 const EXPORT_BLESSINGS_AFTER_EGG_KEY = "lianlian-export-after-egg-v1";
+
+function getFlowFlag(key) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function setFlowFlag(key, value) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+/** 旧版曾把流程存在 localStorage，升级后清掉，避免与 session 双轨 */
+function stripLegacyFlowFlagsFromLocalStorage() {
+  try {
+    localStorage.removeItem(CEREMONY_STORAGE_KEY);
+    localStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+stripLegacyFlowFlagsFromLocalStorage();
 /** 开幕页无操作则自动进入祝福页的等待时长（毫秒） */
 const BIRTHDAY_GATE_AUTO_MS = 8000;
 
@@ -114,12 +142,12 @@ function clearBirthdayGateAutoEnterTimer() {
 function onBirthdayGateAutoEnterTick() {
   birthdayGateAutoEnterTimerId = null;
   try {
-    if (localStorage.getItem(CEREMONY_STORAGE_KEY) === "1") return;
+    if (getFlowFlag(CEREMONY_STORAGE_KEY) === "1") return;
     if (!getBirthdayGateEl()) return;
     completeCandleCeremony();
   } catch {
     try {
-      localStorage.setItem(CEREMONY_STORAGE_KEY, "1");
+      setFlowFlag(CEREMONY_STORAGE_KEY, "1");
     } catch {
       /* ignore */
     }
@@ -1149,7 +1177,7 @@ function syncBirthdayGateVisibility() {
     updateExportBlessingsTextButton();
     return;
   }
-  const done = localStorage.getItem(CEREMONY_STORAGE_KEY) === "1";
+  const done = getFlowFlag(CEREMONY_STORAGE_KEY) === "1";
   gate.hidden = done;
   if (!done) {
     gate.removeAttribute("hidden");
@@ -1239,9 +1267,9 @@ function onBirthdayGateDelegatedClick(e) {
 function completeCandleCeremony() {
   clearBirthdayGateAutoEnterTimer();
   const gate = getBirthdayGateEl();
-  if (!gate || localStorage.getItem(CEREMONY_STORAGE_KEY) === "1") return;
+  if (!gate || getFlowFlag(CEREMONY_STORAGE_KEY) === "1") return;
   try {
-    localStorage.setItem(CEREMONY_STORAGE_KEY, "1");
+    setFlowFlag(CEREMONY_STORAGE_KEY, "1");
   } catch {
     /* ignore */
   }
@@ -1261,7 +1289,7 @@ function initBirthdayGate(options = {}) {
 
   syncBirthdayGateVisibility();
 
-  if (localStorage.getItem(CEREMONY_STORAGE_KEY) === "1") {
+  if (getFlowFlag(CEREMONY_STORAGE_KEY) === "1") {
     clearBirthdayGateAutoEnterTimer();
     return;
   }
@@ -1536,7 +1564,7 @@ function exportAllBlessingTextsToFile() {
 
 function updateExportBlessingsTextButton() {
   if (!exportBlessingsTextBtnEl) return;
-  if (localStorage.getItem(EXPORT_BLESSINGS_AFTER_EGG_KEY) === "1") {
+  if (getFlowFlag(EXPORT_BLESSINGS_AFTER_EGG_KEY) === "1") {
     exportBlessingsTextBtnEl.removeAttribute("hidden");
   } else {
     exportBlessingsTextBtnEl.setAttribute("hidden", "");
@@ -1545,8 +1573,12 @@ function updateExportBlessingsTextButton() {
 
 async function clearLocal() {
   localStorage.removeItem(LOCAL_KEY);
-  localStorage.removeItem(CEREMONY_STORAGE_KEY);
-  localStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
+  try {
+    sessionStorage.removeItem(CEREMONY_STORAGE_KEY);
+    sessionStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
+  } catch {
+    /* ignore */
+  }
   /** 原生 dialog 在顶层，不关会盖住开幕页，看起来像「门没了」 */
   if (adminModalEl && adminModalEl.open) {
     try {
@@ -2212,8 +2244,8 @@ function applySiteDeployRevisionGate() {
   try {
     const prev = localStorage.getItem(SITE_REVISION_LS_KEY);
     if (prev === SITE_DEPLOY_REVISION) return;
-    localStorage.removeItem(CEREMONY_STORAGE_KEY);
-    localStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
+    sessionStorage.removeItem(CEREMONY_STORAGE_KEY);
+    sessionStorage.removeItem(EXPORT_BLESSINGS_AFTER_EGG_KEY);
     localStorage.setItem(SITE_REVISION_LS_KEY, SITE_DEPLOY_REVISION);
   } catch {
     /* ignore */
@@ -2471,7 +2503,7 @@ quizModalEl.addEventListener("close", () => {
   if (eggFlowActive) {
     eggFlowActive = false;
     try {
-      localStorage.setItem(EXPORT_BLESSINGS_AFTER_EGG_KEY, "1");
+      setFlowFlag(EXPORT_BLESSINGS_AFTER_EGG_KEY, "1");
     } catch {
       /* ignore */
     }
@@ -2861,7 +2893,7 @@ initBlessingModalSwipe();
 /** 首帧后再挂一次自动进入定时，避免个别环境下首轮 setTimeout 与布局竞态；会清掉首轮并重新计 8 秒 */
 requestAnimationFrame(() => {
   try {
-    if (localStorage.getItem(CEREMONY_STORAGE_KEY) === "1") return;
+    if (getFlowFlag(CEREMONY_STORAGE_KEY) === "1") return;
   } catch {
     return;
   }
