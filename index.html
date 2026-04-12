@@ -2,349 +2,2320 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1a1d21" media="(prefers-color-scheme: dark)" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <title>Hi 恋恋宝贝</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#7ec699" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>小马草原</title>
+    <style>
+      :root {
+        --modal-bg: rgba(20, 40, 30, 0.45);
+        --card: #fffef8;
+        --text: #2a3d2f;
+        --accent: #3d8b6e;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+        font-family:
+          "Segoe UI",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          sans-serif;
+        background: #87c9a8;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+      }
+      #gameCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        vertical-align: top;
+        touch-action: manipulation;
+      }
+      .hint-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+        font-size: clamp(11px, 3.1vw, 13px);
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.92);
+        text-align: center;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        pointer-events: none;
+        z-index: 5;
+      }
+      .blessing-badge {
+        position: fixed;
+        top: calc(8px + env(safe-area-inset-top));
+        right: max(8px, env(safe-area-inset-right));
+        padding: 11px 16px 11px 14px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        background: linear-gradient(165deg, #fffdf6 0%, #fff0d2 55%, #ffe4b8 100%);
+        color: #1a3d2e;
+        font-size: clamp(13px, 3.4vw, 15px);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+        z-index: 6;
+        border: 2px solid rgba(255, 255, 255, 0.95);
+        cursor: pointer;
+        user-select: none;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.75) inset,
+          0 2px 0 rgba(30, 90, 55, 0.18),
+          0 10px 28px rgba(15, 50, 35, 0.35);
+      }
+      .blessing-badge::before {
+        content: "✦";
+        margin-right: 6px;
+        font-size: 12px;
+        color: #c9a227;
+        text-shadow: none;
+      }
+      .blessing-badge:active {
+        transform: scale(0.97);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.5) inset,
+          0 4px 16px rgba(15, 50, 35, 0.28);
+      }
+      .hug-offer-btn {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(96px + env(safe-area-inset-bottom));
+        z-index: 8;
+        max-width: min(92vw, 360px);
+        padding: 12px 22px;
+        min-height: 48px;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(255, 182, 140, 0.96), rgba(200, 150, 210, 0.94));
+        color: #3a2530;
+        font-size: clamp(13px, 3.5vw, 15px);
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        box-shadow: 0 4px 18px rgba(80, 40, 60, 0.28);
+      }
+      .hug-offer-btn:active {
+        opacity: 0.92;
+        transform: translateX(-50%) scale(0.98);
+      }
+      #hugLayer[hidden] {
+        display: none !important;
+      }
+      #hugLayer {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 16px max(16px, env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom))
+          max(16px, env(safe-area-inset-right));
+        pointer-events: auto;
+        background: linear-gradient(
+          to top,
+          rgba(35, 22, 45, 0.55) 0%,
+          rgba(35, 22, 45, 0.12) 42%,
+          transparent 72%
+        );
+        color: #fff9f3;
+        text-align: center;
+        touch-action: manipulation;
+      }
+      .hug-layer__title {
+        margin: 0 0 10px;
+        font-size: clamp(16px, 4.2vw, 18px);
+        font-weight: 600;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+        line-height: 1.45;
+      }
+      .hug-layer__pony-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        margin: 0 0 14px;
+        width: 100%;
+        max-width: 360px;
+      }
+      .hug-pony-nudge {
+        width: 52px;
+        height: 52px;
+        border: none;
+        border-radius: 50%;
+        font-size: 26px;
+        line-height: 1;
+        color: #3a3040;
+        background: rgba(255, 248, 235, 0.92);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        touch-action: manipulation;
+        user-select: none;
+      }
+      .hug-pony-nudge:active {
+        transform: scale(0.95);
+        opacity: 0.92;
+      }
+      .hug-layer__hint {
+        margin: 0;
+        font-size: clamp(12px, 3.4vw, 14px);
+        opacity: 0.88;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      }
+      /** 手机端：屏侧长按连续挪马（细指针大屏可隐藏） */
+      .pony-nudge-btn {
+        display: none;
+        position: fixed;
+        z-index: 12;
+        top: clamp(100px, 32vh, 220px);
+        bottom: clamp(120px, 36vh, 52%);
+        width: clamp(52px, 15vw, 76px);
+        padding: 0;
+        margin: 0;
+        border: none;
+        border-radius: 0 14px 14px 0;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(26px, 8vw, 34px);
+        line-height: 1;
+        color: rgba(35, 55, 45, 0.88);
+        background: rgba(255, 255, 255, 0.22);
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .pony-nudge-btn--left {
+        left: 0;
+        padding-left: max(4px, env(safe-area-inset-left));
+        border-radius: 0 14px 14px 0;
+      }
+      .pony-nudge-btn--right {
+        right: 0;
+        padding-right: max(4px, env(safe-area-inset-right));
+        border-radius: 14px 0 0 14px;
+      }
+      @media (max-width: 900px) {
+        .pony-nudge-btn {
+          display: flex;
+        }
+      }
+      @media (pointer: coarse) {
+        .pony-nudge-btn {
+          display: flex;
+        }
+      }
+      @media (min-width: 901px) and (pointer: fine) {
+        .pony-nudge-btn {
+          display: none !important;
+        }
+      }
+      body.has-modal-open .pony-nudge-btn {
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+      /* 小花 / 风铃 / 大树 内容弹窗：半透明遮罩 + 白卡片 */
+      #modalRoot[hidden] {
+        display: none !important;
+      }
+      #modalRoot {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        background: var(--modal-bg);
+      }
+      .modal-card {
+        width: min(92vw, 360px);
+        max-height: min(70vh, 420px);
+        overflow: auto;
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px 18px 16px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+        color: var(--text);
+      }
+      .modal-card--large {
+        width: min(96vw, 440px);
+        max-height: min(88vh, 720px);
+        padding: 22px 16px 18px;
+      }
+      .modal-media {
+        margin: 0 0 14px;
+      }
+      .modal-media[hidden] {
+        display: none !important;
+      }
+      .modal-media-img,
+      .modal-media video {
+        display: block;
+        width: 100%;
+        max-height: min(50vh, 360px);
+        object-fit: contain;
+        border-radius: 10px;
+        background: #f0f0ec;
+      }
+      .modal-media audio {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .modal-intro-text[hidden] {
+        display: none !important;
+      }
+      .modal-card p {
+        margin: 0 0 12px;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+      .modal-nick {
+        font-size: 13px;
+        color: #5a7a66;
+        margin-bottom: 14px;
+      }
+      .modal-extra {
+        font-size: 14px;
+        color: #b8860b;
+        line-height: 1.5;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(255, 248, 220, 0.95), rgba(255, 236, 180, 0.85));
+        border: 1px solid rgba(218, 165, 32, 0.35);
+      }
+      .modal-extra[hidden] {
+        display: none !important;
+      }
+      .modal-close {
+        display: block;
+        width: 100%;
+        margin-top: 4px;
+        padding: 14px 12px;
+        min-height: 48px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font-size: clamp(15px, 3.6vw, 17px);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .modal-close:active {
+        opacity: 0.9;
+      }
+      #listModalRoot[hidden] {
+        display: none !important;
+      }
+      #listModalRoot {
+        position: fixed;
+        inset: 0;
+        z-index: 110;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        padding-top: calc(16px + env(safe-area-inset-top));
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        background: var(--modal-bg);
+      }
+      .list-modal-card {
+        width: min(96vw, 420px);
+        max-height: min(85vh, 640px);
+        display: flex;
+        flex-direction: column;
+        background: var(--card);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      }
+      .list-modal-head {
+        padding: 16px 18px 10px;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--text);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .list-modal-body {
+        overflow: auto;
+        flex: 1;
+        padding: 8px 14px 16px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .received-row {
+        width: 100%;
+        text-align: left;
+        padding: 14px 12px;
+        min-height: 52px;
+        margin-bottom: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        background: #fffefb;
+        font-size: clamp(14px, 3.5vw, 15px);
+        color: var(--text);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .received-row:active {
+        background: #f5f5f0;
+      }
+      .received-meta {
+        font-size: 11px;
+        color: #7a8f80;
+        margin-bottom: 6px;
+      }
+      .received-preview {
+        font-size: 13px;
+        line-height: 1.45;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+      }
+      .list-modal-close {
+        margin: 0 14px max(14px, env(safe-area-inset-bottom));
+        padding: 14px 12px;
+        min-height: 48px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font-size: clamp(15px, 3.6vw, 17px);
+        touch-action: manipulation;
+      }
+    </style>
   </head>
   <body>
-    <!-- 一律加 boot：首屏防闪（与仪式是否完成无关）；是否显示开屏仍由 app.js 读 session 决定 -->
-    <script>
-      document.documentElement.classList.add("birthday-gate-boot");
-    </script>
-    <main class="container">
-      <header class="stage-width hero-header">
-        <div class="hero-header__row">
-          <button type="button" id="adminKickerBtn" class="hero-kicker" aria-label="Happy Birthday">
-            Happy Birthday
-          </button>
-          <button
-            type="button"
-            id="exportBlessingsTextBtn"
-            class="hero-export-text-btn hero-export-text-btn--prominent tiny"
-            hidden
-          >
-            导出祝福文案
-          </button>
-        </div>
-        <div class="hero-split">
-          <div class="hero-col hero-col-intro">
-            <h1>Hi 恋恋宝贝</h1>
-            <p class="hero-subtitle">今天有好多爱想紧紧拥抱你</p>
-          </div>
-        </div>
-      </header>
+    <canvas id="gameCanvas" aria-label="小马草原"></canvas>
+    <button type="button" class="blessing-badge" id="blessingBadge" aria-label="已收获祝福">
+      已收获祝福 0
+    </button>
+    <button type="button" class="pony-nudge-btn pony-nudge-btn--left" id="ponyNudgeLeft" aria-label="小马向左挪">
+      ‹
+    </button>
+    <button type="button" class="pony-nudge-btn pony-nudge-btn--right" id="ponyNudgeRight" aria-label="小马向右挪">
+      ›
+    </button>
+    <p class="hint-bar">小马记得你走过的路，但换个浏览器的话，它会陪你重新散步哦～</p>
 
-      <section class="controls primary-controls primary-controls--row stage-width" aria-label="查找祝福">
-        <input
-          id="codeInput"
-          class="primary-controls__input"
-          type="text"
-          maxlength="4"
-          placeholder="输入编号0001-1000"
-          inputmode="numeric"
-          autocomplete="off"
-          enterkeyhint="search"
-          aria-label="祝福编号"
-        />
-        <button id="openBtn" class="primary-controls__open" type="button">查找</button>
-        <button id="randomBtn" class="ghost primary-controls__first" type="button" title="从0001起按顺序浏览">
-          第一条
-        </button>
-      </section>
-      <p class="controls-help stage-width" id="controlsHelp">
-        填编号会到指定祝福，按第一条将按序接收祝福。
-      </p>
-
-      <section class="canvas-wrap" id="canvasWrap" data-canvas-zoom="fit" aria-label="祝福主图">
-        <div id="canvasStage" class="canvas-stage">
-          <img
-            id="heroImage"
-            class="hero-image"
-            alt="生贺主视觉"
-            decoding="async"
-            fetchpriority="high"
-          />
-          <div id="mosaic" class="mosaic" aria-label="祝福热区"></div>
-        </div>
-      </section>
-      <div class="canvas-view-hint-row stage-width" role="group" aria-label="主图视图说明与操作">
-        <p class="hint canvas-view-hint">双指捏合缩放，放大后可拖动查看。</p>
-        <div class="canvas-view-controls">
-          <button type="button" id="canvasResetBtn" class="canvas-view-btn" title="还原缩放与位置">
-            还原视图
-          </button>
-        </div>
+    <button type="button" class="hug-offer-btn" id="hugOfferBtn" hidden>
+      一起看晚霞
+    </button>
+    <div id="hugLayer" hidden aria-hidden="true">
+      <p class="hug-layer__title">你被抱在怀里，小马也偎着你，一起看晚霞慢慢化开。</p>
+      <div class="hug-layer__pony-row">
+        <button type="button" class="hug-pony-nudge" id="hugPonyLeft" aria-label="晚霞里小马向左">‹</button>
+        <button type="button" class="hug-pony-nudge" id="hugPonyRight" aria-label="晚霞里小马向右">›</button>
       </div>
-      <section class="special-entry-line special-entry-line--highlight stage-width">
-        <p class="special-entry-text">还有小彩蛋~刘恋没事别看</p>
-        <button id="quizEntryBtn" class="tiny special-entry-btn" type="button">我要看彩蛋</button>
-      </section>
-    </main>
+      <p class="hug-layer__hint">点空白处 · 回到草原散步</p>
+    </div>
 
-    <!-- 全屏生日门：先于祝福页展示，吹灭蜡烛后关闭 -->
-    <div
-      id="birthdayGate"
-      class="birthday-gate"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="birthdayGateTitle"
-      hidden
-    >
-      <div class="birthday-gate__pyro" aria-hidden="true">
-        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 10%; --gy: 14%; --gd: 0s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <div class="gate-py-burst gate-py-burst--gold" style="--gx: 82%; --gy: 20%; --gd: 0.55s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 18%; --gy: 68%; --gd: 1.1s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <div class="gate-py-burst gate-py-burst--gold" style="--gx: 88%; --gy: 62%; --gd: 1.65s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <div class="gate-py-burst gate-py-burst--rose" style="--gx: 50%; --gy: 10%; --gd: 2.2s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 42%; --gy: 78%; --gd: 2.75s">
-          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
-          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
-          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
-          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
-        </div>
-        <span class="gate-py-float" style="--fx: 8%; --fy: 40%; --fd: 0s"></span>
-        <span class="gate-py-float" style="--fx: 92%; --fy: 45%; --fd: 1.3s"></span>
-        <span class="gate-py-float" style="--fx: 30%; --fy: 88%; --fd: 2.1s"></span>
-        <span class="gate-py-float" style="--fx: 70%; --fy: 12%; --fd: 0.7s"></span>
-        <span class="gate-py-float" style="--fx: 55%; --fy: 92%; --fd: 1.9s"></span>
-      </div>
-      <div class="birthday-gate__inner">
-        <h2 id="birthdayGateTitle" class="birthday-gate__title">生日快乐</h2>
-        <p id="birthdayGateHint" class="birthday-gate__hint">来吧恋姐，点点蛋糕吹蜡烛</p>
-        <button type="button" class="birthday-gate__cake-hit" id="birthdayGateCakeBtn" aria-describedby="birthdayGateHint">
-          <span class="birthday-gate__mouth" aria-hidden="true">
-            <span class="birthday-gate__mouth-lip birthday-gate__mouth-lip--upper"></span>
-            <span class="birthday-gate__mouth-lip birthday-gate__mouth-lip--lower"></span>
-          </span>
-          <span class="birthday-gate__puff" aria-hidden="true"></span>
-          <div class="birthday-gate__cake-visual">
-            <div class="birthday-gate__candles" role="group" aria-label="生日蜡烛">
-              <div class="birthday-gate__candle">
-                <span class="candle-mini__stick"></span>
-                <span class="candle-mini__flame"><span class="candle-mini__flame-core"></span></span>
-              </div>
-            </div>
-            <div class="birthday-gate__icing birthday-gate__icing--drip" aria-hidden="true"></div>
-            <div class="birthday-gate__layer birthday-gate__layer--upper"></div>
-            <div class="birthday-gate__layer birthday-gate__layer--lower"></div>
-            <div class="birthday-gate__plate"></div>
-          </div>
-        </button>
+    <div id="modalRoot" hidden role="dialog" aria-modal="true" aria-labelledby="modalText">
+      <div class="modal-card modal-card--large" id="modalCard">
+        <p class="modal-intro-text" id="modalText"></p>
+        <div id="modalMedia" class="modal-media" hidden></div>
+        <p class="modal-nick" id="modalNick" hidden></p>
+        <p class="modal-extra" id="modalExtra" hidden></p>
+        <button type="button" class="modal-close" id="modalClose">关闭</button>
       </div>
     </div>
 
-    <dialog id="contentModal" class="modal" aria-label="祝福详情">
-      <form method="dialog" class="modal-card modal-card--blessing">
-        <div class="modal-head modal-head--close-only">
-          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
-        </div>
-        <div id="modalBody" class="modal-body"></div>
-        <p id="blessingOwnerId" class="blessing-owner-id" hidden aria-hidden="true"></p>
-        <div class="blessing-nav-bar" id="blessingJumpRow">
-          <button id="prevBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
-            上一条
-          </button>
-          <div id="blessingSaveBar" class="blessing-nav-save" role="group" aria-label="保存到本地"></div>
-          <button id="nextBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
-            下一条
-          </button>
-        </div>
-      </form>
-    </dialog>
-
-    <!-- 祝福弹窗配图全屏放大（手机双指捏合 / 桌面 Ctrl+滚轮） -->
-    <dialog id="blessingImageViewer" class="blessing-img-viewer" aria-label="放大查看图片">
-      <div class="blessing-img-viewer__shell">
-        <button type="button" class="blessing-img-viewer__close" id="blessingImageViewerCloseBtn" aria-label="关闭大图">
-          ×
-        </button>
-        <div class="blessing-img-viewer__stage" id="blessingImageViewerStage">
-          <div class="blessing-img-viewer__transform" id="blessingImageViewerTransform">
-            <img id="blessingImageViewerImg" alt="" draggable="false" decoding="async" />
-          </div>
-        </div>
+    <div id="listModalRoot" hidden role="dialog" aria-modal="true" aria-labelledby="listModalTitle">
+      <div class="list-modal-card">
+        <div class="list-modal-head" id="listModalTitle">小花、风铃和大树</div>
+        <div class="list-modal-body" id="listModalBody"></div>
+        <button type="button" class="list-modal-close" id="listModalClose">关闭</button>
       </div>
-    </dialog>
+    </div>
 
-    <template id="emptyTemplate">
-      <div class="empty-msg">
-        <p>这一格暂时还没有内容。</p>
-        <p>可以换一格再试试。</p>
-      </div>
-    </template>
+    <script>
+      (function () {
+        "use strict";
 
-    <dialog id="adminModal" class="modal">
-      <form method="dialog" class="modal-card">
-        <div class="modal-head">
-          <h2>运营管理</h2>
-          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
-        </div>
+        /** localStorage：步数；小马横向；已收获祝福列表（JSON） */
+        var LS_KEY_STEPS = "xmgrassland_v1_totalSteps";
+        var LS_KEY_PONY_X = "xmgrassland_v1_ponyNormX";
+        var LS_KEY_RECEIVED = "xmgrassland_v1_receivedBlessings";
 
-        <div class="admin-guide-box">
-          <p class="admin-guide-title">推荐工作流（轻量、好管）</p>
-          <p class="admin-guide-one">
-            在项目里建<strong>内容收集文件夹</strong>（默认 <code class="admin-code">content/</code>），图片按编号命名 <code class="admin-code">0001.jpg</code>……再配 CSV。格子只显示图，点开看文案和音视频。
-          </p>
-          <p class="admin-guide-one"><strong>CSV 表头（五列，UTF-8）：</strong></p>
-          <p class="admin-csv-headline"><span class="admin-code">编号,文案,图片url,音频url,视频url</span></p>
-          <ul class="admin-guide-ul">
-            <li><strong>图片url</strong> 示例：<span class="admin-code">./content/0001.jpg</span>（与文件夹名、文件名一致）。也可用 https 图链。</li>
-            <li><strong>音频url / 视频url</strong> 不需要就整列留空。</li>
-            <li>用 Excel 导出时请选<strong>「CSV UTF-8（逗号分隔）」</strong>；若导入显示成功 0 条，多半是编码不是 UTF-8，表头「编号」读不到。</li>
-          </ul>
-          <ol class="admin-dumb-steps">
-            <li>图放进 <code class="admin-code">content/</code>，表按上行表头填写，另存 CSV。</li>
-            <li><strong>分区③</strong>导入 CSV → <strong>分区⑤</strong>保存或下载 <code class="admin-code">data.json</code>。</li>
-            <li>上线：网页 + <code class="admin-code">data.json</code> + <code class="admin-code">content/</code> 整夹一起部署。</li>
-          </ol>
-        </div>
+        var PIXELS_PER_STEP = 30;
+        var CHIME_INTERVAL_MIN = 3;
+        var CHIME_INTERVAL_MAX = 5;
+        /** 胡萝卜：持续狂奔时间（毫秒）；其间每步间隔 */
+        var CARROT_SPRINT_MS = 10000;
+        var CARROT_SPRINT_STEP_MS = 52;
+        var CARROT_CHANCE = 0.08;
+        /** 长按超过该毫秒进入慢跑；慢跑每步间隔 */
+        var LONG_PRESS_MS = 300;
+        var JOG_STEP_MS = 100;
+        /** 累计前进这么多步后，若停步休息足够久，显示「一起看晚霞」按钮 */
+        var FATIGUE_STEPS_FOR_HUG = 72;
+        /** 停步超过该毫秒才出现按钮（不在慢跑/冲刺中计数） */
+        var HUG_REST_AFTER_WALK_MS = 5200;
+        /** 键盘左右每次挪动小马约多少像素 */
+        var PONY_KEY_NUDGE_PX = 26;
+        /** 天色循环：700 步一轮（清晨→白天→黄昏→夜晚100步） */
+        var DAY_CYCLE_LEN = 700;
+        /** 500 步整数倍时的金色风铃彩蛋 */
+        var GOLDEN_MILESTONE = 500;
 
-        <section class="admin-section">
-          <h3 class="admin-section-title"><span class="admin-zone-num">①</span> 主视觉底图（整页一张）</h3>
-          <p class="admin-section-desc">只影响背后大图，和 1000 个格子无关。想换再传。</p>
-          <div class="controls admin-controls-tight">
-            <label for="imageFile">上传底图</label>
-            <input id="imageFile" type="file" accept="image/*" />
-          </div>
-        </section>
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d", { alpha: false });
+        var blessingBadge = document.getElementById("blessingBadge");
+        var modalRoot = document.getElementById("modalRoot");
+        var modalText = document.getElementById("modalText");
+        var modalMedia = document.getElementById("modalMedia");
+        var modalNick = document.getElementById("modalNick");
+        var modalExtra = document.getElementById("modalExtra");
+        var modalClose = document.getElementById("modalClose");
+        var listModalRoot = document.getElementById("listModalRoot");
+        var listModalBody = document.getElementById("listModalBody");
+        var listModalClose = document.getElementById("listModalClose");
+        var hugOfferBtn = document.getElementById("hugOfferBtn");
+        var hugLayer = document.getElementById("hugLayer");
+        var ponyNudgeLeft = document.getElementById("ponyNudgeLeft");
+        var ponyNudgeRight = document.getElementById("ponyNudgeRight");
+        var hugPonyLeft = document.getElementById("hugPonyLeft");
+        var hugPonyRight = document.getElementById("hugPonyRight");
 
-        <section class="admin-section">
-          <h3 class="admin-section-title"><span class="admin-zone-num">②</span> 格子内容对应关系（心里有个表）</h3>
-          <table class="admin-field-table">
-            <thead>
-              <tr>
-                <th>内容</th>
-                <th>必填？</th>
-                <th>写在哪</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>文案</td>
-                <td>每格要</td>
-                <td>CSV「文案」列</td>
-              </tr>
-              <tr>
-                <td>配图</td>
-                <td>每格要</td>
-                <td>CSV「图片url」，如 <code class="admin-code">./content/0001.jpg</code></td>
-              </tr>
-              <tr>
-                <td>音频 / 视频</td>
-                <td>随意</td>
-                <td>CSV「音频url」「视频url」，空 = 没有</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
+        var W = 0;
+        var H = 0;
+        var dpr = 1;
 
-        <section class="admin-section">
-          <h3 class="admin-section-title"><span class="admin-zone-num">③</span> 上传格子 CSV（推荐先做这一步）</h3>
-          <p class="admin-section-desc">表头：<span class="admin-code">编号,文案,图片url,音频url,视频url</span>。参考项目里 <code class="admin-code">sample-import.csv</code>。</p>
-          <div class="controls admin-controls-tight">
-            <label for="csvFile">选择 CSV</label>
-            <input id="csvFile" type="file" accept=".csv,text/csv" />
-          </div>
-        </section>
+        var totalSteps = 0;
+        var stepsUntilSideSpawn = randInt(CHIME_INTERVAL_MIN, CHIME_INTERVAL_MAX);
+        var blessingsPool = [];
 
-        <section class="admin-section">
-          <h3 class="admin-section-title"><span class="admin-zone-num">④</span> 批量选本地图（可选，与 CSV 路径一致）</h3>
-          <p class="admin-section-desc">若 CSV 里写的是 <span class="admin-code">./content/0001.jpg</span>，请把「内容文件夹」设为 <code class="admin-code">content</code>（或你的文件夹名），再把图片按编号命名放进对应目录后，在下方多选。也可用命令行 <span class="admin-code">node scripts/generate-data-from-media.mjs content</span> 把磁盘上的图合并进 <code class="admin-code">data.json</code>。</p>
-          <div class="controls admin-controls-tight">
-            <label for="bulkContentFolder">内容文件夹名（对应 CSV 里 <span class="admin-code">./此文件夹/0001.jpg</span>）</label>
-            <input id="bulkContentFolder" type="text" value="content" maxlength="64" autocomplete="off" spellcheck="false" />
-          </div>
-          <div class="controls admin-bulk-row">
-            <div class="admin-bulk-label">
-              <label for="bulkImageFiles">批量选图</label>
-              <p class="admin-bulk-hint">文件名须为四位编号：<code>0001.jpg</code>。部署时网站目录里要有同名文件夹与文件。</p>
-            </div>
-            <input id="bulkImageFiles" type="file" accept="image/*" multiple />
-            <div class="admin-bulk-modes">
-              <label class="admin-bulk-radio">
-                <input type="radio" name="bulkImageMode" value="relative" checked />
-                仅登记路径 <span class="admin-code">./内容文件夹/编号.后缀</span>（推荐）
-              </label>
-              <label class="admin-bulk-radio">
-                <input type="radio" name="bulkImageMode" value="dataurl" />
-                嵌入 Base64（仅少量小图）
-              </label>
-            </div>
-          </div>
-        </section>
+        /** 从路边点开小花/风铃/大树时写入；点击徽章可查看全部记录 */
+        var receivedBlessings = [];
 
-        <section class="admin-section">
-          <h3 class="admin-section-title"><span class="admin-zone-num">⑤</span> 保存 / 换电脑 / 备份</h3>
-          <p class="admin-section-desc">导入 <code class="admin-code">data.json</code> 会覆盖当前格子数据。改完务必保存。</p>
-          <div class="controls admin-controls-tight">
-            <label for="dataFile">导入 data.json</label>
-            <input id="dataFile" type="file" accept=".json,application/json" />
-          </div>
-          <div class="controls admin-actions-row">
-            <button id="saveLocalBtn" type="button">保存到当前浏览器</button>
-            <button id="downloadDataBtn" class="ghost" type="button">下载 data.json</button>
-            <button id="clearLocalBtn" class="ghost" type="button">清空本地运营数据</button>
-          </div>
-        </section>
-        <p id="adminStatus" class="hint admin-status-line">状态：未进入运营模式。</p>
-      </form>
-    </dialog>
+        var roadside = [];
+        var animT = 0;
+        var ponyBob = 0;
+        var suppressSpawn = false;
+        var sprintAnim = null;
 
-    <dialog id="quizAccessModal" class="modal">
-      <div class="modal-card quiz-access-card">
-        <div class="modal-head modal-head--close-only">
-          <button type="button" class="close-btn" id="quizAccessCloseBtn" aria-label="关闭">×</button>
-        </div>
-        <p class="quiz-access-question">爱我们吗？</p>
-        <div class="quiz-access-btns">
-          <button type="button" id="quizLoveBtn" class="quiz-access-btn quiz-access-btn--love">爱</button>
-          <button type="button" id="quizMehBtn" class="quiz-access-btn quiz-access-btn--meh ghost">一般吧</button>
-          <button type="button" id="quizNopeBtn" class="quiz-access-btn quiz-access-btn--nope ghost">不爱</button>
-        </div>
-      </div>
-    </dialog>
+        /** 慢跑：长按触发；生成路边物件的计数衰减为一半（见 tryGenerateWindChime） */
+        var jogMode = false;
+        var jogTimer = null;
 
-    <dialog id="quizModal" class="modal">
-      <form id="quizForm" class="modal-card quiz-modal-card">
-        <div class="modal-head">
-          <h2 id="quizTitle">彩蛋</h2>
-          <button type="button" class="close-btn" id="quizModalCloseBtn" aria-label="关闭">×</button>
-        </div>
-        <div id="quizBody" class="modal-body quiz-body"></div>
-        <div id="quizActionRow" class="controls hidden">
-          <button id="quizSubmitBtn" type="button">提交答案</button>
-        </div>
-      </form>
-    </dialog>
+        var lastInteractionMs = 0;
 
-    <script src="./app.js"></script>
+        /** 达到 500/1000… 步后，下一次路边物件为金色风铃并带额外寄语 */
+        var pendingGoldenMilestone = false;
+
+        /** 金色弹窗时屏幕内飘动的星星粒子 */
+        var goldenStars = [];
+
+        /** 最近一次前进一步的时间；与疲劳配合，判断是否「歇下来了」 */
+        var lastForwardStepMs = 0;
+        /** 自上次看完晚霞以来累计的前进步数 */
+        var fatigueSteps = 0;
+        var hugSceneActive = false;
+        /** 进入晚霞拥抱时刻；用于落日渐融、天色化开 */
+        var hugSunsetStartMs = 0;
+        /** 约该毫秒后化开进度趋近 1（可再停留观看，进度保持 1） */
+        var HUG_SUNSET_DISSOLVE_MS = 32000;
+
+        /** 背景云、装饰小动物等（非交互） */
+        var ambientClouds = [];
+        var ambientButterflies = [];
+        var ambientRabbit = null;
+
+        var pulseById = {};
+
+        /** 小马水平位置（像素）；ponyNormX 为 0～1，由左右边距内换算 */
+        var ponyScreenX = 0;
+        var ponyNormX = 0.5;
+
+        /** 指针：用于短按一步 / 长按慢跑 */
+        var ptrDownT = 0;
+        var ptrDownX = 0;
+        var ptrDownY = 0;
+        var ptrMoved = false;
+        var longPressTimer = null;
+        var activePointerId = null;
+
+        function randInt(a, b) {
+          return a + Math.floor(Math.random() * (b - a + 1));
+        }
+
+        function markInteraction() {
+          lastInteractionMs = performance.now();
+        }
+
+        function registerForwardStep() {
+          fatigueSteps += 1;
+          lastForwardStepMs = performance.now();
+        }
+
+        function syncHugOfferButton() {
+          if (!hugOfferBtn || hugSceneActive) {
+            if (hugOfferBtn) hugOfferBtn.hidden = true;
+            return;
+          }
+          if (!modalRoot.hidden || !listModalRoot.hidden || suppressSpawn || jogMode) {
+            hugOfferBtn.hidden = true;
+            return;
+          }
+          var tired = fatigueSteps >= FATIGUE_STEPS_FOR_HUG;
+          var rested = performance.now() - lastForwardStepMs >= HUG_REST_AFTER_WALK_MS;
+          hugOfferBtn.hidden = !(tired && rested);
+        }
+
+        function startHugScene() {
+          stopJog();
+          hugSceneActive = true;
+          hugSunsetStartMs = performance.now();
+          if (hugOfferBtn) hugOfferBtn.hidden = true;
+          if (hugLayer) {
+            hugLayer.hidden = false;
+            hugLayer.setAttribute("aria-hidden", "false");
+          }
+          markInteraction();
+        }
+
+        function endHugScene() {
+          if (!hugSceneActive) return;
+          hugSceneActive = false;
+          hugSunsetStartMs = 0;
+          fatigueSteps = 0;
+          lastForwardStepMs = performance.now();
+          if (hugLayer) {
+            hugLayer.hidden = true;
+            hugLayer.setAttribute("aria-hidden", "true");
+          }
+          markInteraction();
+          syncHugOfferButton();
+        }
+
+        /** 任意场景下左右挪动小马（键盘；与点按草地逻辑共用边距与存档） */
+        function nudgePonyHorizontal(deltaPx) {
+          if (!W) return;
+          var m = ponyMargin();
+          ponyScreenX = Math.max(m, Math.min(W - m, ponyScreenX + deltaPx));
+          ponyNormX = (ponyScreenX - m) / (W - 2 * m);
+          savePonyX();
+        }
+
+        function syncBodyModalChromeClass() {
+          var on = !modalRoot.hidden || !listModalRoot.hidden;
+          document.body.classList.toggle("has-modal-open", on);
+        }
+
+        /** 手机：按住连续挪马；click 冒泡到晚霞层时需单独拦住 */
+        function setupPonyNudgeHold(btn, sign) {
+          if (!btn) return;
+          var holdIv = null;
+          function clearHold() {
+            if (holdIv) {
+              clearInterval(holdIv);
+              holdIv = null;
+            }
+            btn.removeEventListener("pointerup", onUp);
+            btn.removeEventListener("pointercancel", onUp);
+            btn.removeEventListener("lostpointercapture", onUp);
+          }
+          function onUp() {
+            clearHold();
+          }
+          function step() {
+            nudgePonyHorizontal(sign * PONY_KEY_NUDGE_PX);
+          }
+          btn.addEventListener("pointerdown", function (e) {
+            if (e.button !== undefined && e.button !== 0) return;
+            e.stopPropagation();
+            if (holdIv) return;
+            try {
+              btn.setPointerCapture(e.pointerId);
+            } catch (err) {}
+            step();
+            holdIv = setInterval(step, 105);
+            btn.addEventListener("pointerup", onUp);
+            btn.addEventListener("pointercancel", onUp);
+            btn.addEventListener("lostpointercapture", onUp);
+          });
+          btn.addEventListener(
+            "click",
+            function (e) {
+              e.stopPropagation();
+            },
+            true
+          );
+        }
+
+        function loadStepsFromStorage() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_STEPS);
+            if (raw === null) return;
+            var n = parseInt(raw, 10);
+            if (!isNaN(n) && n >= 0) totalSteps = n;
+          } catch (e) {}
+        }
+
+        function saveStepsToStorage() {
+          try {
+            localStorage.setItem(LS_KEY_STEPS, String(totalSteps));
+          } catch (e) {}
+        }
+
+        function ponyMargin() {
+          return Math.max(24, Math.min(48, W * 0.08));
+        }
+
+        function syncPonyXFromNorm() {
+          var m = ponyMargin();
+          var span = W - 2 * m;
+          if (span < 1) span = 1;
+          ponyScreenX = m + ponyNormX * span;
+        }
+
+        function loadPonyX() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_PONY_X);
+            if (raw === null) return;
+            var f = parseFloat(raw);
+            if (!isNaN(f) && f >= 0 && f <= 1) ponyNormX = f;
+          } catch (e) {}
+        }
+
+        function savePonyX() {
+          try {
+            localStorage.setItem(LS_KEY_PONY_X, String(ponyNormX));
+          } catch (e) {}
+        }
+
+        /**
+         * 统一路边内容条目：支持 text / image / audio / video（JSON 可只填其一，type 可省略则自动推断）
+         */
+        function normalizeBlessing(b) {
+          if (!b || typeof b !== "object") {
+            return {
+              id: 0,
+              type: "text",
+              text: "",
+              image: "",
+              audio: "",
+              video: "",
+              nickname: "",
+            };
+          }
+          var img = b.image != null ? String(b.image).trim() : "";
+          var aud = b.audio != null ? String(b.audio).trim() : "";
+          var vid = b.video != null ? String(b.video).trim() : "";
+          var tx =
+            b.text != null && String(b.text) !== ""
+              ? String(b.text)
+              : b["文案"] != null
+                ? String(b["文案"])
+                : "";
+          var typ = (b.type != null ? String(b.type) : "").toLowerCase();
+          if (typ !== "text" && typ !== "image" && typ !== "audio" && typ !== "video") {
+            if (vid) typ = "video";
+            else if (aud) typ = "audio";
+            else if (img) typ = "image";
+            else typ = "text";
+          }
+          return {
+            id: b.id != null ? b.id : 0,
+            type: typ,
+            text: tx,
+            image: img,
+            audio: aud,
+            video: vid,
+            nickname: b.nickname != null ? String(b.nickname) : "",
+          };
+        }
+
+        function loadReceivedBlessings() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_RECEIVED);
+            if (!raw) {
+              receivedBlessings = [];
+              return;
+            }
+            var arr = JSON.parse(raw);
+            receivedBlessings = Array.isArray(arr) ? arr : [];
+          } catch (e) {
+            receivedBlessings = [];
+          }
+        }
+
+        function saveReceivedBlessings() {
+          try {
+            localStorage.setItem(LS_KEY_RECEIVED, JSON.stringify(receivedBlessings));
+          } catch (e) {}
+        }
+
+        function updateBlessingBadge() {
+          var n = receivedBlessings.length;
+          blessingBadge.textContent = "已收获祝福 " + n;
+        }
+
+        /** 在路边点开内容弹窗时记一条「已收获祝福」 */
+        function recordReceivedBlessing(snapshot) {
+          receivedBlessings.push({
+            at: Date.now(),
+            poolId: snapshot.poolId,
+            type: snapshot.type || "text",
+            text: snapshot.text || "",
+            image: snapshot.image || "",
+            audio: snapshot.audio || "",
+            video: snapshot.video || "",
+            nickname: snapshot.nickname || "",
+            isGolden: !!snapshot.isGolden,
+            milestoneValue: snapshot.milestoneValue || 0,
+            extraLine: snapshot.extraLine || "",
+          });
+          saveReceivedBlessings();
+          updateBlessingBadge();
+        }
+
+        /** 点击前进时，小马水平位置移到点按处（限制在左右安全边距内） */
+        function movePonyTowardTap(clientX) {
+          var m = ponyMargin();
+          ponyScreenX = Math.max(m, Math.min(W - m, clientX));
+          ponyNormX = (ponyScreenX - m) / (W - 2 * m);
+          savePonyX();
+        }
+
+        function resize() {
+          dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+          W = window.innerWidth;
+          H = window.innerHeight;
+          canvas.width = Math.floor(W * dpr);
+          canvas.height = Math.floor(H * dpr);
+          canvas.style.width = W + "px";
+          canvas.style.height = H + "px";
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          syncPonyXFromNorm();
+        }
+
+        /** CSV 里资源路径统一成站点根相对路径（与 index 同级） */
+        function normalizeAssetPath(s) {
+          if (s == null || typeof s !== "string") return "";
+          s = s.trim();
+          if (s.indexOf("./") === 0) return s.slice(2);
+          return s;
+        }
+
+        /** 单行 RFC4180 风格拆分（支持 "含,逗号" 的字段） */
+        function parseCSVLine(line) {
+          var out = [];
+          var cur = "";
+          var inQ = false;
+          for (var i = 0; i < line.length; i++) {
+            var c = line.charAt(i);
+            if (c === '"') {
+              if (inQ && i + 1 < line.length && line.charAt(i + 1) === '"') {
+                cur += '"';
+                i++;
+              } else {
+                inQ = !inQ;
+              }
+            } else if (c === "," && !inQ) {
+              out.push(cur);
+              cur = "";
+            } else {
+              cur += c;
+            }
+          }
+          out.push(cur);
+          return out;
+        }
+
+        function csvCell(parts, idx) {
+          if (idx < 0 || idx >= parts.length) return "";
+          return String(parts[idx] == null ? "" : parts[idx]).trim();
+        }
+
+        /** 根据表头定位列；默认顺序 编号,文案,图片url,音频url,视频url */
+        function resolveBlessingCsvColumns(headerCells) {
+          var idxId = -1;
+          var idxCopy = -1;
+          var idxImg = -1;
+          var idxAud = -1;
+          var idxVid = -1;
+          for (var h = 0; h < headerCells.length; h++) {
+            var k = String(headerCells[h] || "")
+              .replace(/^\uFEFF/, "")
+              .replace(/\s+/g, "");
+            if (k === "编号") idxId = h;
+            else if (k === "文案") idxCopy = h;
+            else if (k.toLowerCase() === "图片url") idxImg = h;
+            else if (k.toLowerCase() === "音频url") idxAud = h;
+            else if (k.toLowerCase() === "视频url") idxVid = h;
+          }
+          if (idxId < 0) idxId = 0;
+          if (idxCopy < 0) idxCopy = 1;
+          if (idxImg < 0) idxImg = 2;
+          if (idxAud < 0) idxAud = 3;
+          if (idxVid < 0) idxVid = 4;
+          return { idxId: idxId, idxCopy: idxCopy, idxImg: idxImg, idxAud: idxAud, idxVid: idxVid };
+        }
+
+        /**
+         * 解析 content/content-import001(1).csv：列 编号,文案,图片url,音频url,视频url
+         * 展示用文案一律来自「文案」列 → text；类型按 视频 > 音频 > 配图 > 纯文案
+         */
+        function parseBlessingsCSV(text) {
+          text = String(text).replace(/^\uFEFF/, "");
+          var lines = text.split(/\r?\n/).filter(function (ln) {
+            return ln.replace(/\s/g, "").length;
+          });
+          if (lines.length < 2) return [];
+          var headerParts = parseCSVLine(lines[0]);
+          var col = resolveBlessingCsvColumns(headerParts);
+          var out = [];
+          for (var r = 1; r < lines.length; r++) {
+            var parts = parseCSVLine(lines[r]);
+            if (parts.length < 2) continue;
+            var idRaw = csvCell(parts, col.idxId);
+            var id = parseInt(idRaw, 10);
+            if (isNaN(id)) continue;
+            var copy = csvCell(parts, col.idxCopy);
+            var img = normalizeAssetPath(csvCell(parts, col.idxImg));
+            var aud = normalizeAssetPath(csvCell(parts, col.idxAud));
+            var vid = normalizeAssetPath(csvCell(parts, col.idxVid));
+            var typ = "text";
+            if (vid) typ = "video";
+            else if (aud) typ = "audio";
+            else if (img) typ = "image";
+            out.push({
+              id: id,
+              type: typ,
+              text: copy,
+              image: img || "",
+              audio: aud || "",
+              video: vid || "",
+              nickname: "",
+            });
+          }
+          return out;
+        }
+
+        function fetchBlessings() {
+          return fetch("content/content-import001(1).csv", { cache: "no-store" })
+            .then(function (resp) {
+              if (!resp.ok) throw new Error("no csv");
+              return resp.text();
+            })
+            .then(function (text) {
+              var arr = parseBlessingsCSV(text);
+              if (!arr.length) throw new Error("empty csv");
+              blessingsPool = arr;
+            })
+            .catch(function (err) {
+              blessingsPool = [];
+              console.warn(
+                "[grassland] 小花/风铃/大树数据须从 content/content-import001(1).csv 加载；当前失败，池为空。请用 HTTP 打开页面并检查 CSV。",
+                err && err.message
+              );
+            });
+        }
+
+        function pickBlessing() {
+          if (!blessingsPool.length) return normalizeBlessing({ id: 0, type: "text", text: "小花伴你。" });
+          var b = blessingsPool[Math.floor(Math.random() * blessingsPool.length)];
+          var n = normalizeBlessing(b);
+          if (n.type === "text" && n.text.length > 50) n.text = n.text.slice(0, 50);
+          return n;
+        }
+
+        /** B/C 池为空时从全池中筛同类型（展示文字均来自 CSV「文案」列） */
+        function pickRandomFromPoolType(want) {
+          var pool = [];
+          for (var i = 0; i < blessingsPool.length; i++) {
+            var n = normalizeBlessing(blessingsPool[i]);
+            if (n.type === want) pool.push(blessingsPool[i]);
+          }
+          if (!pool.length) return null;
+          return normalizeBlessing(pool[randInt(0, pool.length - 1)]);
+        }
+
+        function pickFallbackVideoBlessing() {
+          var got = pickRandomFromPoolType("video");
+          if (got) return got;
+          return normalizeBlessing({
+            id: 0,
+            type: "video",
+            video: "content/0002.mp4",
+            text: "",
+            nickname: "",
+          });
+        }
+
+        function pickFallbackAudioBlessing() {
+          var got = pickRandomFromPoolType("audio");
+          if (got) return got;
+          return normalizeBlessing({
+            id: 0,
+            type: "audio",
+            audio: "content/0001.mp3",
+            text: "",
+            nickname: "",
+          });
+        }
+
+        /**
+         * A=小花（文字/配图），B=风铃（视频），C=大树（音频）。
+         * A 无匹配时可退回全文案池；B/C 无匹配时必须退回 content 音视频，不能退回纯文案。
+         */
+        function pickBlessingForIcon(icon) {
+          if (!blessingsPool.length) {
+            if (icon === "b") return pickFallbackVideoBlessing();
+            if (icon === "c") return pickFallbackAudioBlessing();
+            return pickBlessing();
+          }
+          var pool = [];
+          for (var i = 0; i < blessingsPool.length; i++) {
+            var n = normalizeBlessing(blessingsPool[i]);
+            if (icon === "a" && (n.type === "text" || n.type === "image")) pool.push(blessingsPool[i]);
+            else if (icon === "b" && n.type === "video") pool.push(blessingsPool[i]);
+            else if (icon === "c" && n.type === "audio") pool.push(blessingsPool[i]);
+          }
+          if (!pool.length) {
+            if (icon === "b") return pickFallbackVideoBlessing();
+            if (icon === "c") return pickFallbackAudioBlessing();
+            return pickBlessing();
+          }
+          var b = pool[Math.floor(Math.random() * pool.length)];
+          var out = normalizeBlessing(b);
+          if (out.type === "text" && out.text.length > 50) out.text = out.text.slice(0, 50);
+          return out;
+        }
+
+        /** 根据累计步数返回天色阶段（0 清晨 1 白天 2 黄昏 3 夜晚），每 700 步循环 */
+        function getDayPhase() {
+          var s = totalSteps % DAY_CYCLE_LEN;
+          if (s < 200) return { id: 0, name: "dawn", t: s / 200 };
+          if (s < 400) return { id: 1, name: "day", t: (s - 200) / 200 };
+          if (s < 600) return { id: 2, name: "dusk", t: (s - 400) / 200 };
+          return { id: 3, name: "night", t: (s - 600) / 100 };
+        }
+
+        function lerpColor(a, b, k) {
+          var parse = function (h) {
+            h = String(h).trim();
+            if (h.indexOf("rgb(") === 0) {
+              var inner = h
+                .slice(4, -1)
+                .split(",")
+                .map(function (x) {
+                  return parseInt(x.trim(), 10);
+                });
+              return [inner[0], inner[1], inner[2]];
+            }
+            var x = h.replace("#", "");
+            return [parseInt(x.slice(0, 2), 16), parseInt(x.slice(2, 4), 16), parseInt(x.slice(4, 6), 16)];
+          };
+          var A = parse(a);
+          var B = parse(b);
+          var o = function (i) {
+            return Math.round(A[i] + (B[i] - A[i]) * k);
+          };
+          return "rgb(" + o(0) + "," + o(1) + "," + o(2) + ")";
+        }
+
+        function smoothstep01(t) {
+          t = Math.max(0, Math.min(1, t));
+          return t * t * (3 - 2 * t);
+        }
+
+        /**
+         * 每成功前进一步后调用。慢跑时衰减计数减半（风铃密度约为一半）。
+         * 路边图标：A=小花（文案/配图），B=风铃（视频），C=大树（音频）；金色里程碑单独标记 isGolden。
+         */
+        function tryGenerateWindChime() {
+          if (suppressSpawn) return;
+          var dec = jogMode ? 0.5 : 1;
+          stepsUntilSideSpawn -= dec;
+          if (stepsUntilSideSpawn > 0) return;
+          stepsUntilSideSpawn = randInt(CHIME_INTERVAL_MIN, CHIME_INTERVAL_MAX);
+
+          var side = Math.random() < 0.5 ? "left" : "right";
+          var m = ponyMargin();
+          var zone = (W - 2 * m) * 0.32;
+          var xBase =
+            side === "left" ? m + Math.random() * zone : W - m - Math.random() * zone;
+
+          for (var i = 0; i < 12; i++) {
+            var clash = false;
+            for (var j = 0; j < roadside.length; j++) {
+              var o = roadside[j];
+              if (o.side === side && Math.abs(o.worldStep - totalSteps) < 4) {
+                clash = true;
+                break;
+              }
+            }
+            if (!clash) break;
+            side = side === "left" ? "right" : "left";
+            xBase =
+              side === "left" ? m + Math.random() * zone : W - m - Math.random() * zone;
+          }
+
+          if (Math.random() < CARROT_CHANCE) {
+            roadside.push({
+              id: "c" + Date.now() + "_" + Math.random().toString(16).slice(2),
+              kind: "carrot",
+              worldStep: totalSteps,
+              x: xBase,
+              side: side,
+            });
+            return;
+          }
+
+          var decorPool = ["a", "b", "c"];
+          var decor = decorPool[randInt(0, decorPool.length - 1)];
+          var bl = pickBlessingForIcon(decor);
+          /** 金色只在真正生成路边小花/风铃/大树时消耗，胡萝卜不占用 */
+          var isGolden = pendingGoldenMilestone;
+          pendingGoldenMilestone = false;
+
+          roadside.push({
+            id: "o" + Date.now() + "_" + Math.random().toString(16).slice(2),
+            kind: "token",
+            decor: decor,
+            isGolden: isGolden,
+            milestoneValue: isGolden ? totalSteps : 0,
+            worldStep: totalSteps,
+            x: xBase,
+            side: side,
+            blessing: bl,
+          });
+        }
+
+        function maybeSpawnAmbientDecor() {
+          if (totalSteps % 10 !== 0 || totalSteps === 0) return;
+          if (Math.random() > 0.2) return;
+          var roll = Math.random();
+          if (roll < 0.35 && !ambientRabbit) {
+            ambientRabbit = {
+              x: W * 0.2 + Math.random() * W * 0.6,
+              y: H * 0.62,
+              frame: 0,
+              born: performance.now(),
+              ttl: 2000,
+            };
+          } else if (roll < 0.7) {
+            ambientButterflies.push({
+              cx: Math.random() * W,
+              cy: H * 0.35 + Math.random() * H * 0.25,
+              ang: Math.random() * Math.PI * 2,
+              r: 18 + Math.random() * 22,
+              spd: 0.02 + Math.random() * 0.03,
+              born: performance.now(),
+              ttl: 4500,
+            });
+          }
+        }
+
+        function ensureClouds() {
+          while (ambientClouds.length < 4) {
+            ambientClouds.push({
+              x: Math.random() * W * 1.2,
+              y: H * (0.08 + Math.random() * 0.12),
+              w: 60 + Math.random() * 50,
+              spd: 8 + Math.random() * 14,
+              alpha: 0.35 + Math.random() * 0.25,
+            });
+          }
+        }
+
+        function tickAmbient(dt) {
+          ensureClouds();
+          var sec = dt / 1000;
+          for (var i = 0; i < ambientClouds.length; i++) {
+            var c = ambientClouds[i];
+            c.x += c.spd * sec;
+            if (c.x > W + c.w) c.x = -c.w - 20;
+          }
+          var now = performance.now();
+          if (ambientRabbit && now - ambientRabbit.born > ambientRabbit.ttl) ambientRabbit = null;
+          else if (ambientRabbit) ambientRabbit.frame = (ambientRabbit.frame + dt * 0.012) % 3;
+
+          ambientButterflies = ambientButterflies.filter(function (b) {
+            return now - b.born < b.ttl;
+          });
+          for (var j = 0; j < ambientButterflies.length; j++) {
+            var bf = ambientButterflies[j];
+            bf.ang += bf.spd;
+          }
+        }
+
+        function drawAmbientBehindRoad(scrollPx) {
+          var ph = getDayPhase();
+          for (var i = 0; i < ambientClouds.length; i++) {
+            var c = ambientClouds[i];
+            ctx.save();
+            ctx.globalAlpha = c.alpha * (ph.id === 3 ? 0.45 : 1);
+            ctx.fillStyle = "#ffffff";
+            drawCloudBlob(c.x, c.y, c.w);
+            ctx.restore();
+          }
+        }
+
+        function drawCloudBlob(x, y, w) {
+          ctx.beginPath();
+          ctx.arc(x, y, w * 0.35, 0, Math.PI * 2);
+          ctx.arc(x + w * 0.35, y - 4, w * 0.28, 0, Math.PI * 2);
+          ctx.arc(x + w * 0.55, y, w * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        function drawAmbientFront() {
+          var now = performance.now();
+          if (ambientRabbit) {
+            var rx = ambientRabbit.x;
+            var ry = ambientRabbit.y + Math.sin(ambientRabbit.frame * Math.PI) * -6;
+            ctx.save();
+            ctx.translate(rx, ry);
+            ctx.fillStyle = "#c8b8a8";
+            ctx.fillRect(-10, -8, 22, 16);
+            ctx.fillStyle = "#8b7355";
+            ctx.fillRect(12, -4, 8, 6);
+            ctx.fillRect(-4, 8, 5, 6);
+            ctx.fillRect(4, 8, 5, 6);
+            ctx.restore();
+          }
+          for (var i = 0; i < ambientButterflies.length; i++) {
+            var b = ambientButterflies[i];
+            var bx = b.cx + Math.cos(b.ang) * b.r;
+            var by = b.cy + Math.sin(b.ang * 2) * 8;
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.fillStyle = "#ffb7c8";
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 8, 5, Math.sin(b.ang) * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#9ecfff";
+            ctx.beginPath();
+            ctx.ellipse(-5, 2, 5, 3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        function drawNightStars(t) {
+          var rnd = function (n) {
+            var s = 0;
+            for (var i = 0; i < n.length; i++) s = (s * 31 + n.charCodeAt(i)) | 0;
+            return ((s % 1000) / 1000 + 1) * 0.5;
+          };
+          ctx.fillStyle = "#ffffff";
+          for (var i = 0; i < 28; i++) {
+            var sx = (i * 137 + W * 0.05) % (W * 0.95);
+            var sy = (i * 89) % (H * 0.38);
+            var tw = 0.4 + 0.6 * Math.sin(t * 0.003 + i * 0.7);
+            ctx.globalAlpha = tw * 0.85;
+            ctx.fillRect(sx, sy, 2, 2);
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        function removeOffscreenItems() {
+          var bottom = H + 80;
+          roadside = roadside.filter(function (o) {
+            var sy = screenYForWorldStep(o.worldStep);
+            return sy < bottom;
+          });
+        }
+
+        function ponyScreenY() {
+          return H * 0.72;
+        }
+
+        function screenYForWorldStep(worldStep) {
+          return ponyY() - (worldStep - totalSteps) * PIXELS_PER_STEP;
+        }
+
+        function ponyY() {
+          return ponyScreenY();
+        }
+
+        function snapGrid(v, grid) {
+          return Math.round(v / grid) * grid;
+        }
+
+        /**
+         * 无边无际草原：全幅草地 + 随步数向下滚动的像素纹理（无道路）。
+         * @param {object} [phOverride] 传入 { _hugDuskGrass: true } 时用于「拥抱晚霞」场景的偏暗草地
+         */
+        function drawEndlessGrass(scrollPx, phOverride) {
+          var ph = phOverride || getDayPhase();
+          var farY = H * 0.36;
+          var grassA, grassB, grassC, strokeG, gradTop, gradBot;
+          if (ph._hugDuskGrass) {
+            grassA = "#2c5536";
+            grassB = "#3a6845";
+            grassC = "#448a52";
+            strokeG = "#1e3a28";
+            gradTop = "#4d7558";
+            gradBot = "#2d5238";
+          } else if (ph.id === 3) {
+            grassA = "#2a5238";
+            grassB = "#356648";
+            grassC = "#3d6b48";
+            strokeG = "#1e3a28";
+            gradTop = "#355040";
+            gradBot = "#243828";
+          } else {
+            grassA = "#3d8f58";
+            grassB = "#4faa72";
+            grassC = "#52b878";
+            strokeG = "#2d7040";
+            gradTop = "#5aad72";
+            gradBot = "#3d8f58";
+          }
+
+          var g = ctx.createLinearGradient(0, farY, 0, H);
+          g.addColorStop(0, gradTop);
+          g.addColorStop(0.45, grassA);
+          g.addColorStop(1, gradBot);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, farY, W, H - farY);
+
+          var seed = Math.floor(scrollPx);
+          ctx.fillStyle = grassB;
+          for (var i = 0; i < 80; i++) {
+            var u = (i * 0.13 + (scrollPx * 0.014) % 1) % 1;
+            var y = farY + (H - farY) * Math.pow(u, 1.1);
+            y = snapGrid(y, 3);
+            var xl = ((seed + i * 17) % 1000) / 1000;
+            var x = xl * (W - 8);
+            x = snapGrid(x, 4);
+            ctx.fillRect(x, y, 4 + (i % 3), 3 + (i % 5));
+          }
+
+          ctx.fillStyle = grassC;
+          for (var j = 0; j < 40; j++) {
+            var u2 = (j * 0.23 + (scrollPx * 0.019) % 1) % 1;
+            var y2 = farY + (H - farY) * u2 * u2;
+            y2 = snapGrid(y2, 3);
+            var x2 = snapGrid(((seed + j * 31) % 1000) / 1000 * (W - 6), 4);
+            ctx.fillRect(x2, y2, 5, 4);
+          }
+
+          ctx.strokeStyle = strokeG;
+          ctx.lineWidth = 2;
+          for (var s = 0; s < 22; s++) {
+            var u3 = (s / 22 + (scrollPx * 0.012) % 1) % 1;
+            var yy = farY + (H - farY) * u3 * u3;
+            yy = snapGrid(yy, 3);
+            var x0 = snapGrid((((seed + s * 7) % 100) / 100) * (W - 4), 4);
+            ctx.beginPath();
+            ctx.moveTo(x0, yy);
+            ctx.lineTo(x0 + 2, yy - 4);
+            ctx.stroke();
+          }
+        }
+
+        function drawSkyAndLayers(scrollPx) {
+          var ph = getDayPhase();
+          var top, mid, bot, hill1, hill2;
+          if (ph.id === 0) {
+            top = lerpColor("#b8d9ff", "#ffe8b8", ph.t);
+            mid = lerpColor("#d4ecff", "#fff0c8", ph.t);
+            bot = lerpColor("#c8e8b8", "#a8d8a0", ph.t);
+            hill1 = "#6a9a72";
+            hill2 = "#4f8f62";
+          } else if (ph.id === 1) {
+            top = "#87ceeb";
+            mid = "#a8e8c8";
+            bot = "#6ecf8a";
+            hill1 = "#5aa86a";
+            hill2 = "#3d9d5c";
+          } else if (ph.id === 2) {
+            top = lerpColor("#ffb088", "#7a5aa8", ph.t);
+            mid = lerpColor("#ff9a6b", "#9b7bc8", ph.t);
+            bot = lerpColor("#c87850", "#5a4880", ph.t);
+            hill1 = "#5a7058";
+            hill2 = "#4a5560";
+          } else {
+            top = "#1a2840";
+            mid = "#243548";
+            bot = "#2d4a3a";
+            hill1 = "#3a5048";
+            hill2 = "#2d4038";
+          }
+
+          var g = ctx.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0, top);
+          g.addColorStop(0.48, mid);
+          g.addColorStop(1, bot);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+
+          drawAmbientBehindRoad(scrollPx);
+
+          ctx.save();
+          ctx.globalAlpha = ph.id === 3 ? 0.65 : 0.85;
+          var far = (scrollPx * 0.15) % (W * 1.2);
+          ctx.fillStyle = hill1;
+          ctx.beginPath();
+          ctx.moveTo(-50 - far, H * 0.42);
+          ctx.lineTo(W * 0.35 - far, H * 0.32);
+          ctx.lineTo(W * 0.7 - far, H * 0.36);
+          ctx.lineTo(W + 80 - far, H * 0.4);
+          ctx.lineTo(W + 80, H * 0.55);
+          ctx.lineTo(-50, H * 0.55);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+
+          ctx.save();
+          var m2 = (scrollPx * 0.35) % (W * 1.5);
+          ctx.globalAlpha = ph.id === 3 ? 0.7 : 1;
+          ctx.fillStyle = hill2;
+          ctx.beginPath();
+          ctx.moveTo(-60 - m2, H * 0.52);
+          ctx.lineTo(W * 0.25 - m2, H * 0.46);
+          ctx.lineTo(W * 0.55 - m2, H * 0.5);
+          ctx.lineTo(W + 100 - m2, H * 0.54);
+          ctx.lineTo(W + 100, H * 0.68);
+          ctx.lineTo(-60, H * 0.68);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+
+          if (ph.id === 3) drawNightStars(animT * 1000);
+        }
+
+        /**
+         * 拥抱小憩：晚霞天色 + 居中落日。
+         * 随停留时间推进，落日渐模糊、天色向粉紫雾过渡（「慢慢划开」）。
+         */
+        function drawHugSunsetFullScene(scrollPx) {
+          var t0 = hugSunsetStartMs || performance.now();
+          var hugProg = smoothstep01((performance.now() - t0) / HUG_SUNSET_DISSOLVE_MS);
+
+          var dBase = 0.62 + 0.08 * Math.sin(animT * 0.45);
+          var top0 = lerpColor("#ffb088", "#7a5aa8", dBase);
+          var mid0 = lerpColor("#ff9a6b", "#9b7bc8", dBase);
+          var bot0 = lerpColor("#c87850", "#5a4880", dBase);
+
+          var top1 = "#ebe4ff";
+          var mid1 = "#f5d4ec";
+          var bot1 = "#c4b0d8";
+
+          var top = lerpColor(top0, top1, hugProg);
+          var mid = lerpColor(mid0, mid1, hugProg);
+          var bot = lerpColor(bot0, bot1, hugProg);
+
+          var g = ctx.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0, top);
+          g.addColorStop(0.48, mid);
+          g.addColorStop(1, bot);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+
+          drawAmbientBehindRoad(scrollPx);
+
+          if (hugProg > 0.03) {
+            ctx.save();
+            var veil = ctx.createLinearGradient(0, 0, W, H * 0.42);
+            var va = hugProg * 0.11;
+            veil.addColorStop(0, "rgba(255, 236, 248, " + va + ")");
+            veil.addColorStop(0.45, "rgba(255, 250, 255, " + (hugProg * 0.16) + ")");
+            veil.addColorStop(1, "rgba(220, 210, 255, " + (hugProg * 0.12) + ")");
+            ctx.fillStyle = veil;
+            ctx.fillRect(0, 0, W, H * 0.52);
+            ctx.restore();
+          }
+
+          var sx = W * 0.5;
+          var sy = H * (0.2 + 0.012 * Math.sin(animT * 0.55));
+          var sunR = Math.min(W, H) * 0.085;
+          var blurPx = hugProg * 28;
+          var glowMul = 1.65 + hugProg * 1.25;
+          var glowA = Math.max(0, 0.46 - hugProg * 0.4) * (1 + hugProg * 0.35);
+          var coreA = Math.max(0, 0.98 - hugProg * 0.85);
+          var sunDiskR = sunR * (1 + hugProg * 0.12);
+
+          ctx.save();
+          if (blurPx > 0.4) {
+            ctx.filter = "blur(" + blurPx + "px)";
+          }
+          ctx.fillStyle = "rgba(255, 220, 170, " + glowA + ")";
+          ctx.beginPath();
+          ctx.arc(sx, sy, sunR * glowMul, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255, 168, 88, " + coreA + ")";
+          ctx.beginPath();
+          ctx.arc(sx, sy, sunDiskR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          var hill1 = lerpColor("#5a7058", "#8a86a0", hugProg);
+          var hill2 = lerpColor("#4a5560", "#7874a0", hugProg);
+
+          ctx.save();
+          ctx.globalAlpha = 0.85 - hugProg * 0.1;
+          var far = (scrollPx * 0.15) % (W * 1.2);
+          ctx.fillStyle = hill1;
+          ctx.beginPath();
+          ctx.moveTo(-50 - far, H * 0.42);
+          ctx.lineTo(W * 0.35 - far, H * 0.32);
+          ctx.lineTo(W * 0.7 - far, H * 0.36);
+          ctx.lineTo(W + 80 - far, H * 0.4);
+          ctx.lineTo(W + 80, H * 0.55);
+          ctx.lineTo(-50, H * 0.55);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+
+          ctx.save();
+          var m2 = (scrollPx * 0.35) % (W * 1.5);
+          ctx.globalAlpha = 1 - hugProg * 0.08;
+          ctx.fillStyle = hill2;
+          ctx.beginPath();
+          ctx.moveTo(-60 - m2, H * 0.52);
+          ctx.lineTo(W * 0.25 - m2, H * 0.46);
+          ctx.lineTo(W * 0.55 - m2, H * 0.5);
+          ctx.lineTo(W + 100 - m2, H * 0.54);
+          ctx.lineTo(W + 100, H * 0.68);
+          ctx.lineTo(-60, H * 0.68);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+
+          drawEndlessGrass(scrollPx, { _hugDuskGrass: true });
+        }
+
+        /** 从两侧环住小马的简化「手臂」（画布坐标，在马身下层绘制） */
+        function drawHugArmsFrame(px, py, bob) {
+          var sway = Math.sin(animT * 1.15) * 4;
+          ctx.save();
+          ctx.translate(px + sway * 0.25, py + bob);
+          ctx.fillStyle = "#c4a882";
+          ctx.beginPath();
+          ctx.ellipse(-46, -6, 18, 42, -0.55, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(46, -6, 18, 42, 0.55, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#b89a78";
+          ctx.fillRect(-14, 2, 28, 16);
+          ctx.fillStyle = "#e8d4bc";
+          ctx.beginPath();
+          ctx.arc(-42, 22, 10, 0, Math.PI * 2);
+          ctx.arc(42, 22, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        /**
+         * 小马绘制；idle 非 null 时可播低头吃草 / 甩尾 / 响鼻（拥抱场景外通常传 null，仅轻微 bob）
+         */
+        function drawPixelPony(x, y, bob, idle) {
+          ctx.save();
+          var squat = 0;
+          var headTilt = 0;
+          var tailAngle = 0;
+          var puff = false;
+          if (idle && idle.type === "eat") {
+            var e = idle.phase;
+            squat = Math.sin(e * Math.PI) * 6;
+            headTilt = Math.sin(e * Math.PI * 2) * 4;
+          } else if (idle && idle.type === "tail") {
+            tailAngle = Math.sin(idle.phase * Math.PI * 4) * 0.35;
+          } else if (idle && idle.type === "snort") {
+            puff = idle.phase > 0.2 && idle.phase < 0.65;
+          }
+
+          ctx.translate(x, y + bob + squat);
+          ctx.rotate(tailAngle);
+
+          ctx.fillStyle = "#6b4423";
+          ctx.fillRect(-14, -22 + headTilt, 28, 22);
+          ctx.fillRect(-18, -8, 36, 14);
+          ctx.fillRect(-10, 8, 8, 12);
+          ctx.fillRect(2, 8, 8, 12);
+
+          ctx.fillStyle = "#4a2d16";
+          ctx.fillRect(-12, -26 + headTilt * 0.5, 24, 8);
+          ctx.fillStyle = "#3d2412";
+          ctx.fillRect(-4, -30 + headTilt * 0.5, 8, 6);
+
+          ctx.fillStyle = "#2a1810";
+          ctx.fillRect(10, -18 + headTilt * 0.3, 6, 6);
+
+          ctx.fillStyle = "#8b5a2b";
+          ctx.fillRect(-6, -20 + headTilt, 5, 10);
+
+          ctx.fillStyle = "#4a2d16";
+          ctx.save();
+          ctx.translate(-16, 2);
+          ctx.rotate(tailAngle * 2);
+          ctx.fillRect(0, -4, 4, 14);
+          ctx.restore();
+
+          if (puff) {
+            ctx.fillStyle = "rgba(255,255,255,0.55)";
+            ctx.beginPath();
+            ctx.arc(16, -12, 10 + idle.phase * 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        /** A：小花（文案/配图）— 像素便签 + 字母 A */
+        function drawIconA(px, py, scale, golden) {
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.scale(scale, scale);
+          if (golden) {
+            ctx.shadowColor = "rgba(255, 220, 120, 0.95)";
+            ctx.shadowBlur = 14;
+          }
+          ctx.fillStyle = golden ? "#fff8e0" : "#fff5e0";
+          ctx.strokeStyle = golden ? "#e8b020" : "#c4a882";
+          ctx.lineWidth = 2;
+          ctx.fillRect(-20, -36, 40, 44);
+          ctx.strokeRect(-20, -36, 40, 44);
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = golden ? "#d4a018" : "#b8a090";
+          for (var ln = 0; ln < 4; ln++) {
+            ctx.fillRect(-14, -28 + ln * 8, 28, 2);
+          }
+          ctx.fillStyle = golden ? "#c9a010" : "#6a8f6e";
+          ctx.font = "bold 22px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("A", 0, 6);
+          ctx.restore();
+        }
+
+        /** B：风铃（视频）— 像素屏幕 + 播放三角 + 字母 B */
+        function drawIconB(px, py, scale, golden) {
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.scale(scale, scale);
+          if (golden) {
+            ctx.shadowColor = "rgba(255, 215, 100, 0.9)";
+            ctx.shadowBlur = 12;
+          }
+          ctx.fillStyle = golden ? "#4a3a68" : "#3d2f50";
+          ctx.strokeStyle = golden ? "#ffd060" : "#7a6890";
+          ctx.lineWidth = 2;
+          ctx.fillRect(-22, -34, 44, 40);
+          ctx.strokeRect(-22, -34, 44, 40);
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = golden ? "#ffd888" : "#9ab8ff";
+          ctx.fillRect(-16, -28, 32, 22);
+          ctx.fillStyle = golden ? "#fff0a8" : "#ffffff";
+          ctx.beginPath();
+          ctx.moveTo(-5, -22);
+          ctx.lineTo(-5, -8);
+          ctx.lineTo(8, -15);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = golden ? "#ffe8a0" : "#c8b8e8";
+          ctx.font = "bold 18px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("B", 0, 14);
+          ctx.restore();
+        }
+
+        /** C：大树（音频）— 像素喇叭 + 声波 + 字母 C */
+        function drawIconC(px, py, scale, golden) {
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.scale(scale, scale);
+          if (golden) {
+            ctx.shadowColor = "rgba(255, 230, 150, 0.85)";
+            ctx.shadowBlur = 14;
+          }
+          ctx.fillStyle = golden ? "#2d6a52" : "#2a5848";
+          ctx.strokeStyle = golden ? "#ffd850" : "#5cb88a";
+          ctx.lineWidth = 2;
+          ctx.fillRect(-20, -34, 40, 42);
+          ctx.strokeRect(-20, -34, 40, 42);
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = golden ? "#ffe8a8" : "#a8e8c8";
+          ctx.fillRect(-14, -20, 10, 16);
+          ctx.beginPath();
+          ctx.moveTo(-4, -20);
+          ctx.lineTo(6, -28);
+          ctx.lineTo(6, 4);
+          ctx.lineTo(-4, -4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = golden ? "#ffd870" : "#7ecfaa";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(10, -8, 4, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(14, -8, 7, -Math.PI * 0.45, Math.PI * 0.45);
+          ctx.stroke();
+          ctx.fillStyle = golden ? "#fff0c0" : "#d8f5e8";
+          ctx.font = "bold 18px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("C", 0, 16);
+          ctx.restore();
+        }
+
+        function drawToken(o, drawY, sc) {
+          var g = o.isGolden;
+          var d = o.decor;
+          if (d === "b") drawIconB(o.x, drawY, sc, g);
+          else if (d === "c") drawIconC(o.x, drawY, sc, g);
+          else drawIconA(o.x, drawY, sc, g);
+        }
+
+        function drawCarrot(px, py, scale) {
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.scale(scale, scale);
+          ctx.fillStyle = "#ff8c42";
+          ctx.beginPath();
+          ctx.moveTo(0, -6);
+          ctx.lineTo(10, 14);
+          ctx.lineTo(-10, 14);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#3d8b57";
+          ctx.fillRect(-2, -14, 4, 10);
+          ctx.restore();
+        }
+
+        function hitRadius(kind) {
+          return kind === "carrot" ? 26 : 32;
+        }
+
+        /** 胡萝卜冲刺（奔跑）期间不绘制路边小花风铃大树/胡萝卜，避免用户担心「错过」交互 */
+        function drawRoadsideItems() {
+          if (suppressSpawn) return;
+          var sorted = roadside.slice().sort(function (a, b) {
+            return screenYForWorldStep(a.worldStep) - screenYForWorldStep(b.worldStep);
+          });
+          for (var i = 0; i < sorted.length; i++) {
+            var o = sorted[i];
+            var sy = screenYForWorldStep(o.worldStep);
+            var pulse = pulseById[o.id] || 0;
+            var sc = 1 + pulse * 0.12;
+            var drawY = sy;
+            if (o.kind === "carrot") drawCarrot(o.x, drawY, sc);
+            else if (o.kind === "token") drawToken(o, drawY, sc);
+          }
+        }
+
+        function findHit(cx, cy) {
+          if (suppressSpawn) return null;
+          var best = null;
+          var bestD = 1e9;
+          for (var i = 0; i < roadside.length; i++) {
+            var o = roadside[i];
+            var sy = screenYForWorldStep(o.worldStep);
+            var r = hitRadius(o.kind);
+            var dx = cx - o.x;
+            var dy = cy - sy;
+            var d = dx * dx + dy * dy;
+            if (d < r * r && d < bestD) {
+              bestD = d;
+              best = o;
+            }
+          }
+          return best;
+        }
+
+        function spawnGoldenStarBurst() {
+          goldenStars = [];
+          for (var i = 0; i < 14; i++) {
+            goldenStars.push({
+              x: ponyScreenX,
+              y: H * 0.42,
+              vx: (Math.random() - 0.5) * 220,
+              vy: -80 - Math.random() * 120,
+              life: 1,
+              t0: performance.now(),
+            });
+          }
+        }
+
+        function tickGoldenStars(dt) {
+          var now = performance.now();
+          goldenStars = goldenStars.filter(function (s) {
+            var age = (now - s.t0) / 1000;
+            s.x += s.vx * (dt / 1000);
+            s.y += s.vy * (dt / 1000);
+            s.vy += 40 * (dt / 1000);
+            return age < 1.2;
+          });
+        }
+
+        function drawGoldenStarsOverlay() {
+          for (var i = 0; i < goldenStars.length; i++) {
+            var s = goldenStars[i];
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 220, 120, 0.9)";
+            ctx.translate(s.x, s.y);
+            ctx.rotate(animT * 2 + i);
+            ctx.fillRect(-3, -3, 6, 6);
+            ctx.restore();
+          }
+        }
+
+        function fillBlessingModalContent(data) {
+          modalMedia.innerHTML = "";
+          var t = data.type || "text";
+          var hasMedia = false;
+
+          if (t === "video" && data.video) {
+            hasMedia = true;
+            var vid = document.createElement("video");
+            vid.controls = true;
+            vid.playsInline = true;
+            vid.setAttribute("playsinline", "");
+            vid.preload = "metadata";
+            vid.src = data.video;
+            modalMedia.appendChild(vid);
+          } else if (t === "audio" && data.audio) {
+            hasMedia = true;
+            var aud = document.createElement("audio");
+            aud.controls = true;
+            aud.preload = "metadata";
+            aud.src = data.audio;
+            modalMedia.appendChild(aud);
+          } else if (t === "image" && data.image) {
+            hasMedia = true;
+            var img = document.createElement("img");
+            img.className = "modal-media-img";
+            img.src = data.image;
+            img.alt = "小花旁的图画";
+            modalMedia.appendChild(img);
+          }
+
+          modalMedia.hidden = !hasMedia;
+
+          var showText = !!(data.text && String(data.text).trim());
+          if (t === "text" || t === "image" || (!hasMedia && showText && t !== "video" && t !== "audio")) {
+            modalText.hidden = false;
+            modalText.textContent = data.text || "";
+          } else if ((t === "video" || t === "audio") && hasMedia && showText) {
+            modalText.hidden = false;
+            modalText.textContent = data.text;
+          } else if (!hasMedia) {
+            modalText.hidden = false;
+            modalText.textContent = data.text || "（暂无内容）";
+          } else {
+            modalText.hidden = true;
+            modalText.textContent = "";
+          }
+
+          if (data.nickname) {
+            modalNick.hidden = false;
+            modalNick.textContent = "—— " + data.nickname;
+          } else {
+            modalNick.hidden = true;
+            modalNick.textContent = "";
+          }
+          if (data.extraLine) {
+            modalExtra.hidden = false;
+            modalExtra.textContent = data.extraLine;
+          } else {
+            modalExtra.hidden = true;
+            modalExtra.textContent = "";
+          }
+        }
+
+        /**
+         * 打开内容大弹窗。opts.record === false 时不重复计入「已收获」（如从列表回看）
+         */
+        function openBlessingModal(data, opts) {
+          opts = opts || {};
+          fillBlessingModalContent(data);
+          if (opts.record !== false) {
+            recordReceivedBlessing({
+              poolId: data.poolId,
+              type: data.type,
+              text: data.text,
+              image: data.image,
+              audio: data.audio,
+              video: data.video,
+              nickname: data.nickname,
+              isGolden: data.isGolden,
+              milestoneValue: data.milestoneValue,
+              extraLine: data.extraLine,
+            });
+          }
+          modalRoot.hidden = false;
+          if (data.extraLine) spawnGoldenStarBurst();
+          syncBodyModalChromeClass();
+        }
+
+        function closeModal() {
+          modalRoot.hidden = true;
+          goldenStars = [];
+          var v = modalMedia.querySelector("video");
+          if (v) try { v.pause(); } catch (e) {}
+          var a = modalMedia.querySelector("audio");
+          if (a) try { a.pause(); } catch (e) {}
+          modalMedia.innerHTML = "";
+          modalMedia.hidden = true;
+          syncBodyModalChromeClass();
+        }
+
+        function openListModal() {
+          listModalRoot.hidden = false;
+          renderReceivedList();
+          syncBodyModalChromeClass();
+        }
+
+        function closeListModal() {
+          listModalRoot.hidden = true;
+          listModalBody.innerHTML = "";
+          syncBodyModalChromeClass();
+        }
+
+        function renderReceivedList() {
+          listModalBody.innerHTML = "";
+          if (!receivedBlessings.length) {
+            var empty = document.createElement("p");
+            empty.style.cssText = "text-align:center;color:#7a8f80;padding:24px 8px;font-size:14px;";
+            empty.textContent = "还没有收获祝福，去草原上点点路边的小物件吧～";
+            listModalBody.appendChild(empty);
+            return;
+          }
+          for (var i = receivedBlessings.length - 1; i >= 0; i--) {
+            (function (entry, displayNum) {
+              var btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "received-row";
+              var meta = document.createElement("div");
+              meta.className = "received-meta";
+              var typeLabel =
+                entry.type === "video"
+                  ? "风铃(B)"
+                  : entry.type === "audio"
+                    ? "大树(C)"
+                    : entry.type === "image"
+                      ? "小花·画(A)"
+                      : "小花(A)";
+              var d = entry.at ? new Date(entry.at) : null;
+              var timeStr = d ? d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+              meta.textContent = "#" + displayNum + " · " + typeLabel + (timeStr ? " · " + timeStr : "");
+              var prev = document.createElement("div");
+              prev.className = "received-preview";
+              if (entry.type === "image" && entry.image) {
+                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「小花」 " + (entry.text || "").slice(0, 80);
+              } else if (entry.type === "audio") {
+                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「大树」 " + (entry.text || "轻点听叶声").slice(0, 80);
+              } else if (entry.type === "video") {
+                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「风铃」 " + (entry.text || "轻点晃光影").slice(0, 80);
+              } else {
+                prev.textContent = (entry.text || "").slice(0, 120) || "（小花笺上的话）";
+              }
+              btn.appendChild(meta);
+              btn.appendChild(prev);
+              btn.addEventListener("click", function () {
+                closeListModal();
+                openBlessingModal(
+                  {
+                    poolId: entry.poolId,
+                    type: entry.type,
+                    text: entry.text,
+                    image: entry.image,
+                    audio: entry.audio,
+                    video: entry.video,
+                    nickname: entry.nickname,
+                    isGolden: entry.isGolden,
+                    milestoneValue: entry.milestoneValue,
+                    extraLine: entry.extraLine,
+                  },
+                  { record: false }
+                );
+              });
+              listModalBody.appendChild(btn);
+            })(receivedBlessings[i], receivedBlessings.length - i);
+          }
+        }
+
+        function playDing() {
+          try {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            var audioCtx = new AC();
+            var o = audioCtx.createOscillator();
+            var g = audioCtx.createGain();
+            o.type = "sine";
+            o.frequency.value = 880;
+            g.gain.value = 0.08;
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start();
+            o.stop(audioCtx.currentTime + 0.08);
+          } catch (e) {}
+        }
+
+        function pulseItem(id) {
+          pulseById[id] = 1;
+          setTimeout(function () {
+            delete pulseById[id];
+          }, 160);
+        }
+
+        function checkMilestoneGolden() {
+          if (totalSteps > 0 && totalSteps % GOLDEN_MILESTONE === 0) pendingGoldenMilestone = true;
+        }
+
+        function oneStep() {
+          markInteraction();
+          totalSteps += 1;
+          saveStepsToStorage();
+          checkMilestoneGolden();
+          tryGenerateWindChime();
+          maybeSpawnAmbientDecor();
+          removeOffscreenItems();
+          registerForwardStep();
+        }
+
+        function startJog() {
+          if (jogMode || suppressSpawn || hugSceneActive) return;
+          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+          jogMode = true;
+          if (jogTimer) clearInterval(jogTimer);
+          jogTimer = setInterval(function () {
+            if (!jogMode) return;
+            oneStep();
+          }, JOG_STEP_MS);
+        }
+
+        function stopJog() {
+          jogMode = false;
+          if (jogTimer) {
+            clearInterval(jogTimer);
+            jogTimer = null;
+          }
+        }
+
+        function startSprint() {
+          if (sprintAnim) return;
+          stopJog();
+          suppressSpawn = true;
+          var t0 = performance.now();
+          function tick() {
+            if (performance.now() - t0 >= CARROT_SPRINT_MS) {
+              suppressSpawn = false;
+              sprintAnim = null;
+              return;
+            }
+            markInteraction();
+            totalSteps += 1;
+            saveStepsToStorage();
+            checkMilestoneGolden();
+            removeOffscreenItems();
+            registerForwardStep();
+            sprintAnim = setTimeout(tick, CARROT_SPRINT_STEP_MS);
+          }
+          tick();
+        }
+
+        var lastFrame = 0;
+        function frame(t) {
+          var dt = t - lastFrame;
+          if (!lastFrame) dt = 16;
+          lastFrame = t;
+          animT += dt * 0.004;
+          tickAmbient(dt);
+          tickGoldenStars(dt);
+
+          if (hugSceneActive) {
+            var hugScroll = totalSteps * PIXELS_PER_STEP;
+            drawHugSunsetFullScene(hugScroll);
+            var hugPy = ponyY();
+            var hugBob = Math.sin(animT * 3) * 1.5;
+            drawHugArmsFrame(ponyScreenX, hugPy, hugBob);
+            drawPixelPony(ponyScreenX, hugPy, hugBob, null);
+            syncHugOfferButton();
+            requestAnimationFrame(frame);
+            return;
+          }
+
+          ponyBob = Math.sin(animT * 8) * 2;
+
+          for (var k in pulseById) {
+            if (pulseById[k] > 0) pulseById[k] *= 0.82;
+          }
+
+          var scrollPx = totalSteps * PIXELS_PER_STEP;
+          drawSkyAndLayers(scrollPx);
+          drawEndlessGrass(scrollPx);
+          drawRoadsideItems();
+          drawAmbientFront();
+
+          var py = ponyY();
+          drawPixelPony(ponyScreenX, py, ponyBob, null);
+
+          if (goldenStars.length) drawGoldenStarsOverlay();
+
+          syncHugOfferButton();
+          requestAnimationFrame(frame);
+        }
+
+        function processTap(clientX, clientY) {
+          markInteraction();
+          if (hugSceneActive) return;
+          /** 胡萝卜狂奔：不手动叠步、不点路边物，但可点地左右挪小马 */
+          if (suppressSpawn) {
+            movePonyTowardTap(clientX);
+            return;
+          }
+          var hit = findHit(clientX, clientY);
+          if (hit) {
+            if (hit.kind === "carrot") {
+              pulseItem(hit.id);
+              roadside = roadside.filter(function (x) {
+                return x.id !== hit.id;
+              });
+              playDing();
+              startSprint();
+            } else {
+              pulseItem(hit.id);
+              playDing();
+              var b = hit.blessing;
+              if (!b) b = normalizeBlessing({ text: "花笺一页", nickname: "" });
+              var extra =
+                hit.isGolden
+                  ? "你已经陪小马走了 " +
+                    hit.milestoneValue +
+                    " 步，谢谢你一直在这里。（站长寄语）"
+                  : "";
+              openBlessingModal({
+                poolId: b.id,
+                type: b.type,
+                text: b.text,
+                image: b.image,
+                audio: b.audio,
+                video: b.video,
+                nickname: b.nickname,
+                isGolden: hit.isGolden,
+                milestoneValue: hit.milestoneValue,
+                extraLine: extra,
+              });
+            }
+            return;
+          }
+          oneStep();
+          movePonyTowardTap(clientX);
+        }
+
+        function onCanvasPointerDown(e) {
+          if (e.button !== undefined && e.button !== 0) return;
+          if (hugSceneActive) return;
+          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+          activePointerId = e.pointerId;
+          ptrDownT = performance.now();
+          ptrMoved = false;
+          ptrDownX = e.clientX;
+          ptrDownY = e.clientY;
+          try {
+            canvas.setPointerCapture(e.pointerId);
+          } catch (err) {}
+
+          var hit = findHit(e.clientX, e.clientY);
+          if (hit) {
+            longPressTimer = null;
+            return;
+          }
+
+          longPressTimer = setTimeout(function () {
+            longPressTimer = null;
+            if (!ptrMoved) startJog();
+          }, LONG_PRESS_MS);
+        }
+
+        function onCanvasPointerMove(e) {
+          if (e.pointerId !== activePointerId) return;
+          if (
+            suppressSpawn &&
+            !hugSceneActive &&
+            modalRoot.hidden &&
+            listModalRoot.hidden
+          ) {
+            movePonyTowardTap(e.clientX);
+          }
+          var dx = e.clientX - ptrDownX;
+          var dy = e.clientY - ptrDownY;
+          if (dx * dx + dy * dy > 100) {
+            ptrMoved = true;
+            if (longPressTimer) {
+              clearTimeout(longPressTimer);
+              longPressTimer = null;
+            }
+          }
+        }
+
+        function onCanvasPointerUp(e) {
+          if (e.pointerId !== activePointerId) return;
+          activePointerId = null;
+          if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+
+          var wasJog = jogMode;
+          stopJog();
+
+          if (hugSceneActive) return;
+          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+
+          if (wasJog) {
+            e.preventDefault();
+            return;
+          }
+
+          var elapsed = performance.now() - ptrDownT;
+          if (ptrMoved) {
+            if (suppressSpawn) {
+              movePonyTowardTap(e.clientX);
+              e.preventDefault();
+            }
+            return;
+          }
+
+          if (elapsed < LONG_PRESS_MS) {
+            processTap(e.clientX, e.clientY, e);
+            e.preventDefault();
+          }
+        }
+
+        modalClose.addEventListener("click", function (e) {
+          e.stopPropagation();
+          closeModal();
+        });
+        modalRoot.addEventListener("click", function (e) {
+          if (e.target === modalRoot) closeModal();
+        });
+        modalRoot.addEventListener(
+          "touchend",
+          function (e) {
+            if (e.target === modalRoot) {
+              e.preventDefault();
+              closeModal();
+            }
+          },
+          { passive: false }
+        );
+
+        blessingBadge.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openListModal();
+        });
+
+        if (hugOfferBtn) {
+          hugOfferBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            startHugScene();
+          });
+        }
+        if (hugLayer) {
+          hugLayer.addEventListener("click", function (e) {
+            if (e.target.closest && e.target.closest(".hug-pony-nudge")) return;
+            e.preventDefault();
+            e.stopPropagation();
+            endHugScene();
+          });
+        }
+
+        setupPonyNudgeHold(ponyNudgeLeft, -1);
+        setupPonyNudgeHold(ponyNudgeRight, 1);
+        setupPonyNudgeHold(hugPonyLeft, -1);
+        setupPonyNudgeHold(hugPonyRight, 1);
+
+        window.addEventListener(
+          "keydown",
+          function (e) {
+            var k = e.key;
+            var left = k === "ArrowLeft" || k === "a" || k === "A";
+            var right = k === "ArrowRight" || k === "d" || k === "D";
+            if (!left && !right) return;
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
+            e.preventDefault();
+            nudgePonyHorizontal(left ? -PONY_KEY_NUDGE_PX : PONY_KEY_NUDGE_PX);
+          },
+          true
+        );
+
+        listModalClose.addEventListener("click", function (e) {
+          e.stopPropagation();
+          closeListModal();
+        });
+        listModalRoot.addEventListener("click", function (e) {
+          if (e.target === listModalRoot) closeListModal();
+        });
+        listModalRoot.addEventListener(
+          "touchend",
+          function (e) {
+            if (e.target === listModalRoot) {
+              e.preventDefault();
+              closeListModal();
+            }
+          },
+          { passive: false }
+        );
+
+        canvas.addEventListener("pointerdown", onCanvasPointerDown);
+        canvas.addEventListener("pointermove", onCanvasPointerMove);
+        canvas.addEventListener("pointerup", onCanvasPointerUp);
+        canvas.addEventListener("pointercancel", onCanvasPointerUp);
+
+        window.addEventListener("resize", function () {
+          resize();
+        });
+
+        loadStepsFromStorage();
+        loadPonyX();
+        loadReceivedBlessings();
+        updateBlessingBadge();
+        lastInteractionMs = performance.now();
+        lastForwardStepMs = performance.now();
+
+        resize();
+        syncBodyModalChromeClass();
+        fetchBlessings().then(function () {
+          requestAnimationFrame(frame);
+        });
+      })();
+    </script>
   </body>
 </html>

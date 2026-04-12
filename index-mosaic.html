@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1d21" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Hi 恋恋宝贝</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- 一律加 boot：首屏防闪（与仪式是否完成无关）；是否显示开屏仍由 app.js 读 session 决定 -->
+    <script>
+      document.documentElement.classList.add("birthday-gate-boot");
+    </script>
+    <main class="container">
+      <header class="stage-width hero-header">
+        <div class="hero-header__row">
+          <button type="button" id="adminKickerBtn" class="hero-kicker" aria-label="Happy Birthday">
+            Happy Birthday
+          </button>
+          <button
+            type="button"
+            id="exportBlessingsTextBtn"
+            class="hero-export-text-btn hero-export-text-btn--prominent tiny"
+            hidden
+          >
+            导出祝福文案
+          </button>
+        </div>
+        <div class="hero-split">
+          <div class="hero-col hero-col-intro">
+            <h1>Hi 恋恋宝贝</h1>
+            <p class="hero-subtitle">今天有好多爱想紧紧拥抱你</p>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls primary-controls primary-controls--row stage-width" aria-label="查找祝福">
+        <input
+          id="codeInput"
+          class="primary-controls__input"
+          type="text"
+          maxlength="4"
+          placeholder="输入编号0001-1000"
+          inputmode="numeric"
+          autocomplete="off"
+          enterkeyhint="search"
+          aria-label="祝福编号"
+        />
+        <button id="openBtn" class="primary-controls__open" type="button">查找</button>
+        <button id="randomBtn" class="ghost primary-controls__first" type="button" title="从0001起按顺序浏览">
+          第一条
+        </button>
+      </section>
+      <p class="controls-help stage-width" id="controlsHelp">
+        填编号会到指定祝福，按第一条将按序接收祝福。
+      </p>
+
+      <section class="canvas-wrap" id="canvasWrap" data-canvas-zoom="fit" aria-label="祝福主图">
+        <div id="canvasStage" class="canvas-stage">
+          <img
+            id="heroImage"
+            class="hero-image"
+            alt="生贺主视觉"
+            decoding="async"
+            fetchpriority="high"
+          />
+          <div id="mosaic" class="mosaic" aria-label="祝福热区"></div>
+        </div>
+      </section>
+      <div class="canvas-view-hint-row stage-width" role="group" aria-label="主图视图说明与操作">
+        <p class="hint canvas-view-hint">双指捏合缩放，放大后可拖动查看。</p>
+        <div class="canvas-view-controls">
+          <button type="button" id="canvasResetBtn" class="canvas-view-btn" title="还原缩放与位置">
+            还原视图
+          </button>
+        </div>
+      </div>
+      <section class="special-entry-line special-entry-line--highlight stage-width">
+        <p class="special-entry-text">还有小彩蛋~刘恋没事别看</p>
+        <button id="quizEntryBtn" class="tiny special-entry-btn" type="button">我要看彩蛋</button>
+      </section>
+    </main>
+
+    <!-- 全屏生日门：先于祝福页展示，吹灭蜡烛后关闭 -->
+    <div
+      id="birthdayGate"
+      class="birthday-gate"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="birthdayGateTitle"
+      hidden
+    >
+      <div class="birthday-gate__pyro" aria-hidden="true">
+        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 10%; --gy: 14%; --gd: 0s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <div class="gate-py-burst gate-py-burst--gold" style="--gx: 82%; --gy: 20%; --gd: 0.55s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 18%; --gy: 68%; --gd: 1.1s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <div class="gate-py-burst gate-py-burst--gold" style="--gx: 88%; --gy: 62%; --gd: 1.65s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <div class="gate-py-burst gate-py-burst--rose" style="--gx: 50%; --gy: 10%; --gd: 2.2s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <div class="gate-py-burst gate-py-burst--mint" style="--gx: 42%; --gy: 78%; --gd: 2.75s">
+          <span class="gate-py-ray" style="--r: 0deg"></span><span class="gate-py-ray" style="--r: 45deg"></span
+          ><span class="gate-py-ray" style="--r: 90deg"></span><span class="gate-py-ray" style="--r: 135deg"></span
+          ><span class="gate-py-ray" style="--r: 180deg"></span><span class="gate-py-ray" style="--r: 225deg"></span
+          ><span class="gate-py-ray" style="--r: 270deg"></span><span class="gate-py-ray" style="--r: 315deg"></span>
+        </div>
+        <span class="gate-py-float" style="--fx: 8%; --fy: 40%; --fd: 0s"></span>
+        <span class="gate-py-float" style="--fx: 92%; --fy: 45%; --fd: 1.3s"></span>
+        <span class="gate-py-float" style="--fx: 30%; --fy: 88%; --fd: 2.1s"></span>
+        <span class="gate-py-float" style="--fx: 70%; --fy: 12%; --fd: 0.7s"></span>
+        <span class="gate-py-float" style="--fx: 55%; --fy: 92%; --fd: 1.9s"></span>
+      </div>
+      <div class="birthday-gate__inner">
+        <h2 id="birthdayGateTitle" class="birthday-gate__title">生日快乐</h2>
+        <p id="birthdayGateHint" class="birthday-gate__hint">来吧恋姐，点点蛋糕吹蜡烛</p>
+        <button type="button" class="birthday-gate__cake-hit" id="birthdayGateCakeBtn" aria-describedby="birthdayGateHint">
+          <span class="birthday-gate__mouth" aria-hidden="true">
+            <span class="birthday-gate__mouth-lip birthday-gate__mouth-lip--upper"></span>
+            <span class="birthday-gate__mouth-lip birthday-gate__mouth-lip--lower"></span>
+          </span>
+          <span class="birthday-gate__puff" aria-hidden="true"></span>
+          <div class="birthday-gate__cake-visual">
+            <div class="birthday-gate__candles" role="group" aria-label="生日蜡烛">
+              <div class="birthday-gate__candle">
+                <span class="candle-mini__stick"></span>
+                <span class="candle-mini__flame"><span class="candle-mini__flame-core"></span></span>
+              </div>
+            </div>
+            <div class="birthday-gate__icing birthday-gate__icing--drip" aria-hidden="true"></div>
+            <div class="birthday-gate__layer birthday-gate__layer--upper"></div>
+            <div class="birthday-gate__layer birthday-gate__layer--lower"></div>
+            <div class="birthday-gate__plate"></div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <dialog id="contentModal" class="modal" aria-label="祝福详情">
+      <form method="dialog" class="modal-card modal-card--blessing">
+        <div class="modal-head modal-head--close-only">
+          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+        <p id="blessingOwnerId" class="blessing-owner-id" hidden aria-hidden="true"></p>
+        <div class="blessing-nav-bar" id="blessingJumpRow">
+          <button id="prevBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
+            上一条
+          </button>
+          <div id="blessingSaveBar" class="blessing-nav-save" role="group" aria-label="保存到本地"></div>
+          <button id="nextBlessingBtn" type="button" class="blessing-nav-side blessing-nav-side--green">
+            下一条
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 祝福弹窗配图全屏放大（手机双指捏合 / 桌面 Ctrl+滚轮） -->
+    <dialog id="blessingImageViewer" class="blessing-img-viewer" aria-label="放大查看图片">
+      <div class="blessing-img-viewer__shell">
+        <button type="button" class="blessing-img-viewer__close" id="blessingImageViewerCloseBtn" aria-label="关闭大图">
+          ×
+        </button>
+        <div class="blessing-img-viewer__stage" id="blessingImageViewerStage">
+          <div class="blessing-img-viewer__transform" id="blessingImageViewerTransform">
+            <img id="blessingImageViewerImg" alt="" draggable="false" decoding="async" />
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <template id="emptyTemplate">
+      <div class="empty-msg">
+        <p>这一格暂时还没有内容。</p>
+        <p>可以换一格再试试。</p>
+      </div>
+    </template>
+
+    <dialog id="adminModal" class="modal">
+      <form method="dialog" class="modal-card">
+        <div class="modal-head">
+          <h2>运营管理</h2>
+          <button class="close-btn" value="cancel" aria-label="关闭">×</button>
+        </div>
+
+        <div class="admin-guide-box">
+          <p class="admin-guide-title">推荐工作流（轻量、好管）</p>
+          <p class="admin-guide-one">
+            在项目里建<strong>内容收集文件夹</strong>（默认 <code class="admin-code">content/</code>），图片按编号命名 <code class="admin-code">0001.jpg</code>……再配 CSV。格子只显示图，点开看文案和音视频。
+          </p>
+          <p class="admin-guide-one"><strong>CSV 表头（五列，UTF-8）：</strong></p>
+          <p class="admin-csv-headline"><span class="admin-code">编号,文案,图片url,音频url,视频url</span></p>
+          <ul class="admin-guide-ul">
+            <li><strong>图片url</strong> 示例：<span class="admin-code">./content/0001.jpg</span>（与文件夹名、文件名一致）。也可用 https 图链。</li>
+            <li><strong>音频url / 视频url</strong> 不需要就整列留空。</li>
+            <li>用 Excel 导出时请选<strong>「CSV UTF-8（逗号分隔）」</strong>；若导入显示成功 0 条，多半是编码不是 UTF-8，表头「编号」读不到。</li>
+          </ul>
+          <ol class="admin-dumb-steps">
+            <li>图放进 <code class="admin-code">content/</code>，表按上行表头填写，另存 CSV。</li>
+            <li><strong>分区③</strong>导入 CSV → <strong>分区⑤</strong>保存或下载 <code class="admin-code">data.json</code>。</li>
+            <li>上线：网页 + <code class="admin-code">data.json</code> + <code class="admin-code">content/</code> 整夹一起部署。</li>
+          </ol>
+        </div>
+
+        <section class="admin-section">
+          <h3 class="admin-section-title"><span class="admin-zone-num">①</span> 主视觉底图（整页一张）</h3>
+          <p class="admin-section-desc">只影响背后大图，和 1000 个格子无关。想换再传。</p>
+          <div class="controls admin-controls-tight">
+            <label for="imageFile">上传底图</label>
+            <input id="imageFile" type="file" accept="image/*" />
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <h3 class="admin-section-title"><span class="admin-zone-num">②</span> 格子内容对应关系（心里有个表）</h3>
+          <table class="admin-field-table">
+            <thead>
+              <tr>
+                <th>内容</th>
+                <th>必填？</th>
+                <th>写在哪</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>文案</td>
+                <td>每格要</td>
+                <td>CSV「文案」列</td>
+              </tr>
+              <tr>
+                <td>配图</td>
+                <td>每格要</td>
+                <td>CSV「图片url」，如 <code class="admin-code">./content/0001.jpg</code></td>
+              </tr>
+              <tr>
+                <td>音频 / 视频</td>
+                <td>随意</td>
+                <td>CSV「音频url」「视频url」，空 = 没有</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="admin-section">
+          <h3 class="admin-section-title"><span class="admin-zone-num">③</span> 上传格子 CSV（推荐先做这一步）</h3>
+          <p class="admin-section-desc">表头：<span class="admin-code">编号,文案,图片url,音频url,视频url</span>。参考项目里 <code class="admin-code">sample-import.csv</code>。</p>
+          <div class="controls admin-controls-tight">
+            <label for="csvFile">选择 CSV</label>
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <h3 class="admin-section-title"><span class="admin-zone-num">④</span> 批量选本地图（可选，与 CSV 路径一致）</h3>
+          <p class="admin-section-desc">若 CSV 里写的是 <span class="admin-code">./content/0001.jpg</span>，请把「内容文件夹」设为 <code class="admin-code">content</code>（或你的文件夹名），再把图片按编号命名放进对应目录后，在下方多选。也可用命令行 <span class="admin-code">node scripts/generate-data-from-media.mjs content</span> 把磁盘上的图合并进 <code class="admin-code">data.json</code>。</p>
+          <div class="controls admin-controls-tight">
+            <label for="bulkContentFolder">内容文件夹名（对应 CSV 里 <span class="admin-code">./此文件夹/0001.jpg</span>）</label>
+            <input id="bulkContentFolder" type="text" value="content" maxlength="64" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="controls admin-bulk-row">
+            <div class="admin-bulk-label">
+              <label for="bulkImageFiles">批量选图</label>
+              <p class="admin-bulk-hint">文件名须为四位编号：<code>0001.jpg</code>。部署时网站目录里要有同名文件夹与文件。</p>
+            </div>
+            <input id="bulkImageFiles" type="file" accept="image/*" multiple />
+            <div class="admin-bulk-modes">
+              <label class="admin-bulk-radio">
+                <input type="radio" name="bulkImageMode" value="relative" checked />
+                仅登记路径 <span class="admin-code">./内容文件夹/编号.后缀</span>（推荐）
+              </label>
+              <label class="admin-bulk-radio">
+                <input type="radio" name="bulkImageMode" value="dataurl" />
+                嵌入 Base64（仅少量小图）
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <h3 class="admin-section-title"><span class="admin-zone-num">⑤</span> 保存 / 换电脑 / 备份</h3>
+          <p class="admin-section-desc">导入 <code class="admin-code">data.json</code> 会覆盖当前格子数据。改完务必保存。</p>
+          <div class="controls admin-controls-tight">
+            <label for="dataFile">导入 data.json</label>
+            <input id="dataFile" type="file" accept=".json,application/json" />
+          </div>
+          <div class="controls admin-actions-row">
+            <button id="saveLocalBtn" type="button">保存到当前浏览器</button>
+            <button id="downloadDataBtn" class="ghost" type="button">下载 data.json</button>
+            <button id="clearLocalBtn" class="ghost" type="button">清空本地运营数据</button>
+          </div>
+        </section>
+        <p id="adminStatus" class="hint admin-status-line">状态：未进入运营模式。</p>
+      </form>
+    </dialog>
+
+    <dialog id="quizAccessModal" class="modal">
+      <div class="modal-card quiz-access-card">
+        <div class="modal-head modal-head--close-only">
+          <button type="button" class="close-btn" id="quizAccessCloseBtn" aria-label="关闭">×</button>
+        </div>
+        <p class="quiz-access-question">爱我们吗？</p>
+        <div class="quiz-access-btns">
+          <button type="button" id="quizLoveBtn" class="quiz-access-btn quiz-access-btn--love">爱</button>
+          <button type="button" id="quizMehBtn" class="quiz-access-btn quiz-access-btn--meh ghost">一般吧</button>
+          <button type="button" id="quizNopeBtn" class="quiz-access-btn quiz-access-btn--nope ghost">不爱</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="quizModal" class="modal">
+      <form id="quizForm" class="modal-card quiz-modal-card">
+        <div class="modal-head">
+          <h2 id="quizTitle">彩蛋</h2>
+          <button type="button" class="close-btn" id="quizModalCloseBtn" aria-label="关闭">×</button>
+        </div>
+        <div id="quizBody" class="modal-body quiz-body"></div>
+        <div id="quizActionRow" class="controls hidden">
+          <button id="quizSubmitBtn" type="button">提交答案</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
