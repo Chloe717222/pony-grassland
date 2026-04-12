@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify data.json paths and content/
+      - name: Verify grassland site and content/
         run: node scripts/verify-site-assets.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

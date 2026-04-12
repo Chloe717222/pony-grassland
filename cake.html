@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>生日快乐 · 恋姐</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --ink: #1a2c22;
+        --muted: #4a6356;
+        --cake-dark: #2d7a52;
+        --cake-mid: #42a06e;
+        --cake-light: #7ecfaa;
+        --accent: #2a6e4c;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
+        overflow-x: hidden;
+        font-family:
+          "Segoe UI",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          sans-serif;
+        background: var(--page);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      #fxCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .wrap {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: max(16px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+          max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+        width: 100%;
+        max-width: 100vw;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 7vw, 36px);
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-align: center;
+        color: var(--ink);
+      }
+      .sub {
+        margin: 0;
+        font-size: clamp(14px, 3.8vw, 17px);
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.55;
+        max-width: 22em;
+      }
+      .cake-stage {
+        position: relative;
+        width: min(300px, 78vw);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 0 0;
+        overflow: visible;
+      }
+      .cake-btn {
+        position: relative;
+        border: none;
+        padding: 0;
+        background: none;
+        cursor: pointer;
+        touch-action: manipulation;
+        filter: drop-shadow(0 10px 22px rgba(30, 80, 50, 0.18));
+        overflow: visible;
+      }
+      .cake-btn:active {
+        transform: scale(0.98);
+      }
+      .cake-btn[disabled] {
+        cursor: default;
+        opacity: 0.98;
+      }
+      .cake-svg {
+        display: block;
+        width: min(280px, 72vw);
+        height: auto;
+        overflow: visible;
+      }
+      .flame {
+        transform-box: fill-box;
+        transform-origin: 50% 100%;
+        animation: flicker 0.38s ease-in-out infinite alternate;
+      }
+      @keyframes flicker {
+        from {
+          transform: scale(1, 1) translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: scale(0.94, 1.06) translateY(0.5px);
+          opacity: 0.92;
+        }
+      }
+      .flame.off {
+        animation: none;
+        opacity: 0;
+        transform: scale(0.15, 0.35) translateY(6px);
+        transition: opacity 0.48s ease, transform 0.52s ease;
+      }
+      .hint-tap {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0;
+        text-align: center;
+      }
+      #letterOverlay[hidden] {
+        display: none !important;
+      }
+      #letterOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: rgba(20, 32, 26, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+      }
+      .letter-card {
+        width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 400px;
+        max-height: min(82dvh, 560px);
+        overflow: auto;
+        background: linear-gradient(165deg, #fffdf8 0%, #f5ebe0 100%);
+        color: #2a1f28;
+        border-radius: 16px;
+        padding: 22px 18px 18px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+      }
+      .letter-card h2 {
+        margin: 0 0 14px;
+        font-size: 18px;
+      }
+      #letterStream {
+        font-size: 16px;
+        line-height: 1.65;
+        min-height: 120px;
+      }
+      #letterStream p {
+        margin: 0 0 10px;
+        opacity: 0;
+        animation: lineIn 0.55s ease forwards;
+      }
+      @keyframes lineIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .letter-actions {
+        margin-top: 16px;
+      }
+      .letter-actions button {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        background: #3d8b6e;
+        color: #fff;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      #floatLayer {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .float-line {
+        position: absolute;
+        left: 0;
+        max-width: min(92vw, 420px);
+        padding: 8px 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--ink);
+        font-size: clamp(12px, 3.2vw, 14px);
+        line-height: 1.4;
+        animation: floatUp 12s linear forwards;
+        border: 1px solid rgba(45, 122, 82, 0.2);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      }
+      @keyframes floatUp {
+        from {
+          transform: translateY(110vh);
+          opacity: 0;
+        }
+        8% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-20vh);
+          opacity: 0.35;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="fxCanvas" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <h1>生日快乐</h1>
+      <p class="sub">来吧恋姐，点点绿色蛋糕吹蜡烛</p>
+      <div class="cake-stage">
+        <button type="button" class="cake-btn" id="cakeBtn" aria-label="点击蛋糕吹蜡烛">
+          <svg
+            class="cake-svg"
+            viewBox="0 -48 200 248"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            overflow="visible"
+          >
+            <defs>
+              <linearGradient id="cakeTier3" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#8fd9b4" />
+                <stop offset="100%" stop-color="#3d8f62" />
+              </linearGradient>
+              <linearGradient id="cakeTier2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#9ee3c4" />
+                <stop offset="100%" stop-color="#4aa578" />
+              </linearGradient>
+              <linearGradient id="cakeTier1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#b8efd4" />
+                <stop offset="100%" stop-color="#5cb88a" />
+              </linearGradient>
+              <radialGradient id="flameOuter" cx="50%" cy="88%" r="55%" fx="50%" fy="88%">
+                <stop offset="0%" stop-color="#fffef0" stop-opacity="0.95" />
+                <stop offset="28%" stop-color="#ffe566" stop-opacity="0.92" />
+                <stop offset="55%" stop-color="#ffb347" stop-opacity="0.75" />
+                <stop offset="82%" stop-color="#ff7a45" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="#e84820" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="flameCore" cx="50%" cy="78%" r="38%" fx="48%" fy="82%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98" />
+                <stop offset="45%" stop-color="#fff8dc" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#ffd54f" stop-opacity="0" />
+              </radialGradient>
+              <filter id="flameGlow" x="-80%" y="-120%" width="260%" height="240%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="b" />
+                <feMerge>
+                  <feMergeNode in="b" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <ellipse cx="100" cy="172" rx="72" ry="16" fill="rgba(30, 70, 45, 0.12)" />
+            <rect x="40" y="108" width="120" height="56" rx="12" fill="url(#cakeTier1)" stroke="#2d6a48" stroke-width="1.5" />
+            <rect x="52" y="72" width="96" height="44" rx="10" fill="url(#cakeTier2)" stroke="#256040" stroke-width="1.5" />
+            <rect x="64" y="44" width="72" height="36" rx="8" fill="url(#cakeTier3)" stroke="#1e4a32" stroke-width="1.5" />
+            <ellipse cx="100" cy="142" rx="54" ry="9" fill="rgba(255,255,255,0.35)" />
+            <g id="candles">
+              <line x1="100" y1="44" x2="100" y2="12" stroke="#d4c4a8" stroke-width="7" stroke-linecap="round" />
+              <line x1="100" y1="44" x2="100" y2="13" stroke="#faf5eb" stroke-width="3.5" stroke-linecap="round" />
+              <line x1="100" y1="12" x2="100" y2="7" stroke="#4a3a2a" stroke-width="2.2" stroke-linecap="round" />
+            </g>
+            <g id="flames" transform="translate(100, 7)">
+              <g class="flame" filter="url(#flameGlow)">
+                <path
+                  d="M0 0.5 C-6 0.5 -11 -7 -12.5 -16 C-14 -26 -9 -35.5 -2.8 -41.2 C-1 -43 1 -43 2.8 -41.2 C9 -35.5 14 -26 12.5 -16 C11 -7 6 0.5 0 0.5 Z"
+                  fill="url(#flameOuter)"
+                />
+                <ellipse cx="-0.5" cy="-23" rx="6" ry="15" fill="url(#flameCore)" />
+              </g>
+            </g>
+          </svg>
+        </button>
+      </div>
+      <p class="hint-tap" id="audioHint" hidden>若音乐未响，再轻点一下屏幕</p>
+    </div>
+
+    <div id="letterOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="letterTitle">
+      <div class="letter-card">
+        <h2 id="letterTitle">一封信</h2>
+        <div id="letterStream"></div>
+        <div class="letter-actions">
+          <button type="button" id="letterNextBtn">下一句</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="floatLayer" aria-hidden="true"></div>
+
+    <audio id="cakeBgm" loop preload="auto" playsinline webkit-playsinline="true"></audio>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var LS_KEY_RECEIVED = "xmgrassland_v1_receivedBlessings";
+
+        /** 长信：按句拆分，可整段替换为你们的正文 */
+        var LONG_LETTER_LINES = [
+          "恋姐，生日快乐。",
+          "草原上的每一步，都是大家悄悄攒下的喜欢。",
+          "A–J 十个场景走下来，你大概已经听够了「要开心」，可我们还是想再说一遍——要开心，也要好好睡觉。",
+          "蜡烛灭掉的一瞬间，愿望会自己长翅膀；你只管继续发光，我们在人群里当你的回声。",
+          "这封信写到这里就停笔啦，剩下的交给蛋糕、烟花，和还在播放的那首生日歌。",
+        ];
+
+        var canvas = document.getElementById("fxCanvas");
+        var ctx = canvas.getContext("2d", { alpha: true });
+        var cakeBtn = document.getElementById("cakeBtn");
+        var letterOverlay = document.getElementById("letterOverlay");
+        var letterStream = document.getElementById("letterStream");
+        var letterNextBtn = document.getElementById("letterNextBtn");
+        var floatLayer = document.getElementById("floatLayer");
+        var cakeBgm = document.getElementById("cakeBgm");
+        var audioHint = document.getElementById("audioHint");
+
+        /** 与仓库 content/happy-birthday.mp3 一致（根目录打开 cake.html 时路径相对本页） */
+        var BGM_SRC = "content/happy-birthday.mp3";
+        if (cakeBgm) {
+          cakeBgm.src = BGM_SRC;
+          try {
+            cakeBgm.load();
+          } catch (e) {}
+        }
+
+        var dpr = 1;
+        var W = 0;
+        var H = 0;
+        var particles = [];
+        var candlesOut = false;
+        var letterIndex = 0;
+        var floatStarted = false;
+        var lastT = 0;
+
+        function resize() {
+          dpr = Math.min(window.devicePixelRatio || 1, 2);
+          W = window.innerWidth;
+          H = window.innerHeight;
+          canvas.width = Math.floor(W * dpr);
+          canvas.height = Math.floor(H * dpr);
+          canvas.style.width = W + "px";
+          canvas.style.height = H + "px";
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function spawnFirework() {
+          var x = W * (0.12 + Math.random() * 0.76);
+          var y = H * (0.18 + Math.random() * 0.42);
+          var n = 64 + ((Math.random() * 40) | 0);
+          var roll = Math.random();
+          var hue =
+            roll < 0.34
+              ? 125 + Math.random() * 35
+              : roll < 0.67
+                ? 38 + Math.random() * 28
+                : (320 + Math.random() * 50) % 360;
+          for (var i = 0; i < n; i++) {
+            var ang = (i / n) * Math.PI * 2 + Math.random() * 0.25;
+            var spd = 95 + Math.random() * 130;
+            particles.push({
+              x: x,
+              y: y,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd,
+              life: 0.95 + Math.random() * 0.45,
+              hue: hue + (Math.random() * 50 - 25),
+              sz: 2.2 + Math.random() * 2.2,
+            });
+          }
+        }
+
+        function tickParticles(dt) {
+          var sec = dt / 1000;
+          for (var i = particles.length - 1; i >= 0; i--) {
+            var p = particles[i];
+            p.life -= sec * 0.9;
+            p.vy += 35 * sec;
+            p.x += p.vx * sec;
+            p.y += p.vy * sec;
+            if (p.life <= 0) particles.splice(i, 1);
+          }
+        }
+
+        function drawParticles() {
+          ctx.clearRect(0, 0, W, H);
+          for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            var a = Math.max(0, Math.min(1, p.life));
+            var sat = p.hue > 80 && p.hue < 170 ? "72%" : "88%";
+            var light = p.hue > 80 && p.hue < 170 ? "48%" : "58%";
+            ctx.fillStyle = "hsla(" + p.hue + "," + sat + "," + light + "," + (a * 0.95) + ")";
+            var r = p.sz != null ? p.sz : 2.4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        function frame(t) {
+          if (!lastT) lastT = t;
+          var dt = Math.min(40, t - lastT);
+          lastT = t;
+          if (Math.random() < 0.065) spawnFirework();
+          tickParticles(dt);
+          drawParticles();
+          requestAnimationFrame(frame);
+        }
+
+        function tryPlayBgm() {
+          if (!cakeBgm) return;
+          var p = cakeBgm.play();
+          if (p && typeof p.then === "function") {
+            p.catch(function () {
+              audioHint.hidden = false;
+            });
+          }
+        }
+
+        function blowCandles() {
+          candlesOut = true;
+          var flames = cakeBtn ? cakeBtn.querySelectorAll(".flame") : [];
+          for (var i = 0; i < flames.length; i++) flames[i].classList.add("off");
+          cakeBtn.disabled = true;
+          setTimeout(function () {
+            startLetter();
+          }, 700);
+        }
+
+        function startLetter() {
+          letterIndex = 0;
+          letterStream.innerHTML = "";
+          letterOverlay.hidden = false;
+          pushLetterLine();
+        }
+
+        function pushLetterLine() {
+          if (letterIndex >= LONG_LETTER_LINES.length) {
+            endLetter();
+            return;
+          }
+          var p = document.createElement("p");
+          p.textContent = LONG_LETTER_LINES[letterIndex];
+          letterStream.appendChild(p);
+          letterIndex++;
+          letterNextBtn.textContent =
+            letterIndex >= LONG_LETTER_LINES.length ? "收信" : "下一句";
+        }
+
+        function endLetter() {
+          letterOverlay.hidden = true;
+          startFloatingBlessings();
+        }
+
+        function loadBlessingTexts() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_RECEIVED);
+            if (!raw) return [];
+            var arr = JSON.parse(raw);
+            if (!Array.isArray(arr)) return [];
+            var lines = [];
+            for (var i = 0; i < arr.length; i++) {
+              var t = (arr[i].text || "").trim();
+              if (t) lines.push(t);
+            }
+            return lines;
+          } catch (e) {
+            return [];
+          }
+        }
+
+        function startFloatingBlessings() {
+          if (floatStarted) return;
+          floatStarted = true;
+          var texts = loadBlessingTexts();
+          if (!texts.length) texts = ["愿你所行皆坦途，所遇皆温柔。"];
+          var i = 0;
+          function spawnOne() {
+            var el = document.createElement("div");
+            el.className = "float-line";
+            el.textContent = texts[i % texts.length];
+            el.style.left = Math.random() * 78 + "%";
+            el.style.animationDuration = 10 + Math.random() * 8 + "s";
+            floatLayer.appendChild(el);
+            setTimeout(function () {
+              try {
+                el.remove();
+              } catch (e) {}
+            }, 15000);
+            i++;
+          }
+          spawnOne();
+          var iv = setInterval(spawnOne, 2200);
+          setTimeout(function () {
+            clearInterval(iv);
+          }, Math.min(120000, 2000 + texts.length * 2500));
+        }
+
+        cakeBtn.addEventListener("click", function () {
+          tryPlayBgm();
+          if (!candlesOut) blowCandles();
+        });
+
+        letterNextBtn.addEventListener("click", function () {
+          if (letterIndex >= LONG_LETTER_LINES.length) {
+            endLetter();
+          } else {
+            pushLetterLine();
+          }
+        });
+
+        document.body.addEventListener(
+          "click",
+          function once() {
+            tryPlayBgm();
+          },
+          { once: true, capture: true }
+        );
+
+        window.addEventListener("resize", resize);
+        resize();
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>

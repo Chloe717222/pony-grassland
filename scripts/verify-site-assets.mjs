@@ -1,130 +1,149 @@
-/**
- * 部署前自检：data.json 里引用的相对路径文件是否在仓库中存在。
- * 运行：node scripts/verify-site-assets.mjs
- * 用于 GitHub Actions 或本地发布前，避免「线上 JSON 写了路径但仓库里没有该文件」。
- */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, "..");
-const dataPath = path.join(root, "data.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, "..");
 
-const REL = /^\.\//;
-const HTTP = /^https?:\/\//i;
-const DATA = /^data:/i;
+const REQUIRED_ROOT = ["index.html", "cake.html"];
+/** 与 index.html 中 BLESSINGS_CSV_CANDIDATES 顺序一致，至少须存在其一 */
+const CSV_CANDIDATES = [
+  "content/blessings-scene-aj.csv",
+  "content/content-import001(1).csv",
+];
+const BGM_REL = "content/happy-birthday.mp3";
+/** 常见误操作：把某条祝福语音复制成生日 BGM 文件名 */
+const BGM_MUST_NOT_MATCH = "content/0001.mp3";
 
-function shouldCheckMediaRef(s) {
-  const u = String(s || "").trim();
-  if (!u) return false;
-  if (DATA.test(u) || HTTP.test(u) || u.startsWith("blob:")) return false;
-  if (REL.test(u) || (!HTTP.test(u) && !path.isAbsolute(u))) return true;
+/** @param {string} abs */
+function sha256File(abs) {
+  const h = crypto.createHash("sha256");
+  h.update(fs.readFileSync(abs));
+  return h.digest("hex");
+}
+
+/** @param {string} p */
+function toRepoPath(p) {
+  const s = String(p || "").trim();
+  if (!s) return "";
+  const n = s.replace(/^\.\//, "");
+  return path.join(repoRoot, n);
+}
+
+const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+const AUDIO_EXTS = [".mp3", ".webm", ".ogg", ".m4a"];
+const VIDEO_EXTS = [".mp4", ".webm", ".mov"];
+
+/** @param {string} ref */
+function extsForRef(ref) {
+  const lower = ref.toLowerCase();
+  if (VIDEO_EXTS.some((e) => lower.endsWith(e))) return VIDEO_EXTS;
+  if (AUDIO_EXTS.some((e) => lower.endsWith(e))) return AUDIO_EXTS;
+  return IMAGE_EXTS;
+}
+
+/** CSV 里扩展名可能与磁盘不一致（如写 .png 实为 .jpg），按类型在同编号下试常见扩展名 */
+/** @param {string} ref */
+function resolveContentRef(ref) {
+  const absExact = toRepoPath(ref);
+  if (fs.existsSync(absExact)) return true;
+  const stem = ref.replace(/\.[^./\\]+$/i, "");
+  if (!stem || stem === ref) return false;
+  for (const e of extsForRef(ref)) {
+    if (fs.existsSync(toRepoPath(stem + e))) return true;
+  }
   return false;
 }
 
-function resolveSitePath(ref) {
-  const u = String(ref || "").trim();
-  if (REL.test(u)) return path.join(root, u.slice(2));
-  if (!HTTP.test(u) && !path.isAbsolute(u)) return path.join(root, u);
-  return null;
-}
-
-function collectPathsFromItem(item) {
-  const keys = ["imageUrl", "thumbnail", "url", "audioUrl", "videoUrl"];
-  const out = [];
-  if (!item || typeof item !== "object") return out;
-  for (const k of keys) {
-    if (shouldCheckMediaRef(item[k])) out.push(String(item[k]).trim());
+/** @param {string} line */
+function extractContentRefs(line) {
+  const out = new Set();
+  const re = /\.\/content\/[^\s,"']+/g;
+  let m;
+  while ((m = re.exec(line))) {
+    out.add(m[0]);
   }
-  return out;
+  return [...out];
 }
 
 function main() {
   const errors = [];
-  const mismatchExamples = [];
-  let mismatchCount = 0;
-  const seen = new Set();
 
-  const requiredRootFiles = ["index.html", "app.js", "styles.css", "data.json"];
-  for (const f of requiredRootFiles) {
-    const p = path.join(root, f);
-    if (!fs.existsSync(p)) errors.push(`缺少站点根文件：${f}`);
+  for (const name of REQUIRED_ROOT) {
+    const abs = path.join(repoRoot, name);
+    if (!fs.existsSync(abs)) errors.push(`缺少根目录文件：${name}`);
   }
 
-  if (!fs.existsSync(dataPath)) {
-    console.error("未找到 data.json");
-    process.exit(1);
-  }
-
-  let data;
-  try {
-    data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-  } catch (e) {
-    console.error("data.json 解析失败:", e.message);
-    process.exit(1);
-  }
-
-  const hero = data.heroImage;
-  if (typeof hero === "string" && shouldCheckMediaRef(hero)) {
-    const hp = resolveSitePath(hero);
-    if (hp && !fs.existsSync(hp)) errors.push(`主视觉 heroImage 指向的文件不存在：${hero}`);
-  }
-
-  const items = data.items && typeof data.items === "object" ? data.items : {};
-  for (const [id, item] of Object.entries(items)) {
-    for (const ref of collectPathsFromItem(item)) {
-      if (seen.has(ref)) continue;
-      seen.add(ref);
-      const abs = resolveSitePath(ref);
-      if (!abs) continue;
-      if (fs.existsSync(abs)) continue;
-
-      const m = /^\.\/content\/(\d{4})\.([a-z0-9]+)$/i.exec(ref);
-      if (m) {
-        const idPart = m[1];
-        const dir = path.join(root, "content");
-        let alt = null;
-        if (fs.existsSync(dir)) {
-          const candidates = fs
-            .readdirSync(dir)
-            .filter((f) => new RegExp(`^${idPart}\\.`, "i").test(f));
-          if (candidates.length) alt = candidates.join(", ");
-        }
-        if (alt) {
-          mismatchCount += 1;
-          if (mismatchExamples.length < 5) mismatchExamples.push({ id, ref, alt });
-        } else {
-          errors.push(`格子 ${id}：引用的文件不存在：${ref}（content/ 下也无同编号文件）`);
-        }
-      } else {
-        errors.push(`格子 ${id}：引用的文件不存在：${ref}`);
-      }
+  let csvRel = "";
+  let csvAbs = "";
+  for (const c of CSV_CANDIDATES) {
+    const abs = path.join(repoRoot, c);
+    if (fs.existsSync(abs)) {
+      csvRel = c;
+      csvAbs = abs;
+      break;
     }
   }
+  if (!csvAbs) {
+    errors.push(`缺少祝福 CSV（以下均不存在）：${CSV_CANDIDATES.join("、")}`);
+  }
 
-  const contentDir = path.join(root, "content");
-  if (!fs.existsSync(contentDir)) {
-    errors.push("缺少 content/ 目录（图片/音视频应与此目录一起部署）");
+  const bgmAbs = path.join(repoRoot, BGM_REL);
+  if (!fs.existsSync(bgmAbs)) {
+    errors.push(`缺少生日页 BGM：${BGM_REL}`);
+  } else {
+    const trapAbs = path.join(repoRoot, BGM_MUST_NOT_MATCH);
+    if (fs.existsSync(trapAbs) && sha256File(bgmAbs) === sha256File(trapAbs)) {
+      errors.push(
+        `生日 BGM 与 ${BGM_MUST_NOT_MATCH} 内容完全相同（多为误复制）。请用真正的生日快乐音频覆盖 ${BGM_REL}。`
+      );
+    }
   }
 
   if (errors.length) {
-    console.error("校验失败（共 " + errors.length + " 条）：");
-    for (const e of errors) console.error("  -", e);
+    for (const e of errors) console.error(e);
     process.exit(1);
   }
 
-  if (mismatchCount > 0) {
-    console.log(
-      `[提示] 共 ${mismatchCount} 处 JSON 中的 ./content/编号.扩展名 与磁盘实际扩展名不一致（页面会按扩展名链式重试加载，仍建议对齐）。示例：`
-    );
-    for (const ex of mismatchExamples) {
-      console.log(`  - 格子 ${ex.id}：JSON 为 ${ex.ref}，磁盘同编号有：${ex.alt}`);
-    }
-    console.log("  可运行：node scripts/rewrite-data-to-content-urls.mjs 按磁盘文件改写 data.json。");
+  const csvText = fs.readFileSync(csvAbs, "utf8");
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) {
+    console.error("CSV 无数据行");
+    process.exit(1);
   }
 
-  console.log("校验通过：根目录入口文件、data.json 相对路径与 content/ 一致。");
+  const header = lines[0];
+  if (!header.includes("编号") || !header.includes("图片url")) {
+    console.error("CSV 表头应包含「编号」「图片url」等列");
+    process.exit(1);
+  }
+
+  const missing = [];
+  const seen = new Set();
+
+  for (let i = 1; i < lines.length; i++) {
+    const refs = extractContentRefs(lines[i]);
+    for (const ref of refs) {
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      if (!resolveContentRef(ref)) missing.push({ line: i + 1, ref });
+    }
+  }
+
+  if (missing.length) {
+    console.error(`CSV 中引用但磁盘不存在的文件（共 ${missing.length} 处），示例：`);
+    for (const m of missing.slice(0, 30)) {
+      console.error(`  第 ${m.line} 行：${m.ref}`);
+    }
+    if (missing.length > 30) console.error(`  … 另有 ${missing.length - 30} 处`);
+    process.exit(1);
+  }
+
+  console.log(
+    `校验通过：${REQUIRED_ROOT.join("、")}、${csvRel}（${seen.size} 个不重复资源路径）、${BGM_REL} 均存在。`
+  );
 }
 
 main();

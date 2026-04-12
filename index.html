@@ -6,21 +6,47 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#7ec699" />
+    <meta name="theme-color" content="#78c4a0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
     <title>小马草原</title>
     <style>
       :root {
-        --modal-bg: rgba(20, 40, 30, 0.45);
-        --card: #fffef8;
-        --text: #2a3d2f;
-        --accent: #3d8b6e;
+        /** 与 canvas 天光 #87c9a8、草色 #2a5848 / #3d8b57 同一套森系代币，避免「白盒 App」与画面割裂 */
+        --sky: #87c9a8;
+        --forest: #142920;
+        --forest-mid: #1a3026;
+        --forest-soft: #3d5c4a;
+        --panel: rgba(255, 255, 253, 0.78);
+        --panel-solid: rgba(252, 254, 251, 0.92);
+        --panel-border: rgba(20, 56, 40, 0.12);
+        --panel-border-strong: rgba(20, 56, 40, 0.2);
+        --modal-bg: rgba(12, 38, 28, 0.5);
+        --card: var(--panel-solid);
+        --text: var(--forest-mid);
+        --text-muted: var(--forest-soft);
+        --text-dim: #5f7d6e;
+        --accent: #2a6e4c;
+        --accent-bright: #3a8f62;
+        --bar-track: rgba(26, 80, 52, 0.14);
+        --bar-fill: linear-gradient(90deg, #2d6f4e, #4cb87a);
+        --shadow-panel: 0 12px 40px rgba(8, 36, 24, 0.14);
+        --shadow-ui: 0 2px 14px rgba(8, 36, 24, 0.08);
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-sm: 10px;
+        --blur-ui: 14px;
+        /** 手机优先：约 iPhone 16 Pro Max 级视口 (~440×956 CSS px) + 刘海/底部横条安全区 */
+        --touch-min: 46px;
+        --gutter: max(10px, env(safe-area-inset-left, 0px));
       }
       * {
         box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
       }
       html,
       body {
@@ -39,7 +65,8 @@
           "Hiragino Sans GB",
           "Microsoft YaHei",
           sans-serif;
-        background: #87c9a8;
+        background: var(--sky);
+        -webkit-font-smoothing: antialiased;
       }
       body {
         position: fixed;
@@ -56,73 +83,102 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 0;
-        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-        font-size: clamp(11px, 3.1vw, 13px);
-        line-height: 1.4;
+        /** 抬高：为底部场景栏（进度 / 切场景 / 祝福）留出空间 */
+        bottom: calc(52px + max(10px, env(safe-area-inset-bottom, 0px)));
+        padding: 8px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px));
+        font-size: 12px;
+        line-height: 1.45;
         color: rgba(255, 255, 255, 0.92);
         text-align: center;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
         pointer-events: none;
         z-index: 5;
+        max-width: 100%;
       }
-      .blessing-badge {
+      #clickGuideRoot[hidden] {
+        display: none !important;
+      }
+      #clickGuideRoot {
         position: fixed;
-        top: calc(8px + env(safe-area-inset-top));
-        right: max(8px, env(safe-area-inset-right));
-        padding: 11px 16px 11px 14px;
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 14px;
-        background: linear-gradient(165deg, #fffdf6 0%, #fff0d2 55%, #ffe4b8 100%);
-        color: #1a3d2e;
-        font-size: clamp(13px, 3.4vw, 15px);
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(88px + max(12px, env(safe-area-inset-bottom, 0px)));
+        z-index: 9;
+        width: min(calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), 400px);
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+      .click-guide-card {
+        margin: 0;
+        padding: 14px 16px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--panel-border);
+        background: var(--panel-solid);
+        color: var(--text);
+        box-shadow: var(--shadow-panel);
+        backdrop-filter: blur(var(--blur-ui));
+        -webkit-backdrop-filter: blur(var(--blur-ui));
+        animation: clickGuideNudge 2.4s ease-in-out infinite;
+      }
+      @keyframes clickGuideNudge {
+        0%,
+        100% {
+          box-shadow: var(--shadow-panel);
+        }
+        50% {
+          box-shadow: 0 14px 36px rgba(8, 36, 24, 0.2);
+        }
+      }
+      .click-guide-card p {
+        margin: 0 0 12px;
+        font-size: clamp(13px, 3.6vw, 15px);
+        line-height: 1.55;
+        text-align: center;
+        color: var(--text-muted);
+      }
+      .click-guide-card p strong {
+        color: var(--text);
         font-weight: 700;
-        letter-spacing: 0.02em;
-        font-variant-numeric: tabular-nums;
-        z-index: 6;
-        border: 2px solid rgba(255, 255, 255, 0.95);
+      }
+      .click-guide-dismiss {
+        width: 100%;
+        min-height: var(--touch-min);
+        border: none;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: #fafff8;
+        font-size: 15px;
+        font-weight: 600;
         cursor: pointer;
-        user-select: none;
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.75) inset,
-          0 2px 0 rgba(30, 90, 55, 0.18),
-          0 10px 28px rgba(15, 50, 35, 0.35);
+        font-family: inherit;
+        touch-action: manipulation;
+        box-shadow: 0 4px 14px rgba(18, 70, 45, 0.22);
       }
-      .blessing-badge::before {
-        content: "✦";
-        margin-right: 6px;
-        font-size: 12px;
-        color: #c9a227;
-        text-shadow: none;
-      }
-      .blessing-badge:active {
-        transform: scale(0.97);
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.5) inset,
-          0 4px 16px rgba(15, 50, 35, 0.28);
+      .click-guide-dismiss:active {
+        opacity: 0.92;
+        transform: scale(0.99);
       }
       .hug-offer-btn {
         position: fixed;
         left: 50%;
         transform: translateX(-50%);
-        bottom: calc(96px + env(safe-area-inset-bottom));
+        bottom: calc(102px + max(34px, env(safe-area-inset-bottom, 0px)));
         z-index: 8;
-        max-width: min(92vw, 360px);
+        max-width: min(calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), 360px);
         padding: 12px 22px;
         min-height: 48px;
-        border: none;
+        border: 1px solid rgba(255, 255, 255, 0.45);
         border-radius: 999px;
-        background: linear-gradient(135deg, rgba(255, 182, 140, 0.96), rgba(200, 150, 210, 0.94));
-        color: #3a2530;
+        background: linear-gradient(145deg, rgba(255, 252, 245, 0.95) 0%, rgba(210, 236, 220, 0.88) 42%, rgba(120, 190, 155, 0.9) 100%);
+        color: var(--forest-mid);
         font-size: clamp(13px, 3.5vw, 15px);
         font-weight: 700;
         cursor: pointer;
         user-select: none;
         touch-action: manipulation;
-        box-shadow: 0 4px 18px rgba(80, 40, 60, 0.28);
+        box-shadow: var(--shadow-ui);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
       .hug-offer-btn:active {
         opacity: 0.92;
@@ -144,11 +200,11 @@
         pointer-events: auto;
         background: linear-gradient(
           to top,
-          rgba(35, 22, 45, 0.55) 0%,
-          rgba(35, 22, 45, 0.12) 42%,
-          transparent 72%
+          rgba(12, 32, 24, 0.58) 0%,
+          rgba(18, 42, 32, 0.2) 45%,
+          transparent 74%
         );
-        color: #fff9f3;
+        color: #f8fdf9;
         text-align: center;
         touch-action: manipulation;
       }
@@ -172,13 +228,13 @@
       .hug-pony-nudge {
         width: 52px;
         height: 52px;
-        border: none;
+        border: 1px solid rgba(255, 255, 255, 0.35);
         border-radius: 50%;
         font-size: 26px;
         line-height: 1;
-        color: #3a3040;
-        background: rgba(255, 248, 235, 0.92);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        color: var(--forest-mid);
+        background: rgba(255, 255, 252, 0.88);
+        box-shadow: var(--shadow-ui);
         touch-action: manipulation;
         user-select: none;
       }
@@ -192,58 +248,6 @@
         opacity: 0.88;
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       }
-      /** 手机端：屏侧长按连续挪马（细指针大屏可隐藏） */
-      .pony-nudge-btn {
-        display: none;
-        position: fixed;
-        z-index: 12;
-        top: clamp(100px, 32vh, 220px);
-        bottom: clamp(120px, 36vh, 52%);
-        width: clamp(52px, 15vw, 76px);
-        padding: 0;
-        margin: 0;
-        border: none;
-        border-radius: 0 14px 14px 0;
-        align-items: center;
-        justify-content: center;
-        font-size: clamp(26px, 8vw, 34px);
-        line-height: 1;
-        color: rgba(35, 55, 45, 0.88);
-        background: rgba(255, 255, 255, 0.22);
-        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
-        touch-action: manipulation;
-        user-select: none;
-        -webkit-user-select: none;
-      }
-      .pony-nudge-btn--left {
-        left: 0;
-        padding-left: max(4px, env(safe-area-inset-left));
-        border-radius: 0 14px 14px 0;
-      }
-      .pony-nudge-btn--right {
-        right: 0;
-        padding-right: max(4px, env(safe-area-inset-right));
-        border-radius: 14px 0 0 14px;
-      }
-      @media (max-width: 900px) {
-        .pony-nudge-btn {
-          display: flex;
-        }
-      }
-      @media (pointer: coarse) {
-        .pony-nudge-btn {
-          display: flex;
-        }
-      }
-      @media (min-width: 901px) and (pointer: fine) {
-        .pony-nudge-btn {
-          display: none !important;
-        }
-      }
-      body.has-modal-open .pony-nudge-btn {
-        visibility: hidden !important;
-        pointer-events: none !important;
-      }
       /* 小花 / 风铃 / 大树 内容弹窗：半透明遮罩 + 白卡片 */
       #modalRoot[hidden] {
         display: none !important;
@@ -255,23 +259,28 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
-          max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
         background: var(--modal-bg);
       }
       .modal-card {
-        width: min(92vw, 360px);
-        max-height: min(70vh, 420px);
+        width: min(100%, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 400px;
+        max-height: min(78dvh, 560px);
         overflow: auto;
-        background: var(--card);
-        border-radius: 16px;
+        background: var(--panel-solid);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius-lg);
         padding: 20px 18px 16px;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+        box-shadow: var(--shadow-panel);
         color: var(--text);
+        backdrop-filter: blur(var(--blur-ui));
+        -webkit-backdrop-filter: blur(var(--blur-ui));
       }
       .modal-card--large {
-        width: min(96vw, 440px);
-        max-height: min(88vh, 720px);
+        width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 440px;
+        max-height: min(90dvh, 780px);
         padding: 22px 16px 18px;
       }
       .modal-media {
@@ -286,8 +295,8 @@
         width: 100%;
         max-height: min(50vh, 360px);
         object-fit: contain;
-        border-radius: 10px;
-        background: #f0f0ec;
+        border-radius: var(--radius-sm);
+        background: rgba(236, 248, 242, 0.9);
       }
       .modal-media audio {
         display: block;
@@ -304,18 +313,18 @@
       }
       .modal-nick {
         font-size: 13px;
-        color: #5a7a66;
+        color: var(--text-muted);
         margin-bottom: 14px;
       }
       .modal-extra {
         font-size: 14px;
-        color: #b8860b;
+        color: var(--forest-soft);
         line-height: 1.5;
         margin: 0 0 12px;
         padding: 10px 12px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, rgba(255, 248, 220, 0.95), rgba(255, 236, 180, 0.85));
-        border: 1px solid rgba(218, 165, 32, 0.35);
+        border-radius: var(--radius-sm);
+        background: rgba(180, 220, 198, 0.28);
+        border: 1px solid rgba(32, 90, 58, 0.18);
       }
       .modal-extra[hidden] {
         display: none !important;
@@ -327,12 +336,14 @@
         padding: 14px 12px;
         min-height: 48px;
         border: none;
-        border-radius: 10px;
-        background: var(--accent);
-        color: #fff;
+        border-radius: var(--radius-md);
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: #fafff8;
         font-size: clamp(15px, 3.6vw, 17px);
+        font-weight: 600;
         cursor: pointer;
         touch-action: manipulation;
+        box-shadow: 0 4px 16px rgba(18, 70, 45, 0.22);
       }
       .modal-close:active {
         opacity: 0.9;
@@ -347,27 +358,31 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 16px;
-        padding-top: calc(16px + env(safe-area-inset-top));
-        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
         background: var(--modal-bg);
       }
       .list-modal-card {
-        width: min(96vw, 420px);
-        max-height: min(85vh, 640px);
+        width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 440px;
+        max-height: min(88dvh, 720px);
         display: flex;
         flex-direction: column;
-        background: var(--card);
-        border-radius: 16px;
+        background: var(--panel-solid);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius-lg);
         overflow: hidden;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-panel);
+        backdrop-filter: blur(var(--blur-ui));
+        -webkit-backdrop-filter: blur(var(--blur-ui));
       }
       .list-modal-head {
         padding: 16px 18px 10px;
         font-size: 17px;
         font-weight: 600;
         color: var(--text);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        border-bottom: 1px solid var(--panel-border);
+        background: rgba(255, 255, 255, 0.35);
       }
       .list-modal-body {
         overflow: auto;
@@ -381,20 +396,20 @@
         padding: 14px 12px;
         min-height: 52px;
         margin-bottom: 8px;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 12px;
-        background: #fffefb;
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 253, 0.55);
         font-size: clamp(14px, 3.5vw, 15px);
         color: var(--text);
         cursor: pointer;
         touch-action: manipulation;
       }
       .received-row:active {
-        background: #f5f5f0;
+        background: rgba(210, 232, 218, 0.45);
       }
       .received-meta {
         font-size: 11px;
-        color: #7a8f80;
+        color: var(--text-dim);
         margin-bottom: 6px;
       }
       .received-preview {
@@ -411,26 +426,468 @@
         padding: 14px 12px;
         min-height: 48px;
         border: none;
-        border-radius: 10px;
-        background: var(--accent);
-        color: #fff;
+        border-radius: var(--radius-md);
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: #fafff8;
         font-size: clamp(15px, 3.6vw, 17px);
+        font-weight: 600;
         touch-action: manipulation;
+        box-shadow: 0 4px 16px rgba(18, 70, 45, 0.2);
+      }
+      /** 底栏：场景进度 / 切换场景 / 已收祝福；低对比、轻阴影，不抢画面 */
+      .top-toolbar {
+        position: fixed;
+        left: max(6px, env(safe-area-inset-left, 0px));
+        right: max(6px, env(safe-area-inset-right, 0px));
+        top: auto;
+        bottom: 0;
+        padding: 5px 0 max(8px, env(safe-area-inset-bottom, 0px));
+        z-index: 7;
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(100px, 32vw) minmax(0, 1fr);
+        gap: 5px;
+        align-items: stretch;
+        pointer-events: none;
+        background: linear-gradient(to top, rgba(10, 38, 28, 0.18) 0%, rgba(10, 38, 28, 0) 100%);
+      }
+      .top-toolbar__cell {
+        pointer-events: auto;
+        background: rgba(255, 255, 255, 0.38);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: var(--radius-md);
+        box-shadow: 0 1px 6px rgba(8, 32, 22, 0.06);
+        min-height: 40px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .top-toolbar__cell--progress {
+        min-width: 0;
+        padding: 5px 8px 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+      }
+      .top-toolbar__progress-head {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px;
+        min-width: 0;
+      }
+      .top-toolbar__title {
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(26, 48, 38, 0.72);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .top-toolbar__frac {
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(61, 92, 74, 0.75);
+        flex-shrink: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .top-toolbar__bar-wrap {
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(26, 80, 52, 0.12);
+        overflow: hidden;
+      }
+      .top-toolbar__bar-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: var(--bar-fill);
+        transition: width 0.35s ease;
+      }
+      .top-toolbar__cell--select {
+        min-width: 0;
+        padding: 0;
+        display: flex;
+        align-items: stretch;
+        overflow: hidden;
+      }
+      .top-toolbar__select {
+        width: 100%;
+        margin: 0;
+        border: none;
+        border-radius: var(--radius-md);
+        background-color: transparent;
+        padding: 0 22px 0 8px;
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(26, 48, 38, 0.78);
+        cursor: pointer;
+        touch-action: manipulation;
+        appearance: none;
+        -webkit-appearance: none;
+        font-family: inherit;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 12 8'%3E%3Cpath fill='%235f7d6e' fill-opacity='0.75' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        min-height: 40px;
+      }
+      .top-toolbar__cell--badge {
+        min-width: 0;
+        padding: 0 6px;
+        margin: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(26, 48, 38, 0.76);
+        letter-spacing: 0.01em;
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        font-family: inherit;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .top-toolbar__cell--badge::before {
+        content: "✦";
+        margin-right: 2px;
+        font-size: 9px;
+        color: rgba(61, 143, 92, 0.45);
+        flex-shrink: 0;
+      }
+      .top-toolbar__cell--badge:active {
+        opacity: 0.92;
+        transform: scale(0.98);
+      }
+      button.top-toolbar__cell--badge {
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      .received-scene-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        margin: 16px 0 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        background: linear-gradient(180deg, rgba(210, 236, 220, 0.55) 0%, rgba(185, 220, 200, 0.4) 100%);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--panel-border);
+      }
+      .received-scene-head:first-child {
+        margin-top: 0;
+      }
+      #entryGateRoot[hidden] {
+        display: none !important;
+      }
+      #entryGateRoot {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+        background: linear-gradient(165deg, rgba(14, 42, 32, 0.88) 0%, rgba(10, 34, 26, 0.92) 100%);
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .entry-gate-card {
+        width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 440px;
+        background: var(--panel-solid);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius-lg);
+        padding: 22px 18px 18px;
+        box-shadow: var(--shadow-panel);
+        color: var(--text);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .entry-gate-card h1 {
+        margin: 0 0 10px;
+        font-size: clamp(20px, 5vw, 24px);
+        line-height: 1.3;
+        color: var(--text);
+      }
+      .entry-welcome {
+        margin: 0 0 16px;
+      }
+      .entry-welcome p {
+        margin: 0 0 10px;
+        font-size: 15px;
+        line-height: 1.65;
+        color: var(--text-muted);
+      }
+      .entry-welcome p:last-child {
+        margin-bottom: 0;
+      }
+      .entry-field {
+        margin-bottom: 14px;
+      }
+      .entry-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .entry-field select {
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--panel-border-strong);
+        background: rgba(255, 255, 253, 0.75);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .entry-skip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 12px 0 16px;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+      .entry-skip input {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+      .entry-submit {
+        width: 100%;
+        padding: 14px 12px;
+        min-height: 48px;
+        border: none;
+        border-radius: var(--radius-md);
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: #fafff8;
+        font-size: clamp(15px, 3.8vw, 17px);
+        font-weight: 700;
+        cursor: pointer;
+        touch-action: manipulation;
+        box-shadow: 0 4px 18px rgba(18, 70, 45, 0.22);
+      }
+      .entry-submit:active {
+        opacity: 0.92;
+      }
+      /** 「我是刘恋」预览生日页：虚线框与主按钮区分，避免误触 */
+      .entry-readall,
+      .list-modal-shortcut {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px 12px;
+        min-height: 44px;
+        border: 1px dashed var(--panel-border-strong);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 253, 0.35);
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.4;
+        font-weight: 600;
+        cursor: pointer;
+        touch-action: manipulation;
+        font-family: inherit;
+      }
+      .list-modal-shortcut {
+        width: auto;
+        margin: 0 14px 10px;
+      }
+      .entry-readall:active,
+      .list-modal-shortcut:active {
+        opacity: 0.88;
+      }
+      #sceneMilestoneRoot[hidden] {
+        display: none !important;
+      }
+      #sceneMilestoneRoot {
+        position: fixed;
+        inset: 0;
+        z-index: 120;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+        background: var(--modal-bg);
+      }
+      .scene-milestone-card {
+        width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+        max-width: 420px;
+        max-height: min(88dvh, 640px);
+        overflow: auto;
+        background: var(--panel-solid);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius-lg);
+        padding: 22px 18px 18px;
+        box-shadow: var(--shadow-panel);
+        color: var(--text);
+        backdrop-filter: blur(var(--blur-ui));
+        -webkit-backdrop-filter: blur(var(--blur-ui));
+      }
+      .scene-milestone-card h2 {
+        margin: 0 0 14px;
+        font-size: clamp(18px, 4.5vw, 21px);
+        line-height: 1.35;
+      }
+      .scene-milestone-card p {
+        margin: 0 0 12px;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      .scene-milestone-pending {
+        font-size: 14px;
+        color: var(--text-muted);
+        overflow-wrap: anywhere;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        background: rgba(60, 140, 100, 0.1);
+        border: 1px solid var(--panel-border);
+        margin-bottom: 14px;
+      }
+      .scene-milestone-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .scene-milestone-actions button {
+        width: 100%;
+        padding: 14px 12px;
+        min-height: 48px;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: clamp(15px, 3.6vw, 17px);
+        font-weight: 600;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .scene-milestone-actions .btn-primary {
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: #fafff8;
+        box-shadow: 0 4px 14px rgba(18, 70, 45, 0.2);
+      }
+      .scene-milestone-actions .btn-secondary {
+        background: rgba(255, 255, 253, 0.65);
+        border: 1px solid var(--panel-border);
+        color: var(--text);
+      }
+      /** 平板 / 桌面：底栏略放宽 */
+      @media (min-width: 600px) {
+        .hint-bar {
+          bottom: calc(56px + max(10px, env(safe-area-inset-bottom, 0px)));
+          font-size: 13px;
+        }
+        .top-toolbar {
+          left: max(10px, env(safe-area-inset-left, 0px));
+          right: max(10px, env(safe-area-inset-right, 0px));
+          padding: 6px 0 max(10px, env(safe-area-inset-bottom, 0px));
+          gap: 8px;
+          grid-template-columns: minmax(0, 1fr) minmax(168px, 220px) minmax(0, 1fr);
+        }
+        .top-toolbar__cell {
+          min-height: 44px;
+          border-radius: var(--radius-md);
+        }
+        .top-toolbar__cell--progress {
+          padding: 6px 10px 7px;
+          gap: 5px;
+        }
+        .top-toolbar__title,
+        .top-toolbar__frac {
+          font-size: 11px;
+        }
+        .top-toolbar__bar-wrap {
+          height: 4px;
+        }
+        .top-toolbar__select {
+          font-size: 12px;
+          padding: 0 26px 0 10px;
+          background-position: right 8px center;
+          min-height: 44px;
+          border-radius: var(--radius-md);
+        }
+        .top-toolbar__cell--badge {
+          font-size: 12px;
+          padding: 0 8px;
+        }
+        #clickGuideRoot {
+          bottom: calc(94px + max(12px, env(safe-area-inset-bottom, 0px)));
+        }
+        .hug-offer-btn {
+          bottom: calc(108px + max(24px, env(safe-area-inset-bottom, 0px)));
+        }
       }
     </style>
   </head>
   <body>
+    <div id="entryGateRoot" hidden>
+      <div class="entry-gate-card">
+        <h1 id="entryGateTitle">HI 恋姐，欢迎来到小马草原。</h1>
+        <div class="entry-welcome" id="entryGateLead">
+          <p>这里没有输赢，没有对错，没有必须。</p>
+          <p>有只小马想陪你，慢慢走过一片又一片风景。</p>
+          <p>每一片风景里，都藏着一些人的祝福和心事。</p>
+          <p>你随时可以打开，也可以只是路过。</p>
+          <p>天会变颜色，草会轻轻摇。</p>
+          <p>你可以跑，也可以躺下来发呆。</p>
+          <p>场景可以随时换，路可以随时停。</p>
+          <p>这里是你的。</p>
+          <p>想待多久，就待多久。</p>
+        </div>
+        <div class="entry-field">
+          <label for="entrySceneSelect">先选择要进入的场景</label>
+          <select id="entrySceneSelect" aria-describedby="entryGateLead"></select>
+        </div>
+        <label class="entry-skip">
+          <input type="checkbox" id="entrySkipNext" />
+          <span>下次打开链接时不再显示此说明（仍会记住你上次所在的场景）</span>
+        </label>
+        <button type="button" class="entry-submit" id="entrySubmitBtn">进入草原</button>
+        <button type="button" class="entry-readall" id="entryReadAllBtn">
+          我是刘恋，我读完了（预览生日页 · 不改已读进度）
+        </button>
+      </div>
+    </div>
+    <div class="top-toolbar" id="sceneHud" aria-live="polite">
+      <div class="top-toolbar__cell top-toolbar__cell--progress">
+        <div class="top-toolbar__progress-head">
+          <span class="top-toolbar__title" id="sceneHudTitle">场景 A</span>
+          <span class="top-toolbar__frac" id="sceneHudFrac">0 / 0</span>
+        </div>
+        <div class="top-toolbar__bar-wrap" aria-hidden="true">
+          <div class="top-toolbar__bar-fill" id="sceneHudBarFill"></div>
+        </div>
+      </div>
+      <div class="top-toolbar__cell top-toolbar__cell--select">
+        <select id="sceneSwitchSelect" class="top-toolbar__select" aria-label="切换场景"></select>
+      </div>
+      <button type="button" class="top-toolbar__cell top-toolbar__cell--badge" id="blessingBadge" aria-label="已收获祝福">
+        已收获祝福 0
+      </button>
+    </div>
     <canvas id="gameCanvas" aria-label="小马草原"></canvas>
-    <button type="button" class="blessing-badge" id="blessingBadge" aria-label="已收获祝福">
-      已收获祝福 0
-    </button>
-    <button type="button" class="pony-nudge-btn pony-nudge-btn--left" id="ponyNudgeLeft" aria-label="小马向左挪">
-      ‹
-    </button>
-    <button type="button" class="pony-nudge-btn pony-nudge-btn--right" id="ponyNudgeRight" aria-label="小马向右挪">
-      ›
-    </button>
-    <p class="hint-bar">小马记得你走过的路，但换个浏览器的话，它会陪你重新散步哦～</p>
+    <div id="clickGuideRoot" hidden>
+      <div class="click-guide-card" role="region" aria-label="操作提示">
+        <p>
+          试试点击<strong>草地</strong>，让小马向前走；点路边<strong>小花·风铃·大树</strong>拆开祝福，页面底部可看本场景<strong>任务进度</strong>。
+        </p>
+        <button type="button" class="click-guide-dismiss" id="clickGuideDismissBtn">知道了</button>
+      </div>
+    </div>
+    <p class="hint-bar">小马记得你走过的路；换浏览器会陪你重新散步哦～</p>
 
     <button type="button" class="hug-offer-btn" id="hugOfferBtn" hidden>
       一起看晚霞
@@ -456,9 +913,25 @@
 
     <div id="listModalRoot" hidden role="dialog" aria-modal="true" aria-labelledby="listModalTitle">
       <div class="list-modal-card">
-        <div class="list-modal-head" id="listModalTitle">小花、风铃和大树</div>
+        <div class="list-modal-head" id="listModalTitle">已收获祝福 · 按场景分组</div>
         <div class="list-modal-body" id="listModalBody"></div>
+        <button type="button" class="list-modal-shortcut" id="listModalReadAllBtn">
+          我是刘恋，我读完了（预览生日页 · 不改进度）
+        </button>
         <button type="button" class="list-modal-close" id="listModalClose">关闭</button>
+      </div>
+    </div>
+
+    <div id="sceneMilestoneRoot" hidden role="dialog" aria-modal="true" aria-labelledby="sceneMilestoneTitle">
+      <div class="scene-milestone-card">
+        <h2 id="sceneMilestoneTitle">本场景进度已满</h2>
+        <p id="sceneMilestoneP1"></p>
+        <p id="sceneMilestoneP2"></p>
+        <div class="scene-milestone-pending" id="sceneMilestonePending"></div>
+        <div class="scene-milestone-actions">
+          <button type="button" class="btn-primary" id="sceneMilestoneCakeBtn" hidden>去看生日蛋糕</button>
+          <button type="button" class="btn-primary" id="sceneMilestoneOk">好的，继续散步</button>
+        </div>
       </div>
     </div>
 
@@ -466,10 +939,30 @@
       (function () {
         "use strict";
 
-        /** localStorage：步数；小马横向；已收获祝福列表（JSON） */
+        /** localStorage：步数；小马横向；已收获祝福列表（JSON）；当前场景；各场景「100%」祝贺已展示 */
         var LS_KEY_STEPS = "xmgrassland_v1_totalSteps";
         var LS_KEY_PONY_X = "xmgrassland_v1_ponyNormX";
         var LS_KEY_RECEIVED = "xmgrassland_v1_receivedBlessings";
+        var LS_KEY_CURRENT_SCENE = "xmgrassland_v1_currentScene";
+        var LS_KEY_SCENE_100_SHOWN = "xmgrassland_v1_scene100ModalShown";
+        var LS_KEY_HIDE_ENTRY_INTRO = "xmgrassland_v1_hideEntryIntro";
+        /** 场景页首次进入后，点击引导只示范一次 */
+        var LS_KEY_CLICK_GUIDE_DONE = "xmgrassland_v1_sceneClickGuideDone";
+
+        /**
+         * 祝福总表：按顺序尝试，避免线上只带了旧文件名时整池为空（媒体仍在 content/，与 CSV 是否加载无关）。
+         * 可选列「场景」填 A–J（或 1–10）覆盖默认规则；留空则按编号 1–100→A、101–200→B … 901–1000→J。
+         */
+        var BLESSINGS_CSV_CANDIDATES = [
+          "content/blessings-scene-aj.csv",
+          "content/content-import001(1).csv",
+        ];
+        /** 最近一次成功加载的 CSV 路径（报错提示用） */
+        var blessingCsvResolvedUrl = BLESSINGS_CSV_CANDIDATES[0];
+
+        var SCENE_COUNT = 10;
+        /** 与字母 A–J 一一对应的小标题（顶栏、列表、祝贺弹窗共用） */
+        var SCENE_LABELS = ["朝露", "青野", "林风", "晴川", "云影", "暮色", "星原", "月湾", "远霞", "归潮"];
 
         var PIXELS_PER_STEP = 30;
         var CHIME_INTERVAL_MIN = 3;
@@ -506,10 +999,27 @@
         var listModalClose = document.getElementById("listModalClose");
         var hugOfferBtn = document.getElementById("hugOfferBtn");
         var hugLayer = document.getElementById("hugLayer");
-        var ponyNudgeLeft = document.getElementById("ponyNudgeLeft");
-        var ponyNudgeRight = document.getElementById("ponyNudgeRight");
         var hugPonyLeft = document.getElementById("hugPonyLeft");
         var hugPonyRight = document.getElementById("hugPonyRight");
+        var sceneHudTitle = document.getElementById("sceneHudTitle");
+        var sceneHudFrac = document.getElementById("sceneHudFrac");
+        var sceneHudBarFill = document.getElementById("sceneHudBarFill");
+        var entryGateRoot = document.getElementById("entryGateRoot");
+        var clickGuideRoot = document.getElementById("clickGuideRoot");
+        var clickGuideDismissBtn = document.getElementById("clickGuideDismissBtn");
+        var entrySceneSelect = document.getElementById("entrySceneSelect");
+        var entrySubmitBtn = document.getElementById("entrySubmitBtn");
+        var entryReadAllBtn = document.getElementById("entryReadAllBtn");
+        var listModalReadAllBtn = document.getElementById("listModalReadAllBtn");
+        var entrySkipNext = document.getElementById("entrySkipNext");
+        var sceneSwitchSelect = document.getElementById("sceneSwitchSelect");
+        var sceneMilestoneRoot = document.getElementById("sceneMilestoneRoot");
+        var sceneMilestoneTitle = document.getElementById("sceneMilestoneTitle");
+        var sceneMilestoneP1 = document.getElementById("sceneMilestoneP1");
+        var sceneMilestoneP2 = document.getElementById("sceneMilestoneP2");
+        var sceneMilestonePending = document.getElementById("sceneMilestonePending");
+        var sceneMilestoneOk = document.getElementById("sceneMilestoneOk");
+        var sceneMilestoneCakeBtn = document.getElementById("sceneMilestoneCakeBtn");
 
         var W = 0;
         var H = 0;
@@ -518,6 +1028,16 @@
         var totalSteps = 0;
         var stepsUntilSideSpawn = randInt(CHIME_INTERVAL_MIN, CHIME_INTERVAL_MAX);
         var blessingsPool = [];
+        var currentScene = 1;
+        /** 各场景是否已弹出过「本场景 100%」祝贺（JSON 对象，键为场景号字符串） */
+        var scene100ShownMap = {};
+        /** 关闭祝福内容弹窗后，若需展示场景祝贺，则记下场景号 */
+        var pendingSceneMilestoneSid = null;
+        var gameLoopStarted = false;
+        /** 已尝试拉取 CSV 且全部失败（与「加载尚未返回」区分） */
+        var blessingsCsvLoadFailed = false;
+        /** 祝福表只拉取一次；入口页展示时即开始，避免进草原后首几条仍是占位数据 */
+        var blessingsLoadPromise = null;
 
         /** 从路边点开小花/风铃/大树时写入；点击徽章可查看全部记录 */
         var receivedBlessings = [];
@@ -587,7 +1107,7 @@
             if (hugOfferBtn) hugOfferBtn.hidden = true;
             return;
           }
-          if (!modalRoot.hidden || !listModalRoot.hidden || suppressSpawn || jogMode) {
+          if (blockingOverlaysForInput() || suppressSpawn || jogMode) {
             hugOfferBtn.hidden = true;
             return;
           }
@@ -631,9 +1151,36 @@
           savePonyX();
         }
 
+        function blockingOverlaysForInput() {
+          return (
+            (entryGateRoot && !entryGateRoot.hidden) ||
+            !modalRoot.hidden ||
+            !listModalRoot.hidden ||
+            (sceneMilestoneRoot && !sceneMilestoneRoot.hidden)
+          );
+        }
+
+        function dismissClickGuide() {
+          if (!clickGuideRoot || clickGuideRoot.hidden) return;
+          clickGuideRoot.hidden = true;
+          try {
+            localStorage.setItem(LS_KEY_CLICK_GUIDE_DONE, "1");
+          } catch (err) {}
+        }
+
+        function tryShowClickGuide() {
+          if (!clickGuideRoot) return;
+          try {
+            if (localStorage.getItem(LS_KEY_CLICK_GUIDE_DONE) === "1") return;
+          } catch (err) {
+            return;
+          }
+          if (entryGateRoot && !entryGateRoot.hidden) return;
+          clickGuideRoot.hidden = false;
+        }
+
         function syncBodyModalChromeClass() {
-          var on = !modalRoot.hidden || !listModalRoot.hidden;
-          document.body.classList.toggle("has-modal-open", on);
+          document.body.classList.toggle("has-modal-open", blockingOverlaysForInput());
         }
 
         /** 手机：按住连续挪马；click 冒泡到晚霞层时需单独拦住 */
@@ -718,6 +1265,153 @@
           } catch (e) {}
         }
 
+        function inferSceneFromBlessingId(id) {
+          var n = parseInt(id, 10);
+          if (isNaN(n) || n < 1) return 1;
+          var sid = Math.floor((n - 1) / 100) + 1;
+          if (sid < 1) sid = 1;
+          if (sid > SCENE_COUNT) sid = SCENE_COUNT;
+          return sid;
+        }
+
+        /** CSV「场景」列：A–J（不区分大小写）或数字 1–10；无效或空则用编号推断 */
+        function parseSceneToken(raw, blessingId) {
+          var s0 = raw == null ? "" : String(raw).trim();
+          if (!s0) return inferSceneFromBlessingId(blessingId);
+          var u = s0.toUpperCase();
+          if (u.length === 1 && u >= "A" && u <= "Z") {
+            var c = u.charCodeAt(0) - 64;
+            if (c >= 1 && c <= SCENE_COUNT) return c;
+          }
+          var n = parseInt(s0, 10);
+          if (!isNaN(n) && n >= 1 && n <= SCENE_COUNT) return n;
+          return inferSceneFromBlessingId(blessingId);
+        }
+
+        function sceneLetterFromIndex(sid) {
+          var s = parseInt(sid, 10);
+          if (isNaN(s) || s < 1) return "A";
+          if (s > SCENE_COUNT) s = SCENE_COUNT;
+          return String.fromCharCode(64 + s);
+        }
+
+        function loadScene100ShownMap() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_SCENE_100_SHOWN);
+            if (!raw) {
+              scene100ShownMap = {};
+              return;
+            }
+            var o = JSON.parse(raw);
+            scene100ShownMap = o && typeof o === "object" ? o : {};
+          } catch (e) {
+            scene100ShownMap = {};
+          }
+        }
+
+        function saveScene100ShownMap() {
+          try {
+            localStorage.setItem(LS_KEY_SCENE_100_SHOWN, JSON.stringify(scene100ShownMap));
+          } catch (e) {}
+        }
+
+        function isScene100ModalAlreadyShown(sid) {
+          return !!scene100ShownMap[String(sid)];
+        }
+
+        function markScene100ModalShown(sid) {
+          scene100ShownMap[String(sid)] = true;
+          saveScene100ShownMap();
+        }
+
+        function loadCurrentScene() {
+          try {
+            var raw = localStorage.getItem(LS_KEY_CURRENT_SCENE);
+            if (raw === null) return;
+            var n = parseInt(raw, 10);
+            if (!isNaN(n) && n >= 1 && n <= SCENE_COUNT) currentScene = n;
+          } catch (e) {}
+        }
+
+        function saveCurrentScene() {
+          try {
+            localStorage.setItem(LS_KEY_CURRENT_SCENE, String(currentScene));
+          } catch (e) {}
+        }
+
+        function blessingsInScene(sid) {
+          var sidN = parseInt(sid, 10);
+          if (isNaN(sidN) || sidN < 1) sidN = 1;
+          if (sidN > SCENE_COUNT) sidN = SCENE_COUNT;
+          var out = [];
+          for (var i = 0; i < blessingsPool.length; i++) {
+            var b = blessingsPool[i];
+            var sc =
+              b.scene != null && b.scene !== ""
+                ? parseSceneToken(b.scene, b.id)
+                : inferSceneFromBlessingId(b.id);
+            if (isNaN(sc) || sc < 1) sc = inferSceneFromBlessingId(b.id);
+            if (sc > SCENE_COUNT) sc = SCENE_COUNT;
+            if (Number(sc) === sidN) out.push(b);
+          }
+          return out;
+        }
+
+        function getSceneTargetCount(sid) {
+          return blessingsInScene(sid).length;
+        }
+
+        function entrySceneId(entry) {
+          if (entry.sceneId != null && entry.sceneId !== "") {
+            var s = parseSceneToken(entry.sceneId, entry.poolId);
+            if (!isNaN(s) && s >= 1 && s <= SCENE_COUNT) return s;
+          }
+          return inferSceneFromBlessingId(entry.poolId);
+        }
+
+        function uniqueReceivedCountInScene(sid) {
+          var allowed = {};
+          var list = blessingsInScene(sid);
+          for (var i = 0; i < list.length; i++) {
+            allowed[String(list[i].id)] = true;
+          }
+          var got = {};
+          for (var j = 0; j < receivedBlessings.length; j++) {
+            var e = receivedBlessings[j];
+            if (!e.poolId) continue;
+            if (!allowed[String(e.poolId)]) continue;
+            if (entrySceneId(e) !== sid) continue;
+            got[String(e.poolId)] = true;
+          }
+          var n = 0;
+          for (var k in got) if (Object.prototype.hasOwnProperty.call(got, k)) n++;
+          return n;
+        }
+
+        function isSceneComplete(sid) {
+          if (!blessingsPool.length) return false;
+          var t = getSceneTargetCount(sid);
+          if (t <= 0) return true;
+          return uniqueReceivedCountInScene(sid) >= t;
+        }
+
+        function allScenesComplete() {
+          for (var s = 1; s <= SCENE_COUNT; s++) {
+            if (!isSceneComplete(s)) return false;
+          }
+          return true;
+        }
+
+        function pendingScenesLabelList(exceptSid) {
+          var parts = [];
+          for (var s = 1; s <= SCENE_COUNT; s++) {
+            if (s === exceptSid) continue;
+            if (isSceneComplete(s)) continue;
+            parts.push("场景 " + sceneLetterFromIndex(s) + "（" + SCENE_LABELS[s - 1] + "）");
+          }
+          return parts;
+        }
+
         /**
          * 统一路边内容条目：支持 text / image / audio / video（JSON 可只填其一，type 可省略则自动推断）
          */
@@ -731,6 +1425,7 @@
               audio: "",
               video: "",
               nickname: "",
+              scene: currentScene,
             };
           }
           var img = b.image != null ? String(b.image).trim() : "";
@@ -749,14 +1444,20 @@
             else if (img) typ = "image";
             else typ = "text";
           }
+          var bid = b.id != null ? b.id : 0;
+          var scRaw = b.scene != null ? String(b.scene).trim() : "";
+          var sc = scRaw !== "" ? parseSceneToken(scRaw, bid) : inferSceneFromBlessingId(bid);
+          if (isNaN(sc) || sc < 1) sc = inferSceneFromBlessingId(bid);
+          if (sc > SCENE_COUNT) sc = SCENE_COUNT;
           return {
-            id: b.id != null ? b.id : 0,
+            id: bid,
             type: typ,
             text: tx,
             image: img,
             audio: aud,
             video: vid,
             nickname: b.nickname != null ? String(b.nickname) : "",
+            scene: sc,
           };
         }
 
@@ -781,12 +1482,23 @@
         }
 
         function updateBlessingBadge() {
+          if (!blessingBadge) return;
           var n = receivedBlessings.length;
-          blessingBadge.textContent = "已收获祝福 " + n;
+          var narrow = false;
+          try {
+            narrow = window.innerWidth <= 480;
+          } catch (e) {}
+          blessingBadge.textContent = (narrow ? "已收 " : "已收获祝福 ") + n;
         }
 
         /** 在路边点开内容弹窗时记一条「已收获祝福」 */
         function recordReceivedBlessing(snapshot) {
+          var sidRaw =
+            snapshot.sceneId != null && snapshot.sceneId !== ""
+              ? parseSceneToken(snapshot.sceneId, snapshot.poolId)
+              : inferSceneFromBlessingId(snapshot.poolId);
+          if (isNaN(sidRaw) || sidRaw < 1) sidRaw = 1;
+          if (sidRaw > SCENE_COUNT) sidRaw = SCENE_COUNT;
           receivedBlessings.push({
             at: Date.now(),
             poolId: snapshot.poolId,
@@ -799,9 +1511,166 @@
             isGolden: !!snapshot.isGolden,
             milestoneValue: snapshot.milestoneValue || 0,
             extraLine: snapshot.extraLine || "",
+            sceneId: sidRaw,
           });
           saveReceivedBlessings();
           updateBlessingBadge();
+          updateSceneHud();
+          if (isSceneComplete(sidRaw) && !isScene100ModalAlreadyShown(sidRaw)) {
+            pendingSceneMilestoneSid = sidRaw;
+          }
+        }
+
+        function shouldShowEntryIntro() {
+          try {
+            return localStorage.getItem(LS_KEY_HIDE_ENTRY_INTRO) !== "1";
+          } catch (e) {
+            return true;
+          }
+        }
+
+        function fillSceneSelect(selectEl, preferSid) {
+          if (!selectEl) return;
+          var sid =
+            preferSid != null && preferSid >= 1 && preferSid <= SCENE_COUNT ? preferSid : currentScene;
+          selectEl.innerHTML = "";
+          for (var s = 1; s <= SCENE_COUNT; s++) {
+            var opt = document.createElement("option");
+            opt.value = String(s);
+            opt.textContent = "场景 " + sceneLetterFromIndex(s) + "（" + SCENE_LABELS[s - 1] + "）";
+            selectEl.appendChild(opt);
+          }
+          selectEl.value = String(sid);
+        }
+
+        function syncSceneSwitchSelectFromState() {
+          if (!sceneSwitchSelect) return;
+          var v = String(currentScene);
+          if (sceneSwitchSelect.value !== v) sceneSwitchSelect.value = v;
+        }
+
+        function startGameLoopIfNeeded() {
+          if (gameLoopStarted) return;
+          gameLoopStarted = true;
+          fetchBlessingsOnce().then(function () {
+            requestAnimationFrame(frame);
+          });
+        }
+
+        function updateSceneHud() {
+          if (!sceneHudTitle || !sceneHudFrac || !sceneHudBarFill) return;
+          var sid = currentScene;
+          var target = getSceneTargetCount(sid);
+          var got = uniqueReceivedCountInScene(sid);
+          sceneHudTitle.textContent =
+            "场景 " + sceneLetterFromIndex(sid) + " · " + SCENE_LABELS[sid - 1];
+          if (target <= 0) {
+            if (blessingsPool.length) {
+              sceneHudFrac.textContent = "本场景暂无条目（可切换其它场景）";
+            } else if (!gameLoopStarted) {
+              if (blessingsCsvLoadFailed) {
+                sceneHudFrac.textContent = "祝福表加载失败（请用 http(s) 打开页面，并检查 CSV 是否在 content/）";
+              } else if (blessingsPool.length) {
+                sceneHudFrac.textContent = "祝福表已就绪，进入草原即可";
+              } else if (blessingsLoadPromise) {
+                sceneHudFrac.textContent = "祝福表加载中…";
+              } else {
+                sceneHudFrac.textContent = "进入草原后加载祝福表…";
+              }
+            } else if (!blessingsCsvLoadFailed) {
+              sceneHudFrac.textContent = "祝福表加载中…";
+            } else {
+              sceneHudFrac.textContent =
+                "祝福表未载入（请用 http 访问；需能打开 CSV，仅有图片不够）";
+            }
+            sceneHudBarFill.style.width = "0%";
+            syncSceneSwitchSelectFromState();
+            return;
+          }
+          sceneHudFrac.textContent = got + " / " + target;
+          var pct = Math.min(100, Math.round((got / target) * 100));
+          sceneHudBarFill.style.width = pct + "%";
+          syncSceneSwitchSelectFromState();
+        }
+
+        function switchScene(sid) {
+          if (sid < 1 || sid > SCENE_COUNT) return;
+          if (sid === currentScene) return;
+          currentScene = sid;
+          saveCurrentScene();
+          roadside = [];
+          updateSceneHud();
+        }
+
+        function tryFlushPendingSceneMilestone() {
+          if (pendingSceneMilestoneSid == null) return;
+          if (entryGateRoot && !entryGateRoot.hidden) return;
+          if (!modalRoot.hidden) return;
+          if (!listModalRoot.hidden) return;
+          var sid = pendingSceneMilestoneSid;
+          pendingSceneMilestoneSid = null;
+          if (!isSceneComplete(sid)) return;
+          if (isScene100ModalAlreadyShown(sid)) return;
+          openSceneMilestoneModal(sid);
+        }
+
+        function closeBlessingContentModal() {
+          closeModal();
+          tryFlushPendingSceneMilestone();
+        }
+
+        function openSceneMilestoneModal(sid) {
+          if (!sceneMilestoneRoot) return;
+          var target = getSceneTargetCount(sid);
+          var got = uniqueReceivedCountInScene(sid);
+          var allDone = allScenesComplete();
+          var pend = pendingScenesLabelList(sid);
+          sceneMilestoneRoot.dataset.milestoneSid = String(sid);
+          sceneMilestoneTitle.textContent =
+            "场景 " +
+            sceneLetterFromIndex(sid) +
+            "「" +
+            SCENE_LABELS[sid - 1] +
+            "」— 本场景任务完成";
+          sceneMilestoneP1.textContent =
+            "本场景共 " +
+            target +
+            " 条祝福任务；每点开路边一条即 +1，同一编号只计一次。你已集齐 " +
+            got +
+            " 条。";
+          sceneMilestoneP2.textContent = "你已累计陪小马走了 " + totalSteps + " 步。";
+          if (allDone) {
+            sceneMilestonePending.textContent =
+              "A–J 十个场景任务都完成啦。可以去生日蛋糕页许愿、吹蜡烛，还有一封信在等你。";
+            sceneMilestoneCakeBtn.hidden = false;
+            sceneMilestoneOk.className = "btn-secondary";
+            if (sceneMilestoneOk) sceneMilestoneOk.textContent = "先留在草原";
+          } else if (!pend.length) {
+            sceneMilestonePending.textContent = "其它场景任务也已完成，可在页面底部随时切换场景再逛逛～";
+            sceneMilestoneCakeBtn.hidden = true;
+            sceneMilestoneOk.className = "btn-primary";
+            if (sceneMilestoneOk) sceneMilestoneOk.textContent = "好的";
+          } else {
+            sceneMilestonePending.textContent =
+              "请点页面底部中间的下拉框，切换到尚未完成的场景：" +
+              pend.join("、") +
+              "。每个场景同样有任务进度条，集满该场全部祝福即算完成。";
+            sceneMilestoneCakeBtn.hidden = true;
+            sceneMilestoneOk.className = "btn-primary";
+            if (sceneMilestoneOk) sceneMilestoneOk.textContent = "知道了，去切换场景";
+          }
+          sceneMilestoneRoot.hidden = false;
+          syncBodyModalChromeClass();
+        }
+
+        function closeSceneMilestoneModal(markShown) {
+          if (!sceneMilestoneRoot) return;
+          if (markShown) {
+            var sid = parseInt(sceneMilestoneRoot.dataset.milestoneSid || "0", 10);
+            if (!isNaN(sid) && sid >= 1 && sid <= SCENE_COUNT) markScene100ModalShown(sid);
+          }
+          sceneMilestoneRoot.hidden = true;
+          syncBodyModalChromeClass();
         }
 
         /** 点击前进时，小马水平位置移到点按处（限制在左右安全边距内） */
@@ -869,6 +1738,7 @@
           var idxImg = -1;
           var idxAud = -1;
           var idxVid = -1;
+          var idxScene = -1;
           for (var h = 0; h < headerCells.length; h++) {
             var k = String(headerCells[h] || "")
               .replace(/^\uFEFF/, "")
@@ -878,17 +1748,25 @@
             else if (k.toLowerCase() === "图片url") idxImg = h;
             else if (k.toLowerCase() === "音频url") idxAud = h;
             else if (k.toLowerCase() === "视频url") idxVid = h;
+            else if (k === "场景") idxScene = h;
           }
           if (idxId < 0) idxId = 0;
           if (idxCopy < 0) idxCopy = 1;
           if (idxImg < 0) idxImg = 2;
           if (idxAud < 0) idxAud = 3;
           if (idxVid < 0) idxVid = 4;
-          return { idxId: idxId, idxCopy: idxCopy, idxImg: idxImg, idxAud: idxAud, idxVid: idxVid };
+          return {
+            idxId: idxId,
+            idxCopy: idxCopy,
+            idxImg: idxImg,
+            idxAud: idxAud,
+            idxVid: idxVid,
+            idxScene: idxScene,
+          };
         }
 
         /**
-         * 解析 content/content-import001(1).csv：列 编号,文案,图片url,音频url,视频url
+         * 解析 blessings CSV：列 编号,文案,图片url,音频url,视频url[,场景]（场景可为 A–J 或 1–10）
          * 展示用文案一律来自「文案」列 → text；类型按 视频 > 音频 > 配图 > 纯文案
          */
         function parseBlessingsCSV(text) {
@@ -914,6 +1792,7 @@
             if (vid) typ = "video";
             else if (aud) typ = "audio";
             else if (img) typ = "image";
+            var sceneCell = col.idxScene >= 0 ? csvCell(parts, col.idxScene) : "";
             out.push({
               id: id,
               type: typ,
@@ -922,45 +1801,95 @@
               audio: aud || "",
               video: vid || "",
               nickname: "",
+              scene: sceneCell,
             });
           }
           return out;
         }
 
-        function fetchBlessings() {
-          return fetch("content/content-import001(1).csv", { cache: "no-store" })
-            .then(function (resp) {
-              if (!resp.ok) throw new Error("no csv");
-              return resp.text();
-            })
+        /** 依次尝试多个 CSV 文件名，直到解析出至少一条祝福 */
+        function tryFetchBlessingsCsv() {
+          function step(i) {
+            if (i >= BLESSINGS_CSV_CANDIDATES.length) {
+              return Promise.reject(new Error("no csv"));
+            }
+            var url = BLESSINGS_CSV_CANDIDATES[i];
+            return fetch(url, { cache: "no-store", credentials: "same-origin" })
+              .then(function (resp) {
+                if (!resp.ok) return step(i + 1);
+                return resp.text().then(function (text) {
+                  var arr = parseBlessingsCSV(text);
+                  if (!arr.length) return step(i + 1);
+                  blessingCsvResolvedUrl = url;
+                  return text;
+                });
+              })
+              .catch(function () {
+                return step(i + 1);
+              });
+          }
+          return step(0);
+        }
+
+        function fetchBlessingsOnce() {
+          if (blessingsLoadPromise) return blessingsLoadPromise;
+          blessingsLoadPromise = tryFetchBlessingsCsv()
             .then(function (text) {
-              var arr = parseBlessingsCSV(text);
-              if (!arr.length) throw new Error("empty csv");
-              blessingsPool = arr;
+              blessingsPool = parseBlessingsCSV(text);
+              blessingsCsvLoadFailed = false;
+              updateSceneHud();
             })
             .catch(function (err) {
               blessingsPool = [];
+              blessingsCsvLoadFailed = true;
+              updateSceneHud();
               console.warn(
-                "[grassland] 小花/风铃/大树数据须从 content/content-import001(1).csv 加载；当前失败，池为空。请用 HTTP 打开页面并检查 CSV。",
+                "[grassland] 祝福表须从以下之一加载：" +
+                  BLESSINGS_CSV_CANDIDATES.join("、") +
+                  "；均失败则池为空。请用 HTTP 打开页面；仅有 content 图片没有 CSV 时也会如此。",
                 err && err.message
               );
             });
+          return blessingsLoadPromise;
+        }
+
+        /**
+         * 「我是刘恋，我读完了」：只打开生日蛋糕页，预览「全部场景已完成」时的落地效果。
+         * 不写入已读祝福、不改场景进度、不标记各场景祝贺弹窗；用户回到草原后进度与点击前一致。
+         */
+        function liuLianPreviewCakeWithoutTouchingProgress() {
+          if (
+            !confirm(
+              "将打开生日蛋糕页，预览收齐全部场景后的页面效果。\n\n不会修改你已读祝福、场景进度或其它本地记录；确定前往？"
+            )
+          )
+            return;
+          window.location.href = "cake.html";
         }
 
         function pickBlessing() {
-          if (!blessingsPool.length) return normalizeBlessing({ id: 0, type: "text", text: "小花伴你。" });
-          var b = blessingsPool[Math.floor(Math.random() * blessingsPool.length)];
+          var list = blessingsInScene(currentScene);
+          if (!list.length) {
+            return normalizeBlessing({
+              id: 0,
+              type: "text",
+              text: "小花伴你。",
+              scene: currentScene,
+            });
+          }
+          var b = list[Math.floor(Math.random() * list.length)];
           var n = normalizeBlessing(b);
           if (n.type === "text" && n.text.length > 50) n.text = n.text.slice(0, 50);
           return n;
         }
 
-        /** B/C 池为空时从全池中筛同类型（展示文字均来自 CSV「文案」列） */
+        /** B/C 池为空时从本场景池中筛同类型（展示文字均来自 CSV「文案」列） */
         function pickRandomFromPoolType(want) {
+          var list = blessingsInScene(currentScene);
           var pool = [];
-          for (var i = 0; i < blessingsPool.length; i++) {
-            var n = normalizeBlessing(blessingsPool[i]);
-            if (n.type === want) pool.push(blessingsPool[i]);
+          for (var i = 0; i < list.length; i++) {
+            var n = normalizeBlessing(list[i]);
+            if (n.type === want) pool.push(list[i]);
           }
           if (!pool.length) return null;
           return normalizeBlessing(pool[randInt(0, pool.length - 1)]);
@@ -1000,12 +1929,13 @@
             if (icon === "c") return pickFallbackAudioBlessing();
             return pickBlessing();
           }
+          var list = blessingsInScene(currentScene);
           var pool = [];
-          for (var i = 0; i < blessingsPool.length; i++) {
-            var n = normalizeBlessing(blessingsPool[i]);
-            if (icon === "a" && (n.type === "text" || n.type === "image")) pool.push(blessingsPool[i]);
-            else if (icon === "b" && n.type === "video") pool.push(blessingsPool[i]);
-            else if (icon === "c" && n.type === "audio") pool.push(blessingsPool[i]);
+          for (var i = 0; i < list.length; i++) {
+            var n = normalizeBlessing(list[i]);
+            if (icon === "a" && (n.type === "text" || n.type === "image")) pool.push(list[i]);
+            else if (icon === "b" && n.type === "video") pool.push(list[i]);
+            else if (icon === "c" && n.type === "audio") pool.push(list[i]);
           }
           if (!pool.length) {
             if (icon === "b") return pickFallbackVideoBlessing();
@@ -1874,6 +2804,7 @@
               isGolden: data.isGolden,
               milestoneValue: data.milestoneValue,
               extraLine: data.extraLine,
+              sceneId: data.sceneId != null ? data.sceneId : currentScene,
             });
           }
           modalRoot.hidden = false;
@@ -1903,6 +2834,7 @@
           listModalRoot.hidden = true;
           listModalBody.innerHTML = "";
           syncBodyModalChromeClass();
+          tryFlushPendingSceneMilestone();
         }
 
         function renderReceivedList() {
@@ -1914,57 +2846,92 @@
             listModalBody.appendChild(empty);
             return;
           }
-          for (var i = receivedBlessings.length - 1; i >= 0; i--) {
-            (function (entry, displayNum) {
-              var btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "received-row";
-              var meta = document.createElement("div");
-              meta.className = "received-meta";
-              var typeLabel =
-                entry.type === "video"
-                  ? "风铃(B)"
-                  : entry.type === "audio"
-                    ? "大树(C)"
-                    : entry.type === "image"
-                      ? "小花·画(A)"
-                      : "小花(A)";
-              var d = entry.at ? new Date(entry.at) : null;
-              var timeStr = d ? d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
-              meta.textContent = "#" + displayNum + " · " + typeLabel + (timeStr ? " · " + timeStr : "");
-              var prev = document.createElement("div");
-              prev.className = "received-preview";
-              if (entry.type === "image" && entry.image) {
-                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「小花」 " + (entry.text || "").slice(0, 80);
-              } else if (entry.type === "audio") {
-                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「大树」 " + (entry.text || "轻点听叶声").slice(0, 80);
-              } else if (entry.type === "video") {
-                prev.textContent = (entry.nickname ? "@" + entry.nickname + " " : "") + "「风铃」 " + (entry.text || "轻点晃光影").slice(0, 80);
-              } else {
-                prev.textContent = (entry.text || "").slice(0, 120) || "（小花笺上的话）";
-              }
-              btn.appendChild(meta);
-              btn.appendChild(prev);
-              btn.addEventListener("click", function () {
-                closeListModal();
-                openBlessingModal(
-                  {
-                    poolId: entry.poolId,
-                    type: entry.type,
-                    text: entry.text,
-                    image: entry.image,
-                    audio: entry.audio,
-                    video: entry.video,
-                    nickname: entry.nickname,
-                    isGolden: entry.isGolden,
-                    milestoneValue: entry.milestoneValue,
-                    extraLine: entry.extraLine,
-                  },
-                  { record: false }
-                );
-              });
-              listModalBody.appendChild(btn);
-            })(receivedBlessings[i], receivedBlessings.length - i);
+          var byScene = {};
+          for (var i = 0; i < receivedBlessings.length; i++) {
+            var e0 = receivedBlessings[i];
+            var sid0 = entrySceneId(e0);
+            if (!byScene[sid0]) byScene[sid0] = [];
+            byScene[sid0].push(e0);
+          }
+          for (var s = 1; s <= SCENE_COUNT; s++) {
+            if (!byScene[s] || !byScene[s].length) continue;
+            var head = document.createElement("div");
+            head.className = "received-scene-head";
+            head.textContent =
+              "场景 " +
+              sceneLetterFromIndex(s) +
+              " · " +
+              SCENE_LABELS[s - 1] +
+              " · 共 " +
+              byScene[s].length +
+              " 条";
+            listModalBody.appendChild(head);
+            var arr = byScene[s].slice().sort(function (a, b) {
+              return (b.at || 0) - (a.at || 0);
+            });
+            for (var j = 0; j < arr.length; j++) {
+              (function (entry, idxInScene) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "received-row";
+                var meta = document.createElement("div");
+                meta.className = "received-meta";
+                var typeLabel =
+                  entry.type === "video"
+                    ? "风铃(B)"
+                    : entry.type === "audio"
+                      ? "大树(C)"
+                      : entry.type === "image"
+                        ? "小花·画(A)"
+                        : "小花(A)";
+                var d = entry.at ? new Date(entry.at) : null;
+                var timeStr = d
+                  ? d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                  : "";
+                meta.textContent =
+                  "本场景第 " +
+                  (idxInScene + 1) +
+                  " 条（新→旧） · " +
+                  typeLabel +
+                  (timeStr ? " · " + timeStr : "");
+                var prev = document.createElement("div");
+                prev.className = "received-preview";
+                if (entry.type === "image" && entry.image) {
+                  prev.textContent =
+                    (entry.nickname ? "@" + entry.nickname + " " : "") + "「小花」 " + (entry.text || "").slice(0, 80);
+                } else if (entry.type === "audio") {
+                  prev.textContent =
+                    (entry.nickname ? "@" + entry.nickname + " " : "") + "「大树」 " + (entry.text || "轻点听叶声").slice(0, 80);
+                } else if (entry.type === "video") {
+                  prev.textContent =
+                    (entry.nickname ? "@" + entry.nickname + " " : "") + "「风铃」 " + (entry.text || "轻点晃光影").slice(0, 80);
+                } else {
+                  prev.textContent = (entry.text || "").slice(0, 120) || "（小花笺上的话）";
+                }
+                btn.appendChild(meta);
+                btn.appendChild(prev);
+                btn.addEventListener("click", function () {
+                  closeListModal();
+                  openBlessingModal(
+                    {
+                      poolId: entry.poolId,
+                      type: entry.type,
+                      text: entry.text,
+                      image: entry.image,
+                      audio: entry.audio,
+                      video: entry.video,
+                      nickname: entry.nickname,
+                      isGolden: entry.isGolden,
+                      milestoneValue: entry.milestoneValue,
+                      extraLine: entry.extraLine,
+                      sceneId: entry.sceneId != null ? entry.sceneId : inferSceneFromBlessingId(entry.poolId),
+                    },
+                    { record: false }
+                  );
+                });
+                listModalBody.appendChild(btn);
+              })(arr[j], j);
+            }
           }
         }
 
@@ -2009,7 +2976,7 @@
 
         function startJog() {
           if (jogMode || suppressSpawn || hugSceneActive) return;
-          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+          if (blockingOverlaysForInput()) return;
           jogMode = true;
           if (jogTimer) clearInterval(jogTimer);
           jogTimer = setInterval(function () {
@@ -2112,6 +3079,15 @@
               playDing();
               var b = hit.blessing;
               if (!b) b = normalizeBlessing({ text: "花笺一页", nickname: "" });
+              if (
+                blessingsPool.length &&
+                hit.kind === "token" &&
+                hit.decor &&
+                b &&
+                b.id === 0
+              ) {
+                b = pickBlessingForIcon(hit.decor);
+              }
               var extra =
                 hit.isGolden
                   ? "你已经陪小马走了 " +
@@ -2139,8 +3115,9 @@
 
         function onCanvasPointerDown(e) {
           if (e.button !== undefined && e.button !== 0) return;
+          dismissClickGuide();
           if (hugSceneActive) return;
-          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+          if (blockingOverlaysForInput()) return;
           activePointerId = e.pointerId;
           ptrDownT = performance.now();
           ptrMoved = false;
@@ -2164,12 +3141,7 @@
 
         function onCanvasPointerMove(e) {
           if (e.pointerId !== activePointerId) return;
-          if (
-            suppressSpawn &&
-            !hugSceneActive &&
-            modalRoot.hidden &&
-            listModalRoot.hidden
-          ) {
+          if (suppressSpawn && !hugSceneActive && !blockingOverlaysForInput()) {
             movePonyTowardTap(e.clientX);
           }
           var dx = e.clientX - ptrDownX;
@@ -2195,7 +3167,7 @@
           stopJog();
 
           if (hugSceneActive) return;
-          if (!modalRoot.hidden || !listModalRoot.hidden) return;
+          if (blockingOverlaysForInput()) return;
 
           if (wasJog) {
             e.preventDefault();
@@ -2219,17 +3191,17 @@
 
         modalClose.addEventListener("click", function (e) {
           e.stopPropagation();
-          closeModal();
+          closeBlessingContentModal();
         });
         modalRoot.addEventListener("click", function (e) {
-          if (e.target === modalRoot) closeModal();
+          if (e.target === modalRoot) closeBlessingContentModal();
         });
         modalRoot.addEventListener(
           "touchend",
           function (e) {
             if (e.target === modalRoot) {
               e.preventDefault();
-              closeModal();
+              closeBlessingContentModal();
             }
           },
           { passive: false }
@@ -2257,8 +3229,6 @@
           });
         }
 
-        setupPonyNudgeHold(ponyNudgeLeft, -1);
-        setupPonyNudgeHold(ponyNudgeRight, 1);
         setupPonyNudgeHold(hugPonyLeft, -1);
         setupPonyNudgeHold(hugPonyRight, 1);
 
@@ -2269,6 +3239,7 @@
             var left = k === "ArrowLeft" || k === "a" || k === "A";
             var right = k === "ArrowRight" || k === "d" || k === "D";
             if (!left && !right) return;
+            if (blockingOverlaysForInput()) return;
             if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
             e.preventDefault();
             nudgePonyHorizontal(left ? -PONY_KEY_NUDGE_PX : PONY_KEY_NUDGE_PX);
@@ -2294,6 +3265,70 @@
           { passive: false }
         );
 
+        if (sceneSwitchSelect) {
+          sceneSwitchSelect.addEventListener("change", function () {
+            var v = parseInt(sceneSwitchSelect.value, 10);
+            if (isNaN(v) || v < 1 || v > SCENE_COUNT) return;
+            switchScene(v);
+          });
+        }
+        if (entrySubmitBtn && entryGateRoot) {
+          entrySubmitBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              if (entrySkipNext && entrySkipNext.checked) {
+                localStorage.setItem(LS_KEY_HIDE_ENTRY_INTRO, "1");
+              }
+            } catch (err) {}
+            var v = entrySceneSelect ? parseInt(entrySceneSelect.value, 10) : NaN;
+            if (!isNaN(v) && v >= 1 && v <= SCENE_COUNT) {
+              currentScene = v;
+              saveCurrentScene();
+              roadside = [];
+              updateSceneHud();
+            }
+            entryGateRoot.hidden = true;
+            syncBodyModalChromeClass();
+            startGameLoopIfNeeded();
+            tryShowClickGuide();
+          });
+        }
+        if (clickGuideDismissBtn) {
+          clickGuideDismissBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dismissClickGuide();
+          });
+        }
+        if (sceneMilestoneOk) {
+          sceneMilestoneOk.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSceneMilestoneModal(true);
+          });
+        }
+        if (sceneMilestoneCakeBtn) {
+          sceneMilestoneCakeBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSceneMilestoneModal(true);
+            window.location.href = "cake.html";
+          });
+        }
+        function onReadAllShortcutClick(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          liuLianPreviewCakeWithoutTouchingProgress();
+        }
+        if (entryReadAllBtn) entryReadAllBtn.addEventListener("click", onReadAllShortcutClick);
+        if (listModalReadAllBtn) listModalReadAllBtn.addEventListener("click", onReadAllShortcutClick);
+        if (sceneMilestoneRoot) {
+          sceneMilestoneRoot.addEventListener("click", function (e) {
+            if (e.target === sceneMilestoneRoot) closeSceneMilestoneModal(true);
+          });
+        }
+
         canvas.addEventListener("pointerdown", onCanvasPointerDown);
         canvas.addEventListener("pointermove", onCanvasPointerMove);
         canvas.addEventListener("pointerup", onCanvasPointerUp);
@@ -2301,20 +3336,37 @@
 
         window.addEventListener("resize", function () {
           resize();
+          updateBlessingBadge();
         });
 
         loadStepsFromStorage();
         loadPonyX();
+        loadScene100ShownMap();
+        loadCurrentScene();
         loadReceivedBlessings();
         updateBlessingBadge();
+        updateSceneHud();
         lastInteractionMs = performance.now();
         lastForwardStepMs = performance.now();
 
         resize();
+        fillSceneSelect(sceneSwitchSelect, currentScene);
+        if (entrySceneSelect) fillSceneSelect(entrySceneSelect, currentScene);
+        syncSceneSwitchSelectFromState();
+        if (entryGateRoot) {
+          if (shouldShowEntryIntro()) {
+            entryGateRoot.hidden = false;
+          } else {
+            entryGateRoot.hidden = true;
+            startGameLoopIfNeeded();
+          }
+        } else {
+          startGameLoopIfNeeded();
+        }
         syncBodyModalChromeClass();
-        fetchBlessings().then(function () {
-          requestAnimationFrame(frame);
-        });
+        tryShowClickGuide();
+        fetchBlessingsOnce();
+        updateSceneHud();
       })();
     </script>
   </body>
