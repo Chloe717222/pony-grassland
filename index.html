@@ -2050,6 +2050,10 @@
         font-size: 11px;
         color: #284c38;
       }
+      /* 数据自检条仅开发使用：对用户全局隐藏 */
+      #dataHealthBar {
+        display: none !important;
+      }
       .data-health-bar[data-state="bad"] {
         color: #8a2e2e;
         border-color: rgba(171, 68, 68, 0.4);
@@ -2718,6 +2722,8 @@
         var scene5CapsuleSplitMap = {};
         var scene5DrawCurrent = null;
         var scene5DrawRollingTimer = null;
+        var scene5ReviewGroups = [];
+        var scene5ReviewIndex = 0;
         var honorRedirectTimer = null;
         var allDoneHonorPending = false;
         var allDoneHonorShown = false;
@@ -4351,6 +4357,25 @@
             showScene4WishListModal();
             return;
           }
+          if (sid === 5) {
+            if (!wishCatchRoot || !wishCatchTitle || !wishCatchMeta || !wishCatchPrimaryBtn || !wishCatchSecondaryBtn || !wishCatchTertiaryBtn || !wishCatchList) return;
+            var groups5 = scene5UserGroups(blessingsInScene(5));
+            scene5ReviewGroups = [];
+            for (var gi = 0; gi < groups5.length; gi++) {
+              if (scene5IsGroupRead(groups5[gi])) scene5ReviewGroups.push(groups5[gi]);
+            }
+            if (!scene5ReviewGroups.length) return;
+            scene5ReviewIndex = 0;
+            wishCatchRoot.dataset.mode = "scene5_review";
+            wishCatchRoot.dataset.reviewSid = "5";
+            wishCatchTitle.textContent = "第五关已收集合集";
+            var acts5 = wishCatchPrimaryBtn.parentElement;
+            if (acts5) acts5.classList.add("wish-catch-actions--row");
+            renderScene5CollectedReviewItem();
+            wishCatchRoot.hidden = false;
+            syncBodyModalChromeClass();
+            return;
+          }
           if (!wishCatchRoot || !wishCatchTitle || !wishCatchMeta || !wishCatchPrimaryBtn || !wishCatchSecondaryBtn || !wishCatchList) return;
           var items = sceneCollectedItems(sid);
           if (!items.length) return;
@@ -4940,6 +4965,39 @@
           if (wishCatchSecondaryBtn) {
             wishCatchSecondaryBtn.textContent = "下一条";
           }
+        }
+
+        function renderScene5CollectedReviewItem() {
+          if (!wishCatchList || !wishCatchMeta || !wishCatchPrimaryBtn || !wishCatchSecondaryBtn || !wishCatchTertiaryBtn) return;
+          if (!scene5ReviewGroups.length) {
+            wishCatchList.hidden = false;
+            wishCatchList.textContent = "第五关暂无已收集内容。";
+            wishCatchPrimaryBtn.disabled = true;
+            wishCatchSecondaryBtn.disabled = true;
+            wishCatchTertiaryBtn.hidden = false;
+            wishCatchTertiaryBtn.textContent = "关闭";
+            return;
+          }
+          if (scene5ReviewIndex < 0) scene5ReviewIndex = 0;
+          if (scene5ReviewIndex >= scene5ReviewGroups.length) scene5ReviewIndex = scene5ReviewGroups.length - 1;
+          var g = scene5ReviewGroups[scene5ReviewIndex];
+          var tA = g && g.liulian && g.liulian.text ? g.liulian.text : "（暂无内容）";
+          var tB = g && g.self && g.self.text ? g.self.text : "（暂无内容）";
+          wishCatchMeta.textContent =
+            "第五关已收集合集（" + (scene5ReviewIndex + 1) + " / " + scene5ReviewGroups.length + "）：每条均为同一用户的两条内容。";
+          wishCatchList.hidden = false;
+          wishCatchList.innerHTML =
+            '<h4 style="margin:0 0 8px;font-size:14px;color:#2c5b42;">给40岁的刘恋</h4><p style="margin:0 0 12px;line-height:1.68;">' +
+            escapeHtml(tA) +
+            '</p><h4 style="margin:0 0 8px;font-size:14px;color:#2c5b42;">给40岁的自己</h4><p style="margin:0;line-height:1.68;">' +
+            escapeHtml(tB) +
+            "</p>";
+          wishCatchPrimaryBtn.textContent = "上一条";
+          wishCatchSecondaryBtn.textContent = "下一条";
+          wishCatchPrimaryBtn.disabled = scene5ReviewIndex <= 0;
+          wishCatchSecondaryBtn.disabled = scene5ReviewIndex >= scene5ReviewGroups.length - 1;
+          wishCatchTertiaryBtn.hidden = false;
+          wishCatchTertiaryBtn.textContent = "关闭";
         }
 
         /** 手机端视频体验优化：不加额外 UI，仅做底层加载策略优化。 */
@@ -5687,6 +5745,7 @@
 
         function syncDataSourceTag(state, msg) {
           if (!dataSourceTag || !dataHealthBar) return;
+          dataHealthBar.hidden = true;
           var sourceLabel = blessingsDataSource === "csv" ? "CSV" : blessingsDataSource === "embedded" ? "EMBEDDED" : "未知";
           dataSourceTag.textContent = "数据源：" + sourceLabel + (msg ? " · " + msg : "");
           dataHealthBar.setAttribute("data-state", state === "bad" ? "bad" : "ok");
@@ -8005,6 +8064,11 @@
               renderScene2BonusItem();
               return;
             }
+            if (mode === "scene5_review") {
+              scene5ReviewIndex -= 1;
+              renderScene5CollectedReviewItem();
+              return;
+            }
             if (mode === "scene5_draw") {
               assignScene5Draw("left");
               return;
@@ -8048,6 +8112,11 @@
               renderScene2BonusItem();
               return;
             }
+            if (wishCatchRoot && (wishCatchRoot.dataset.mode || "") === "scene5_review") {
+              scene5ReviewIndex += 1;
+              renderScene5CollectedReviewItem();
+              return;
+            }
             if (wishCatchRoot && (wishCatchRoot.dataset.mode || "") === "list") {
               closeScene4WishModal();
               switchScene(5);
@@ -8077,6 +8146,10 @@
             e.preventDefault();
             e.stopPropagation();
             if (wishCatchRoot && (wishCatchRoot.dataset.mode || "") === "scene2_love_list") {
+              closeScene4WishModal();
+              return;
+            }
+            if (wishCatchRoot && (wishCatchRoot.dataset.mode || "") === "scene5_review") {
               closeScene4WishModal();
               return;
             }

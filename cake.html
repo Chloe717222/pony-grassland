@@ -389,9 +389,9 @@
         var cakeBgm = document.getElementById("cakeBgm");
         var audioHint = document.getElementById("audioHint");
 
-        /** 生日页 BGM：每次加载都带时间戳，强制规避缓存 */
-        var BGM_SRC_BASE = "content/happybirthday.aac";
-        var BGM_SRC = BGM_SRC_BASE + "?v=" + Date.now();
+        /** 生日页 BGM：优先 AAC，手机不兼容时自动回退到 MP3 */
+        var BGM_SRC_CANDIDATES = ["content/happybirthday.aac", "content/0001.mp3"];
+        var bgmSourceIdx = 0;
         /** 生日页弹幕专用数据源（与主站祝福库解耦） */
         var BARRAGE_CSV_SRC = "content/cake-barrage.csv";
         /** file:// 打开时 fetch 本地 CSV 往往会被浏览器拦截，这里提供同内容兜底 */
@@ -417,17 +417,33 @@
           "恋姐生日快乐-@软糖祝福员1019",
           "恋姐生日快乐-@流星打卡人1020",
         ];
+        function versionedAssetUrl(relPath) {
+          return String(relPath || "") + "?v=" + Date.now();
+        }
+
+        function applyBgmSourceByIndex(idx) {
+          if (!cakeBgm) return false;
+          if (idx < 0 || idx >= BGM_SRC_CANDIDATES.length) return false;
+          bgmSourceIdx = idx;
+          try {
+            cakeBgm.src = versionedAssetUrl(BGM_SRC_CANDIDATES[idx]);
+            cakeBgm.load();
+            return true;
+          } catch (eLoad) {
+            return false;
+          }
+        }
+
         if (cakeBgm) {
-          cakeBgm.src = BGM_SRC;
+          applyBgmSourceByIndex(0);
           cakeBgm.addEventListener("error", function () {
+            var next = bgmSourceIdx + 1;
+            if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) return;
             if (audioHint) {
               audioHint.hidden = false;
               audioHint.textContent = "音乐加载失败，请检查 content/happybirthday.aac";
             }
           });
-          try {
-            cakeBgm.load();
-          } catch (e) {}
         }
 
         var dpr = 1;
@@ -547,6 +563,7 @@
         function tryPlayBgm() {
           if (!cakeBgm) return;
           if (bgmHasStarted) return;
+          if (!cakeBgm.src) applyBgmSourceByIndex(0);
           bgmHasStarted = true;
           try {
             cakeBgm.volume = 0;
@@ -556,8 +573,13 @@
             p.then(function () {
               startBgmFadeIn();
             }).catch(function () {
+              var next = bgmSourceIdx + 1;
+              if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) {
+                bgmHasStarted = false;
+                return;
+              }
               bgmHasStarted = false;
-              audioHint.hidden = false;
+              if (audioHint) audioHint.hidden = false;
             });
           } else {
             startBgmFadeIn();
@@ -569,6 +591,10 @@
           var flames = cakeBtn ? cakeBtn.querySelectorAll(".flame") : [];
           for (var i = 0; i < flames.length; i++) flames[i].classList.add("off");
           cakeBtn.disabled = true;
+          // 防止移动端用户没点完信件导致“看不到弹幕”
+          setTimeout(function () {
+            startFloatingBlessings();
+          }, 1800);
           setTimeout(function () {
             startLetter();
           }, 700);
