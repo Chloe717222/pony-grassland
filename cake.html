@@ -231,9 +231,8 @@
         border: 1px solid rgba(45, 122, 82, 0.2);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
         white-space: nowrap;
-        transform: translateX(105vw);
         opacity: 0.95;
-        will-change: transform;
+        will-change: left, opacity;
       }
       /* iPhone 16 Pro Max 等大屏手机适配 */
       @media (max-width: 460px) and (min-height: 880px) {
@@ -576,6 +575,9 @@
               var next = bgmSourceIdx + 1;
               if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) {
                 bgmHasStarted = false;
+                setTimeout(function () {
+                  tryPlayBgm();
+                }, 0);
                 return;
               }
               bgmHasStarted = false;
@@ -722,9 +724,10 @@
               var durationMs = (travel / speed) * 1000;
               var safeGap = 72;
               laneFreeAt[lane] = nowMs + ((width + safeGap) / speed) * 1000;
-              el.style.transition = "transform " + durationMs + "ms linear, opacity 520ms linear";
+              el.style.left = window.innerWidth + 24 + "px";
+              el.style.transition = "left " + durationMs + "ms linear, opacity 520ms linear";
               requestAnimationFrame(function () {
-                el.style.transform = "translateX(" + (-width - 80) + "px)";
+                el.style.left = -width - 80 + "px";
                 el.style.opacity = "0.82";
               });
               var removeTimer = setTimeout(function () {

@@ -2117,6 +2117,9 @@
       /* iPhone 16 Pro Max 等大屏手机：在单列阅读和触控命中上做增强 */
       @media (max-width: 460px) and (min-height: 880px) {
         .top-toolbar {
+          display: none !important;
+        }
+        .top-toolbar {
           left: max(12px, env(safe-area-inset-left, 0px));
           right: max(12px, env(safe-area-inset-right, 0px));
           gap: 8px;
