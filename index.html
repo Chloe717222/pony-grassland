@@ -4189,7 +4189,16 @@
 
         function updateScene4FanBadge() {
           if (!scene4FanBadge) return;
-          if (currentScene !== 4 || !scene4FreePlayMode) {
+          // 仅限第四关「娱乐模式开启且正在游玩」时显示
+          if (
+            currentScene !== 4 ||
+            !scene4FreePlayMode ||
+            (wishCatchRoot && !wishCatchRoot.hidden) ||
+            (sceneMilestoneRoot && !sceneMilestoneRoot.hidden) ||
+            (modalRoot && !modalRoot.hidden) ||
+            (listModalRoot && !listModalRoot.hidden) ||
+            (honorRoot && !honorRoot.hidden)
+          ) {
             scene4FanBadge.hidden = true;
             return;
           }
