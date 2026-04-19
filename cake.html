@@ -49,6 +49,23 @@
         display: flex;
         flex-direction: column;
       }
+      /**
+       * 无 controls 的 BGM：<audio> 留在 DOM 内供播放，但移出视口。
+       * 否则部分 iOS/WebKit 会在页面顶部画出一条长绿色「伪控件条」。
+       */
+      #cakeBgm {
+        position: fixed !important;
+        left: -9999px !important;
+        top: 0 !important;
+        width: 1px !important;
+        height: 1px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        margin: 0 !important;
+        border: 0 !important;
+        clip: rect(0, 0, 0, 0) !important;
+        overflow: hidden !important;
+      }
       #fxCanvas {
         position: fixed;
         inset: 0;
@@ -390,8 +407,12 @@
         var cakeBgm = document.getElementById("cakeBgm");
         var audioHint = document.getElementById("audioHint");
 
-        /** 生日页 BGM：优先 AAC，手机不兼容时自动回退到 MP3 */
-        var BGM_SRC_CANDIDATES = ["content/happybirthday.aac", "content/0001.mp3"];
+        /** 生日页 BGM：主文件为 content/audio_happybirthday.aac，失败时回退旧名/MP3 */
+        var BGM_SRC_CANDIDATES = [
+          "content/audio_happybirthday.aac",
+          "content/happybirthday.aac",
+          "content/0001.mp3",
+        ];
         var bgmSourceIdx = 0;
         /** 生日页弹幕专用数据源（与主站祝福库解耦） */
         var BARRAGE_CSV_SRC = "content/cake-barrage.csv";
@@ -442,7 +463,7 @@
             if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) return;
             if (audioHint) {
               audioHint.hidden = false;
-              audioHint.textContent = "音乐加载失败，请检查 content/happybirthday.aac";
+              audioHint.textContent = "音乐加载失败，请检查 content/audio_happybirthday.aac";
             }
           });
         }

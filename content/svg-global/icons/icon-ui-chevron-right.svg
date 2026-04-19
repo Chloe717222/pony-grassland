@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img">
+  <title>右箭头占位</title>
+  <desc>可复制改名为 chevron-left 等。</desc>
+  <path d="M9 6 L15 12 L9 18" fill="none" stroke="#1a3026" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+</svg>

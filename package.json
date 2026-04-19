@@ -2,6 +2,10 @@
   "name": "pony-grassland",
   "private": true,
   "scripts": {
+    "unify:csv": "node scripts/unify-content-csv.mjs",
+    "build:data": "node scripts/csv-to-data-json.mjs",
+    "watch:data": "node scripts/csv-to-data-json.mjs --watch",
+    "start:local": "npm run build:data && node server/start-static-server.mjs",
     "sync:data": "node scripts/sync-test-datasets.mjs"
   }
 }

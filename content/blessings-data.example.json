@@ -1,0 +1,23 @@
+{
+  "_comment": "复制为 blessings-data.json 或 data.json，保存为 UTF-8（建议无 BOM）。字段与 normalizeBlessing 一致：id, scene(A–E 或 1–5), text, image, audio, video, userId。可省略 manifest，条数会自动写入校验。",
+  "version": "example-json-bundle",
+  "gallery": [
+    { "id": 1, "scene": "A", "text": "【JSON 示例】第一站纯文案 1", "userId": "json_demo_01" },
+    { "id": 2, "scene": "A", "text": "【JSON 示例】第一站纯文案 2", "userId": "json_demo_02" },
+    { "id": 1001, "scene": "B", "text": "【JSON 示例】第二站", "image": "content/0005.png", "userId": "json_demo_b1" },
+    { "id": 1301, "scene": "C", "text": "【JSON 示例】第三站画廊", "userId": "json_demo_c1" },
+    { "id": 1601, "scene": "D", "text": "【JSON 示例】第四站画廊", "userId": "json_demo_d1" },
+    { "id": 2001, "scene": "E", "text": "【JSON 示例】第五站画廊", "userId": "json_demo_e1" }
+  ],
+  "interact": [
+    { "id": 5001, "scene": "A", "text": "互动 A1", "userId": "ia1" },
+    { "id": 5101, "scene": "B", "text": "互动 B1", "image": "content/0005.png", "userId": "ib1" },
+    { "id": 5201, "scene": "C", "text": "互动 C1", "userId": "ic1" },
+    { "id": 5301, "scene": "D", "text": "互动 D1", "userId": "id1" },
+    { "id": 5401, "scene": "E", "text": "互动 E1", "userId": "ie1" }
+  ],
+  "scene3Questions": [
+    { "id": "jq1", "text": "JSON 示例：一年有四个季节。", "answer": true, "explanation": "示例题" },
+    { "id": "jq2", "text": "JSON 示例：太阳从西边升起。", "answer": false, "explanation": "示例题" }
+  ]
+}

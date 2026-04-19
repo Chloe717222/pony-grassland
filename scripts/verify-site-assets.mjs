@@ -12,7 +12,7 @@ const REQUIRED_ROOT = ["index.html", "cake.html"];
 const CSV_CANDIDATES = [
   "content/blessings-test-five-plates.csv",
 ];
-const BGM_REL = "content/happybirthday.aac";
+const BGM_REL = "content/audio_happybirthday.aac";
 /** 常见误操作：把某条祝福语音复制成生日 BGM 文件名 */
 const BGM_MUST_NOT_MATCH = "content/0001.mp3";
 
@@ -32,7 +32,7 @@ function toRepoPath(p) {
 }
 
 const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
-const AUDIO_EXTS = [".mp3", ".webm", ".ogg", ".m4a"];
+const AUDIO_EXTS = [".aac", ".mp3", ".webm", ".ogg", ".m4a"];
 const VIDEO_EXTS = [".mp4", ".webm", ".mov"];
 
 /** @param {string} ref */

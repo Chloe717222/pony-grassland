@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 1376" role="img">
+  <title>第二关全屏底图占位</title>
+  <desc>替换为成稿；可与 content/scene2-back.svg 对应。</desc>
+  <rect width="768" height="1376" fill="#c8e4f5"/>
+  <text x="384" y="688" text-anchor="middle" fill="#4a6d8a" font-size="32" font-family="sans-serif">bg-scene-02</text>
+</svg>

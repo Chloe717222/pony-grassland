@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" role="img">
+  <title>弹窗卡片外框装饰占位</title>
+  <desc>可作背景层或 border-image；按设计改圆角与纹样。</desc>
+  <rect x="4" y="4" width="392" height="232" rx="16" fill="#fcfefb" stroke="#2a6e4c" stroke-width="2" opacity="0.85"/>
+  <rect x="12" y="12" width="376" height="40" rx="8" fill="#e8f5ec" opacity="0.9"/>
+</svg>

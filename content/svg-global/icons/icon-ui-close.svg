@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img">
+  <title>关闭图标占位</title>
+  <desc>替换为正式图标；在 HTML/CSS 中引用本路径。</desc>
+  <circle cx="12" cy="12" r="11" fill="none" stroke="#1a3026" stroke-width="1.5" opacity="0.45"/>
+  <path d="M8 8 L16 16 M16 8 L8 16" stroke="#1a3026" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
