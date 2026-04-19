@@ -6,7 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#78c4a0" />
+    <!-- 勿用亮绿色：Safari 会用它染顶部工具栏/背景条，易被看成「多出一条绿杠」 -->
+    <meta name="theme-color" content="#142920" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
@@ -120,7 +121,8 @@
           "Hiragino Sans GB",
           "Microsoft YaHei",
           sans-serif;
-        background: var(--sky);
+        /** 与 theme-color 一致用深森绿：避免 iOS Safari 在刘海/回弹区透出亮绿「条」；游戏画面由 canvas 自行铺天光 */
+        background: #142920;
         -webkit-font-smoothing: antialiased;
       }
       body {
