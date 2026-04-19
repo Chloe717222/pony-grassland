@@ -11,6 +11,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
     <title>马儿驿站</title>
+    <!-- 与正文 DATA_SCHEMA_VERSION、LS_KEY_CURRENT_SCENE 保持同步：在解析巨型主脚本前先预拉当前关静态底图 -->
+    <script>
+      (function () {
+        var SCHEMA_V = "2026-04-18-linear-no-post-blessing-buttons-v1";
+        var LS_SCENE = "xmgrassland_v1_currentScene";
+        try {
+          var n = parseInt(localStorage.getItem(LS_SCENE) || "1", 10);
+          if (isNaN(n) || n < 1 || n > 5) n = 1;
+          if (n === 5) n = 1;
+          var pad = { 1: "01", 2: "02", 3: "03", 4: "04" }[n] || "01";
+          var rel = "content/svg-global/backgrounds/bg-scene-" + pad + ".svg?v=" + encodeURIComponent(SCHEMA_V);
+          var href = new URL(rel, location.href).href;
+          var L = document.createElement("link");
+          L.rel = "preload";
+          L.as = "image";
+          L.href = href;
+          L.setAttribute("fetchpriority", "high");
+          document.head.appendChild(L);
+        } catch (e0) {}
+      })();
+    </script>
     <style>
       :root {
         /** 与 canvas 天光 #87c9a8、草色 #2a5848 / #3d8b57 同一套森系代币，避免「白盒 App」与画面割裂 */
@@ -4651,6 +4672,7 @@
         var LS_KEY_SCENE_FULL_SHOWCASE = "xmgrassland_v1_sceneFullShowcaseSeen";
         /** 当前数据结构版本；变更真实数据结构/编号规则/缓存结构时递增，用于自动清理旧本地缓存。 */
         var LS_KEY_DATA_SCHEMA_VERSION = "xmgrassland_v1_dataSchemaVersion";
+        /** 与 <head> 内早期底图 preload 脚本中的 SCHEMA_V 须保持一致 */
         var DATA_SCHEMA_VERSION = "2026-04-18-linear-no-post-blessing-buttons-v1";
         /** 开发防回归护栏：设为 1 时输出场景2关键约束告警 */
         var LS_KEY_DEV_GUARDS = "xmgrassland_v1_devGuards";
@@ -4972,20 +4994,23 @@
           st.img = im;
         }
 
-        /** 先拉当前关（或驿站 hub 时预拉第 1 关），其余关错峰 + 低优先级，避免五张大 SVG 抢带宽导致「先草原很久再出成稿」 */
+        /** 先拉当前关静态底图（第 5 关无成稿则预拉第 1 关）；其余关大间隔错峰 + 低优先级，减少与当前关抢带宽 */
         function ensureSceneStaticBackdropsPreload() {
           var cs = currentScene;
-          var prime = cs >= 1 && cs <= SCENE_COUNT ? cs : 1;
+          var prime = 1;
+          if (cs >= 1 && cs <= SCENE_COUNT) {
+            prime = SCENE_STATIC_BACKDROP[cs] ? cs : 1;
+          }
           ensureSceneStaticBackdropLoad(prime, { fetchPriority: "high" });
           var delayMs = 0;
           for (var i = 1; i <= SCENE_COUNT; i++) {
-            if (i === prime) continue;
+            if (i === prime || !SCENE_STATIC_BACKDROP[i]) continue;
             (function (sid, d) {
               setTimeout(function () {
                 ensureSceneStaticBackdropLoad(sid, { fetchPriority: "low" });
               }, d);
             })(i, delayMs);
-            delayMs += 220;
+            delayMs += 550;
           }
         }
 
@@ -14318,6 +14343,7 @@
         loadScene100ShownMap();
         loadCurrentScene();
         clampCurrentSceneToLinear();
+        ensureSceneStaticBackdropsPreload();
         if (currentScene === 5) scene5SkyRiseProgress = SCENE5_SKY_RISE_INITIAL;
         if (currentScene === 2) {
           ponyYOffsetNorm = 0;
