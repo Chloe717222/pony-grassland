@@ -517,6 +517,58 @@
         min-height: 100%;
         min-height: 100dvh;
       }
+      /* 祝福配图：点击后原图灯箱（PNG/JPG），高于主祝福弹窗 */
+      #blessingImageLightboxRoot[hidden] {
+        display: none !important;
+      }
+      #blessingImageLightboxRoot {
+        position: fixed;
+        inset: 0;
+        z-index: 400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+          max(12px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+        box-sizing: border-box;
+        background: rgba(10, 28, 22, 0.88);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .blessing-img-lightbox__panel {
+        width: min(100%, 520px);
+        max-height: min(92dvh, 900px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+      #blessingImageLightboxImg {
+        display: block;
+        width: 100%;
+        max-height: min(78dvh, 720px);
+        object-fit: contain;
+        border-radius: var(--radius-md);
+        background: rgba(0, 0, 0, 0.25);
+        cursor: default;
+      }
+      .blessing-img-lightbox__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+      .blessing-img-lightbox__hint {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.72);
+        text-align: center;
+      }
+      .plate1-blessing-block__media img[data-blessing-zoom="1"],
+      .modal-media-img[data-blessing-zoom="1"] {
+        cursor: zoom-in;
+      }
       .modal-card {
         width: min(100%, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
         max-width: 400px;
@@ -4587,6 +4639,21 @@
       </div>
     </div>
 
+    <div id="blessingImageLightboxRoot" hidden role="dialog" aria-modal="true" aria-label="原图预览">
+      <div class="blessing-img-lightbox__panel">
+        <img id="blessingImageLightboxImg" alt="祝福原图" />
+        <div class="blessing-img-lightbox__actions">
+          <a class="wish-catch-btn wish-catch-btn--primary" id="blessingImageLightboxSave" href="#" download>保存原图</a>
+          <button type="button" class="wish-catch-btn wish-catch-btn--ghost" id="blessingImageLightboxClose">
+            关闭
+          </button>
+        </div>
+        <p class="blessing-img-lightbox__hint">
+          若「保存」无效（多为跨域 COS），请长按图片选「存储到照片」。
+        </p>
+      </div>
+    </div>
+
     <div id="listModalRoot" hidden role="dialog" aria-modal="true" aria-labelledby="listModalTitle">
       <div class="list-modal-card">
         <div class="list-modal-head" id="listModalTitle">已收获祝福 · 按关卡分组</div>
@@ -5062,6 +5129,10 @@
         var listModalRoot = document.getElementById("listModalRoot");
         var listModalBody = document.getElementById("listModalBody");
         var listModalClose = document.getElementById("listModalClose");
+        var blessingImageLightboxRoot = document.getElementById("blessingImageLightboxRoot");
+        var blessingImageLightboxImg = document.getElementById("blessingImageLightboxImg");
+        var blessingImageLightboxSave = document.getElementById("blessingImageLightboxSave");
+        var blessingImageLightboxClose = document.getElementById("blessingImageLightboxClose");
         var hugOfferBtn = document.getElementById("hugOfferBtn");
         var hugLayer = document.getElementById("hugLayer");
         var hugBackToGrassBtn = document.getElementById("hugBackToGrassBtn");
@@ -5607,6 +5678,7 @@
         function blockingOverlaysForInput() {
           return (
             (entryGateRoot && !entryGateRoot.hidden) ||
+            (blessingImageLightboxRoot && !blessingImageLightboxRoot.hidden) ||
             !modalRoot.hidden ||
             !listModalRoot.hidden ||
             (sceneMilestoneRoot && !sceneMilestoneRoot.hidden) ||
@@ -5630,6 +5702,7 @@
           if (currentScene === 2) return blockingOverlaysForInput();
           if (currentScene >= 1 && currentScene <= 4) return true;
           if (currentScene !== 5) return false;
+          if (blessingImageLightboxRoot && !blessingImageLightboxRoot.hidden) return true;
           if (modalRoot && !modalRoot.hidden) return true;
           if (listModalRoot && !listModalRoot.hidden) return true;
           if (sceneMilestoneRoot && !sceneMilestoneRoot.hidden) return true;
@@ -6735,6 +6808,7 @@
             var im = document.createElement("img");
             setBlessingMediaElementSrc(im, img);
             im.alt = "";
+            wireBlessingImagePreviewClick(im, img);
             wi.appendChild(im);
             article.appendChild(wi);
           } else if (vid) {
@@ -6748,6 +6822,7 @@
             var im2 = document.createElement("img");
             setBlessingMediaElementSrc(im2, img);
             im2.alt = "";
+            wireBlessingImagePreviewClick(im2, img);
             wi2.appendChild(im2);
             article.appendChild(wi2);
           } else if (aud) {
@@ -10006,9 +10081,10 @@
           if (n.type === "image" && n.image) {
             var img = document.createElement("img");
             setBlessingMediaElementSrc(img, n.image);
-            img.alt = "祝福配图";
+            img.alt = "祝福配图（点按看原图）";
             img.style.width = "100%";
             img.style.borderRadius = "10px";
+            wireBlessingImagePreviewClick(img, n.image);
             wishCatchList.appendChild(img);
           } else if (n.type === "audio" && n.audio) {
             var aud = document.createElement("audio");
@@ -10676,14 +10752,106 @@
           }
         }
 
-        /** COS 防盗链校验 Referer 时，去掉 Referer 可提高 img/audio/video 加载成功率 */
-        function setBlessingMediaElementSrc(el, raw) {
+        /** 列表与祝福流预览：PNG/JPEG 改为并列 .webp（须 npm run generate:webp 并上传 COS）；外链与其它格式不变 */
+        function blessingRasterWebpVariant(raw) {
+          var s = String(raw || "").trim();
+          if (!s || /^https?:\/\//i.test(s)) return s;
+          if (!/\.(png|jpe?g)$/i.test(s)) return s;
+          return s.replace(/\.(png|jpe?g)$/i, ".webp");
+        }
+
+        function closeBlessingImageLightbox() {
+          if (!blessingImageLightboxRoot) return;
+          blessingImageLightboxRoot.hidden = true;
+          blessingImageLightboxRoot.setAttribute("aria-hidden", "true");
+          if (blessingImageLightboxImg) {
+            try {
+              blessingImageLightboxImg.removeAttribute("src");
+            } catch (e0) {}
+          }
+          if (blessingImageLightboxSave) blessingImageLightboxSave.setAttribute("href", "#");
+          syncBodyModalChromeClass();
+        }
+
+        function blessingImageBasenameForDownload(raw) {
+          var s = String(raw || "").trim();
+          var parts = s.replace(/\\/g, "/").split("/");
+          return parts.pop() || "blessing.png";
+        }
+
+        function openBlessingImageLightbox(rawOriginal) {
+          if (!blessingImageLightboxRoot || !blessingImageLightboxImg) return;
+          var raw = String(rawOriginal || "").trim();
+          if (!raw || !/\.(png|jpe?g)$/i.test(raw)) return;
+          var fullUrl = resolveBlessingMediaUrl(raw);
+          if (!fullUrl) return;
+          try {
+            blessingImageLightboxImg.referrerPolicy = "no-referrer";
+          } catch (eR) {}
+          blessingImageLightboxImg.src = fullUrl;
+          if (blessingImageLightboxSave) {
+            blessingImageLightboxSave.setAttribute("href", fullUrl);
+            try {
+              blessingImageLightboxSave.setAttribute("download", blessingImageBasenameForDownload(raw));
+            } catch (e2) {}
+          }
+          blessingImageLightboxRoot.hidden = false;
+          blessingImageLightboxRoot.setAttribute("aria-hidden", "false");
+          syncBodyModalChromeClass();
+          try {
+            if (blessingImageLightboxClose) blessingImageLightboxClose.focus();
+          } catch (e3) {}
+        }
+
+        function wireBlessingImagePreviewClick(imgEl, rawOriginal) {
+          if (!imgEl) return;
+          var raw = String(rawOriginal || "").trim();
+          if (!raw || !/\.(png|jpe?g)$/i.test(raw)) return;
+          if (imgEl.dataset.blessingZoom === "1") return;
+          imgEl.dataset.blessingZoom = "1";
+          imgEl.setAttribute("role", "button");
+          imgEl.tabIndex = 0;
+          imgEl.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openBlessingImageLightbox(raw);
+          });
+          imgEl.addEventListener("keydown", function (ev) {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              ev.stopPropagation();
+              openBlessingImageLightbox(raw);
+            }
+          });
+        }
+
+        /** opts.useOriginal：强制原路径；默认 img 走 .webp 预览，404 时回退 CSV 原路径 */
+        function setBlessingMediaElementSrc(el, raw, opts) {
+          opts = opts || {};
           if (!el || raw == null) return;
-          var u = resolveBlessingMediaUrl(String(raw));
+          var rawStr = String(raw).trim();
+          if (!rawStr) return;
+          var tag = (el.tagName || "").toLowerCase();
+          var useOriginal = !!opts.useOriginal;
+          var pathForResolve = rawStr;
+          if (tag === "img" && !useOriginal) pathForResolve = blessingRasterWebpVariant(rawStr);
+          var u = resolveBlessingMediaUrl(pathForResolve);
           if (!u) return;
           try {
             el.referrerPolicy = "no-referrer";
           } catch (eR) {}
+          if (tag === "img" && !useOriginal && blessingRasterWebpVariant(rawStr) !== rawStr) {
+            el.onerror = function () {
+              if (el.getAttribute("data-blessing-img-fallback") === "1") return;
+              el.setAttribute("data-blessing-img-fallback", "1");
+              el.onerror = null;
+              el.src = resolveBlessingMediaUrl(rawStr);
+            };
+          } else {
+            try {
+              el.onerror = null;
+            } catch (e4) {}
+          }
           el.src = u;
         }
 
@@ -13086,7 +13254,8 @@
             var img = document.createElement("img");
             img.className = "modal-media-img";
             setBlessingMediaElementSrc(img, data.image);
-            img.alt = "小花旁的图画";
+            img.alt = "小花旁的图画（点按看原图）";
+            wireBlessingImagePreviewClick(img, data.image);
             modalMedia.appendChild(img);
           }
 
@@ -13203,6 +13372,9 @@
         }
 
         function closeModal() {
+          try {
+            closeBlessingImageLightbox();
+          } catch (eLb) {}
           modalRoot.hidden = true;
           goldenStars = [];
           modalNavEntries = null;
@@ -13916,6 +14088,19 @@
           },
           { passive: false }
         );
+
+        if (blessingImageLightboxClose) {
+          blessingImageLightboxClose.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeBlessingImageLightbox();
+          });
+        }
+        if (blessingImageLightboxRoot) {
+          blessingImageLightboxRoot.addEventListener("click", function (e) {
+            if (e.target === blessingImageLightboxRoot) closeBlessingImageLightbox();
+          });
+        }
 
         if (blessingBadge) {
           blessingBadge.addEventListener("click", function (e) {

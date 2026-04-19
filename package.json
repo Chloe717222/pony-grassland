@@ -7,9 +7,11 @@
     "watch:data": "node scripts/csv-to-data-json.mjs --watch",
     "start:local": "npm run build:data && node server/start-static-server.mjs",
     "sync:data": "node scripts/sync-test-datasets.mjs",
+    "generate:webp": "node scripts/generate-webp-blessings.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "sharp": "^0.33.5"
   }
 }
