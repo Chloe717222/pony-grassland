@@ -751,6 +751,14 @@
       .scene-hud-top-row__progress-panel .top-toolbar__bar-wrap {
         background: rgba(255, 255, 255, 0.22);
       }
+      /** 顶栏左右胶囊：同宽（与 --scene-hud-chip-max-w 一致），与中间进度块视觉对齐 */
+      .dev-reset-btn,
+      .blessing-badge-btn {
+        width: min(100%, var(--scene-hud-chip-max-w, min(42vw, 200px)));
+        max-width: none;
+        box-sizing: border-box;
+        text-align: center;
+      }
       /** 本机调试：一键清空进度并刷新（顶栏左侧） */
       .dev-reset-btn {
         position: static;
@@ -770,7 +778,6 @@
         touch-action: manipulation;
         box-shadow: none;
         white-space: nowrap;
-        max-width: var(--scene-hud-chip-max-w, min(42vw, 200px));
         overflow: hidden;
         text-overflow: ellipsis;
       }
@@ -793,7 +800,6 @@
         touch-action: manipulation;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
-        max-width: var(--scene-hud-chip-max-w, min(42vw, 200px));
         overflow: hidden;
         text-overflow: ellipsis;
         font-family: inherit;
@@ -4660,13 +4666,14 @@
          */
         var CONTENT_BASE = "content/";
         /**
-         * 媒体相对路径（如 content/0001.png）会拼到本地址后从 COS 拉取；勿以 /content/ 结尾（避免重复 content）。
-         * 即控制台「域名信息」里的访问域名，须带 https://，与桶内对象键一致（一般为 content/…）。
-         * 线上页 https://chloe717222.github.io/pony-grassland/ 时，COS CORS 的「来源」填 Origin（无路径）：https://chloe717222.github.io
-         * （浏览器跨域 Origin 不含 /pony-grassland）。方法 GET、HEAD；Allow-Header 可用 *。
-         * data.json 里已是完整 https 的媒体地址不会被改写。
+         * CSV 里媒体列仍写 content/xxx.png（与本地 content 文件夹一致即可），不必改成 COS 完整 URL。
+         * 读桶时二选一：① 上传时把文件放在桶根（image0085.png），下行 strip=true，运行时会自动去掉 data 里的 content/ 再拼域名；
+         * ② 上传时在桶里建 content 文件夹、键为 content/image0085.png，strip=false，与 CSV 一字不差对应。
+         * BLESSINGS_MEDIA_CDN_BASE 勿以 /content/ 结尾。CORS 来源：https://chloe717222.github.io
+         * 若某条必须走外链，可在 CSV 直接写完整 https://…（不会被改写）。
          */
         var BLESSINGS_MEDIA_CDN_BASE = "https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com/";
+        var BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT = true;
         var BLESSINGS_CSV_CANDIDATES = [
           CONTENT_BASE + "scene1-gallery.csv",
           CONTENT_BASE + "scene2-gallery.csv",
@@ -6675,14 +6682,14 @@
             var au = document.createElement("audio");
             au.controls = true;
             au.preload = "metadata";
-            au.src = resolveBlessingMediaUrl(aud);
+            setBlessingMediaElementSrc(au, aud);
             wa.appendChild(au);
             article.appendChild(wa);
           } else if (typ === "image" && img) {
             var wi = document.createElement("div");
             wi.className = "plate1-blessing-block__media";
             var im = document.createElement("img");
-            im.src = resolveBlessingMediaUrl(img);
+            setBlessingMediaElementSrc(im, img);
             im.alt = "";
             wi.appendChild(im);
             article.appendChild(wi);
@@ -6695,7 +6702,7 @@
             var wi2 = document.createElement("div");
             wi2.className = "plate1-blessing-block__media";
             var im2 = document.createElement("img");
-            im2.src = resolveBlessingMediaUrl(img);
+            setBlessingMediaElementSrc(im2, img);
             im2.alt = "";
             wi2.appendChild(im2);
             article.appendChild(wi2);
@@ -6705,7 +6712,7 @@
             var au2 = document.createElement("audio");
             au2.controls = true;
             au2.preload = "metadata";
-            au2.src = resolveBlessingMediaUrl(aud);
+            setBlessingMediaElementSrc(au2, aud);
             wa2.appendChild(au2);
             article.appendChild(wa2);
           }
@@ -9953,7 +9960,7 @@
           }
           if (n.type === "image" && n.image) {
             var img = document.createElement("img");
-            img.src = resolveBlessingMediaUrl(n.image);
+            setBlessingMediaElementSrc(img, n.image);
             img.alt = "祝福配图";
             img.style.width = "100%";
             img.style.borderRadius = "10px";
@@ -9961,7 +9968,7 @@
           } else if (n.type === "audio" && n.audio) {
             var aud = document.createElement("audio");
             aud.controls = true;
-            aud.src = resolveBlessingMediaUrl(n.audio);
+            setBlessingMediaElementSrc(aud, n.audio);
             aud.style.width = "100%";
             wishCatchList.appendChild(aud);
           } else if (n.type === "video" && n.video) {
@@ -10028,6 +10035,9 @@
           vid.setAttribute("playsinline", "");
           vid.setAttribute("webkit-playsinline", "true");
           vid.preload = shouldConservativeLoad ? "none" : "metadata";
+          try {
+            vid.referrerPolicy = "no-referrer";
+          } catch (eVr) {}
           if (!shouldConservativeLoad) {
             vid.src = resolvedSrc;
           }
@@ -10593,8 +10603,8 @@
 
         /**
          * 祝福配图/音/视频：已是 http(s) 则原样使用；
-         * 配置了 BLESSINGS_MEDIA_CDN_BASE 时，相对路径改从该根解析；
-         * 否则与当前页同源拼绝对 URL（子路径部署时避免错到域名根目录）。
+         * 配置了 BLESSINGS_MEDIA_CDN_BASE 时，相对路径从该根解析（可按 BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT 去掉 data 里的 content/ 前缀）；
+         * 否则与当前页同源拼绝对 URL。
          */
         function resolveBlessingMediaUrl(raw) {
           if (raw == null || typeof raw !== "string") return "";
@@ -10606,6 +10616,9 @@
             try {
               var base = cdn.replace(/\/*$/, "/");
               var rel = s.replace(/^\.\//, "");
+              if (typeof BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined" && BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT) {
+                rel = rel.replace(/^content\//i, "");
+              }
               return new URL(rel, base).href;
             } catch (eCdn) {
               /* fall through */
@@ -10616,6 +10629,17 @@
           } catch (eM) {
             return s;
           }
+        }
+
+        /** COS 防盗链校验 Referer 时，去掉 Referer 可提高 img/audio/video 加载成功率 */
+        function setBlessingMediaElementSrc(el, raw) {
+          if (!el || raw == null) return;
+          var u = resolveBlessingMediaUrl(String(raw));
+          if (!u) return;
+          try {
+            el.referrerPolicy = "no-referrer";
+          } catch (eR) {}
+          el.src = u;
         }
 
         function fetchBlessingsManifest() {
@@ -13010,13 +13034,13 @@
             var aud = document.createElement("audio");
             aud.controls = true;
             aud.preload = "metadata";
-            aud.src = resolveBlessingMediaUrl(data.audio);
+            setBlessingMediaElementSrc(aud, data.audio);
             modalMedia.appendChild(aud);
           } else if (t === "image" && data.image) {
             hasMedia = true;
             var img = document.createElement("img");
             img.className = "modal-media-img";
-            img.src = resolveBlessingMediaUrl(data.image);
+            setBlessingMediaElementSrc(img, data.image);
             img.alt = "小花旁的图画";
             modalMedia.appendChild(img);
           }
