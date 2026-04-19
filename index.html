@@ -695,8 +695,8 @@
         top: calc(max(6px, env(safe-area-inset-top, 0px)) + var(--scene-hud-top-nudge, 0px));
         z-index: 220;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
-        gap: 6px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(8px, 2.4vw, 14px);
         align-items: center;
         width: 100%;
         max-width: calc(100vw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)));
@@ -3937,10 +3937,10 @@
         pointer-events: none;
         user-select: none;
       }
-      /** 底部「上方年−1」条：整体上移约一字高（em 随 clamp 字号变化） */
+      /** 底部「上方年−1」条：整体上移（em 随 clamp 字号变化） */
       .scene5-year-run-big.scene5-year-run-bottom {
         position: relative;
-        top: -1em;
+        top: -2em;
       }
       .scene5-year-milestone-overlay {
         position: fixed;
@@ -4655,10 +4655,18 @@
          * 可选列「场景」填 A–E（或 1–5）覆盖默认规则；留空则按编号分段归入场景（见 inferSceneFromBlessingId）。
          */
         /**
-         * 媒体默认与页面同源（如 GitHub Pages 的 content/），不是单独 CDN。
-         * 若要用对象存储：CSV 里图片/音视频列写完整 https://… 即可；或把本变量改为 COS 根 URL（须 CORS 允许当前站点）。
+         * 祝福 JSON / manifest 仍从本站 content/ 读取（或由 build:data 内嵌）。
+         * 媒体文件：相对路径默认与页面同源；也可统一走下方 CDN，或直接在 CSV 里写完整 https://…（不会被改写）。
          */
         var CONTENT_BASE = "content/";
+        /**
+         * 媒体相对路径（如 content/0001.png）会拼到本地址后从 COS 拉取；勿以 /content/ 结尾（避免重复 content）。
+         * 即控制台「域名信息」里的访问域名，须带 https://，与桶内对象键一致（一般为 content/…）。
+         * 线上页 https://chloe717222.github.io/pony-grassland/ 时，COS CORS 的「来源」填 Origin（无路径）：https://chloe717222.github.io
+         * （浏览器跨域 Origin 不含 /pony-grassland）。方法 GET、HEAD；Allow-Header 可用 *。
+         * data.json 里已是完整 https 的媒体地址不会被改写。
+         */
+        var BLESSINGS_MEDIA_CDN_BASE = "https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com/";
         var BLESSINGS_CSV_CANDIDATES = [
           CONTENT_BASE + "scene1-gallery.csv",
           CONTENT_BASE + "scene2-gallery.csv",
@@ -4914,12 +4922,16 @@
         var scene1CollectedByPoolId = {};
         /** 板块 1 日出亮度 0→1（单调不减，每次进入均完整播放） */
         var plate1RiseProgress = 0;
-        /** 第 1–4 关：全屏静态底图（cover），与程序化天/草二选一；失败则回退原绘制 */
+        /**
+         * 第 1–5 关：全屏静态底图（cover），与程序化天/草二选一；失败则回退原绘制。
+         * 成稿放在 content/svg-global/backgrounds/（勿只改 scene*-back.svg 而忘记此处，否则仍走程序草原）。
+         */
         var SCENE_STATIC_BACKDROP = {
-          1: { url: "content/scene1-back.svg", img: null, ready: false, started: false },
-          2: { url: "content/scene2-back.svg", img: null, ready: false, started: false },
-          3: { url: "content/scene3-back.svg", img: null, ready: false, started: false },
-          4: { url: "content/scene4-back.svg", img: null, ready: false, started: false },
+          1: { url: "content/svg-global/backgrounds/bg-scene-1.svg", img: null, ready: false, started: false },
+          2: { url: "content/svg-global/backgrounds/bg-scene-02.svg", img: null, ready: false, started: false },
+          3: { url: "content/svg-global/backgrounds/bg-scene-03.svg", img: null, ready: false, started: false },
+          4: { url: "content/svg-global/backgrounds/bg-scene-04.svg", img: null, ready: false, started: false },
+          5: { url: "content/svg-global/backgrounds/bg-scene-05.svg", img: null, ready: false, started: false },
         };
 
         function sceneStaticBackdropActive(sid) {
@@ -4948,7 +4960,7 @@
         }
 
         function ensureSceneStaticBackdropsPreload() {
-          for (var i = 1; i <= 4; i++) {
+          for (var i = 1; i <= SCENE_COUNT; i++) {
             ensureSceneStaticBackdropLoad(i);
           }
         }
@@ -10580,14 +10592,25 @@
         }
 
         /**
-         * 祝福配图/音/视频地址：已是 http(s) 则视为云端或外链原样使用；
-         * 否则与 data.json 同源拼成绝对 URL（GitHub Pages 子路径下相对 content/ 才不会错到域名根目录）。
+         * 祝福配图/音/视频：已是 http(s) 则原样使用；
+         * 配置了 BLESSINGS_MEDIA_CDN_BASE 时，相对路径改从该根解析；
+         * 否则与当前页同源拼绝对 URL（子路径部署时避免错到域名根目录）。
          */
         function resolveBlessingMediaUrl(raw) {
           if (raw == null || typeof raw !== "string") return "";
           var s = raw.trim();
           if (!s) return "";
           if (/^https?:\/\//i.test(s)) return s;
+          var cdn = typeof BLESSINGS_MEDIA_CDN_BASE === "string" ? BLESSINGS_MEDIA_CDN_BASE.trim() : "";
+          if (cdn) {
+            try {
+              var base = cdn.replace(/\/*$/, "/");
+              var rel = s.replace(/^\.\//, "");
+              return new URL(rel, base).href;
+            } catch (eCdn) {
+              /* fall through */
+            }
+          }
           try {
             return resolveCsvFetchUrl(s);
           } catch (eM) {
@@ -11766,7 +11789,7 @@
 
         function drawAmbientFront() {
           if (currentScene === 2) return;
-          if (currentScene >= 1 && currentScene <= 4 && sceneStaticBackdropActive(currentScene)) return;
+          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneStaticBackdropActive(currentScene)) return;
           var now = performance.now();
           if (ambientRabbit) {
             var rx = ambientRabbit.x;
@@ -11880,7 +11903,7 @@
          */
         function drawEndlessGrass(scrollPx, phOverride) {
           var ph = phOverride || getGrasslandBackdropPhase();
-          if (currentScene >= 1 && currentScene <= 4 && sceneStaticBackdropActive(currentScene)) return;
+          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneStaticBackdropActive(currentScene)) return;
           var farY = H * 0.36;
           var grassA, grassB, grassC, strokeG, gradTop, gradBot;
           if (ph._hugDuskGrass) {
@@ -12100,7 +12123,7 @@
 
         function drawSkyAndLayers(scrollPx) {
           var ph = getGrasslandBackdropPhase();
-          if (currentScene >= 1 && currentScene <= 4) {
+          if (currentScene >= 1 && currentScene <= SCENE_COUNT) {
             ensureSceneStaticBackdropLoad(currentScene);
             if (drawSceneStaticBackdropCover(currentScene)) return;
           }
@@ -13169,26 +13192,6 @@
                 var btn = document.createElement("button");
                 btn.type = "button";
                 btn.className = "received-row";
-                var meta = document.createElement("div");
-                meta.className = "received-meta";
-                var typeLabel =
-                  entry.type === "video"
-                    ? "风铃(B)"
-                    : entry.type === "audio"
-                      ? "大树(C)"
-                      : entry.type === "image"
-                        ? "小花·画(A)"
-                        : "小花(A)";
-                var d = entry.at ? new Date(entry.at) : null;
-                var timeStr = d
-                  ? d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                  : "";
-                meta.textContent =
-                  "本场景第 " +
-                  (idxInScene + 1) +
-                  " 条（新→旧） · " +
-                  typeLabel +
-                  (timeStr ? " · " + timeStr : "");
                 var prev = document.createElement("div");
                 prev.className = "received-preview";
                 if (entry.type === "image" && entry.image) {
@@ -13203,7 +13206,6 @@
                 } else {
                   prev.textContent = (entry.text || "").slice(0, 120) || "（小花笺上的话）";
                 }
-                btn.appendChild(meta);
                 btn.appendChild(prev);
                 var uidE = entry.userId != null ? String(entry.userId).trim() : "";
                 if (uidE) {

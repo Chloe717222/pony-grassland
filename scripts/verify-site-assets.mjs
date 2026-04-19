@@ -28,6 +28,14 @@ const CSV_SCAN_CANDIDATES = [
 const BGM_REL = "content/audio_happybirthday.aac";
 /** 常见误操作：把某条祝福语音复制成生日 BGM 文件名（旧编号资源；不存在则跳过比对） */
 const BGM_MUST_NOT_MATCH = "content/0001.mp3";
+/** 与 index.html 中 SCENE_STATIC_BACKDROP 路径一致（缺则线上回退程序草原） */
+const STATIC_BACKDROP_SVGS = [
+  "content/svg-global/backgrounds/bg-scene-1.svg",
+  "content/svg-global/backgrounds/bg-scene-02.svg",
+  "content/svg-global/backgrounds/bg-scene-03.svg",
+  "content/svg-global/backgrounds/bg-scene-04.svg",
+  "content/svg-global/backgrounds/bg-scene-05.svg",
+];
 
 /** @param {string} abs */
 function sha256File(abs) {
@@ -96,6 +104,11 @@ function main() {
   for (const name of REQUIRED_ROOT) {
     const abs = path.join(repoRoot, name);
     if (!fs.existsSync(abs)) errors.push(`缺少根目录文件：${name}`);
+  }
+
+  for (const rel of STATIC_BACKDROP_SVGS) {
+    const abs = path.join(repoRoot, rel);
+    if (!fs.existsSync(abs)) errors.push(`缺少画布静态底图：${rel}`);
   }
 
   const csvFilesToScan = [];
