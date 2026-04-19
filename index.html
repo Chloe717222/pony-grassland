@@ -4930,15 +4930,16 @@
         /** 板块 1 日出亮度 0→1（单调不减，每次进入均完整播放） */
         var plate1RiseProgress = 0;
         /**
-         * 第 1–5 关：全屏静态底图（cover），与程序化天/草二选一；失败则回退原绘制。
+         * 第 1–4 关：全屏静态底图（cover），与程序化天/草二选一；失败则回退原绘制。第 5 关不设此项，始终走程序日出天幕 + 草原（与板块 1 同款 drawPlate1SunriseSkyAndSun）。
          * 成稿放在 content/svg-global/backgrounds/（勿只改 scene*-back.svg 而忘记此处，否则仍走程序草原）。
+         * 注意：若单文件 SVG 体积很大（数 MB），勿在首屏对五关同时发起 Image 请求，否则会长时间占满带宽，
+         * 当前关迟迟 onload，用户会先看到程序草原/天幕；见 ensureSceneStaticBackdropsPreload 的分流策略。
          */
         var SCENE_STATIC_BACKDROP = {
           1: { url: "content/svg-global/backgrounds/bg-scene-01.svg", img: null, ready: false, started: false },
           2: { url: "content/svg-global/backgrounds/bg-scene-02.svg", img: null, ready: false, started: false },
           3: { url: "content/svg-global/backgrounds/bg-scene-03.svg", img: null, ready: false, started: false },
           4: { url: "content/svg-global/backgrounds/bg-scene-04.svg", img: null, ready: false, started: false },
-          5: { url: "content/svg-global/backgrounds/bg-scene-05.svg", img: null, ready: false, started: false },
         };
 
         function sceneStaticBackdropActive(sid) {
@@ -4946,12 +4947,17 @@
           return !!(st && st.ready && st.img && st.img.naturalWidth > 0);
         }
 
-        function ensureSceneStaticBackdropLoad(sid) {
+        function ensureSceneStaticBackdropLoad(sid, opts) {
           var st = SCENE_STATIC_BACKDROP[sid];
           if (!st || st.started) return;
           st.started = true;
+          opts = opts || {};
           var im = new Image();
           im.decoding = "async";
+          try {
+            var fp = opts.fetchPriority;
+            if (fp === "high" || fp === "low") im.fetchPriority = fp;
+          } catch (eFP) {}
           im.onload = function () {
             if (im.naturalWidth > 0) st.ready = true;
           };
@@ -4966,9 +4972,20 @@
           st.img = im;
         }
 
+        /** 先拉当前关（或驿站 hub 时预拉第 1 关），其余关错峰 + 低优先级，避免五张大 SVG 抢带宽导致「先草原很久再出成稿」 */
         function ensureSceneStaticBackdropsPreload() {
+          var cs = currentScene;
+          var prime = cs >= 1 && cs <= SCENE_COUNT ? cs : 1;
+          ensureSceneStaticBackdropLoad(prime, { fetchPriority: "high" });
+          var delayMs = 0;
           for (var i = 1; i <= SCENE_COUNT; i++) {
-            ensureSceneStaticBackdropLoad(i);
+            if (i === prime) continue;
+            (function (sid, d) {
+              setTimeout(function () {
+                ensureSceneStaticBackdropLoad(sid, { fetchPriority: "low" });
+              }, d);
+            })(i, delayMs);
+            delayMs += 220;
           }
         }
 
@@ -8805,6 +8822,7 @@
           if (sid === 5 && prev !== 5) scene5SkyRiseProgress = SCENE5_SKY_RISE_INITIAL;
           if (sid === 1 && prev !== 1) markPlate1EnterInteraction();
           currentScene = sid;
+          ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
           if (prev === 1 && sid !== 1) dismissScene1EnlightenToast();
           if (sid >= 2 && sid <= 5) {
             ponyNormX = 0.5;

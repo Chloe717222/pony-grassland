@@ -34,7 +34,6 @@ const STATIC_BACKDROP_SVGS = [
   "content/svg-global/backgrounds/bg-scene-02.svg",
   "content/svg-global/backgrounds/bg-scene-03.svg",
   "content/svg-global/backgrounds/bg-scene-04.svg",
-  "content/svg-global/backgrounds/bg-scene-05.svg",
 ];
 
 /** @param {string} abs */
