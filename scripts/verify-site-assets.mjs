@@ -30,7 +30,7 @@ const BGM_REL = "content/audio_happybirthday.aac";
 const BGM_MUST_NOT_MATCH = "content/0001.mp3";
 /** 与 index.html 中 SCENE_STATIC_BACKDROP 路径一致（缺则线上回退程序草原） */
 const STATIC_BACKDROP_SVGS = [
-  "content/svg-global/backgrounds/bg-scene-1.svg",
+  "content/svg-global/backgrounds/bg-scene-01.svg",
   "content/svg-global/backgrounds/bg-scene-02.svg",
   "content/svg-global/backgrounds/bg-scene-03.svg",
   "content/svg-global/backgrounds/bg-scene-04.svg",
