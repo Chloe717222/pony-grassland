@@ -3,6 +3,10 @@
  * 用法：node scripts/csv-to-data-json.mjs
  * 监听：node scripts/csv-to-data-json.mjs --watch
  *
+ * 提交规范：仓库已配置 husky pre-commit——只要暂存区含 content 下任意 .csv，会自动执行本脚本并
+ * git add content/data.json、content/data.embed.js，避免只改 CSV 却未同步 data 就推送。
+ * CI（GitHub Actions 发布 Pages）也会在构建步骤执行 npm run build:data。
+ *
  * CSV 优先按 UTF-8 读取；若表头无法识别「编号」「文案」，则按 GBK 解码（兼容 Excel 默认 ANSI/GBK 另存）。
  */
 import { spawnSync } from "node:child_process";
