@@ -514,6 +514,13 @@
         max-height: min(90dvh, 780px);
         padding: 22px 16px 18px;
       }
+      /**
+       * 全局祝福弹窗（路边拾取等）：整体上移约「半格题面」高度，
+       * 与 .blessing-scene-page__question 的上下 padding 10+10、字号 14、行高 1.45 对齐估算。
+       */
+      #modalRoot #modalCard.modal-card--large {
+        transform: translateY(calc(-0.5 * (10px + 10px + 14px * 1.45)));
+      }
       .modal-media {
         margin: 0 0 14px;
       }
@@ -680,61 +687,44 @@
         touch-action: manipulation;
         box-shadow: 0 4px 18px rgba(18, 70, 45, 0.22);
       }
-      /** 顶栏：左「happy birthday」、右任务进度；「已收获祝福」在右下角，与顶栏胶囊同色 */
+      /** 顶栏一行三格：左 happy birthday｜中任务进度｜右已收获祝福（并列） */
       .scene-hud-top-row {
         position: fixed;
         left: max(6px, env(safe-area-inset-left, 0px));
         right: max(6px, env(safe-area-inset-right, 0px));
         top: calc(max(6px, env(safe-area-inset-top, 0px)) + var(--scene-hud-top-nudge, 0px));
         z-index: 220;
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+        gap: 6px;
         align-items: center;
-        gap: 8px;
-        width: auto;
+        width: 100%;
         max-width: calc(100vw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)));
+        box-sizing: border-box;
         pointer-events: none;
       }
       .scene-hud-top-row > * {
         pointer-events: auto;
+        min-width: 0;
       }
       .scene-hud-top-row__left,
+      .scene-hud-top-row__center,
       .scene-hud-top-row__right {
         display: flex;
         align-items: center;
-        flex-shrink: 0;
       }
       .scene-hud-top-row__left {
         justify-content: flex-start;
       }
+      .scene-hud-top-row__center {
+        justify-content: center;
+      }
       .scene-hud-top-row__right {
         justify-content: flex-end;
-        max-width: var(--scene-hud-chip-max-w, min(42vw, 200px));
-        min-width: 0;
-      }
-      /** 右下角「已收获祝福」：占位与宽度同 happy birthday 胶囊 */
-      .scene-hud-corner-dock {
-        position: fixed;
-        right: max(6px, env(safe-area-inset-right, 0px));
-        bottom: max(10px, env(safe-area-inset-bottom, 0px));
-        z-index: 218;
-        width: var(--scene-hud-chip-max-w, min(42vw, 200px));
-        max-width: calc(100vw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)));
-        pointer-events: none;
-      }
-      .scene-hud-corner-dock > * {
-        pointer-events: auto;
-      }
-      .scene-hud-corner-dock .blessing-badge-btn {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
       }
       /** 任务进度块：边框/底/字色与 .dev-reset-btn（happy birthday）一致，不另起色板 */
       .scene-hud-top-row__progress-panel {
-        width: 100%;
+        width: min(100%, var(--scene-hud-chip-max-w, min(42vw, 200px)));
         max-width: var(--scene-hud-chip-max-w, min(42vw, 200px));
         box-sizing: border-box;
         min-width: 0;
@@ -803,7 +793,7 @@
         touch-action: manipulation;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
-        max-width: min(46vw, 220px);
+        max-width: var(--scene-hud-chip-max-w, min(42vw, 200px));
         overflow: hidden;
         text-overflow: ellipsis;
         font-family: inherit;
@@ -2153,9 +2143,7 @@
        * 第一关铃筒全部祝福、第二/四关信筒阅览、第三关阅览均打此标记。
        */
       #sceneHud.scene-hud--scene2-allread .top-toolbar__frac,
-      #sceneHud.scene-hud--scene2-allread .top-toolbar__bar-wrap,
-      #sceneHudProgress.scene-hud--scene2-allread .top-toolbar__frac,
-      #sceneHudProgress.scene-hud--scene2-allread .top-toolbar__bar-wrap {
+      #sceneHud.scene-hud--scene2-allread .top-toolbar__bar-wrap {
         display: none !important;
       }
       .scene2-plate-all-blessings--horizontal {
@@ -3949,6 +3937,11 @@
         pointer-events: none;
         user-select: none;
       }
+      /** 底部「上方年−1」条：整体上移约一字高（em 随 clamp 字号变化） */
+      .scene5-year-run-big.scene5-year-run-bottom {
+        position: relative;
+        top: -1em;
+      }
       .scene5-year-milestone-overlay {
         position: fixed;
         inset: 0;
@@ -4333,10 +4326,6 @@
           padding: 7px 10px 8px;
           gap: 5px;
         }
-        .scene-hud-corner-dock {
-          right: max(10px, env(safe-area-inset-right, 0px));
-          bottom: max(12px, env(safe-area-inset-bottom, 0px));
-        }
         .top-toolbar__title,
         .top-toolbar__frac {
           font-size: 11px;
@@ -4362,10 +4351,6 @@
           left: max(12px, env(safe-area-inset-left, 0px));
           right: max(12px, env(safe-area-inset-right, 0px));
           gap: 10px;
-        }
-        .scene-hud-corner-dock {
-          right: max(12px, env(safe-area-inset-right, 0px));
-          bottom: max(14px, env(safe-area-inset-bottom, 0px));
         }
         .dev-reset-btn,
         .blessing-badge-btn {
@@ -4410,7 +4395,7 @@
       <div class="scene-hud-top-row__left">
         <button type="button" class="dev-reset-btn" id="devResetBtn" aria-label="清空本机进度并刷新">happy birthday</button>
       </div>
-      <div class="scene-hud-top-row__right">
+      <div class="scene-hud-top-row__center">
         <div class="scene-hud-top-row__progress-panel">
           <div class="top-toolbar__progress-head">
             <span class="top-toolbar__title" id="sceneHudTitle">第一站 · 启蒙的象限</span>
@@ -4421,9 +4406,9 @@
           </div>
         </div>
       </div>
-    </div>
-    <div id="sceneHudProgress" class="scene-hud-corner-dock" aria-live="polite">
-      <button type="button" class="blessing-badge-btn" id="blessingBadge" aria-label="已收获祝福">已收获祝福 0</button>
+      <div class="scene-hud-top-row__right" id="sceneHudProgress" aria-live="polite">
+        <button type="button" class="blessing-badge-btn" id="blessingBadge" aria-label="已收获祝福">已收获祝福 0</button>
+      </div>
     </div>
     <select id="sceneSwitchSelect" class="top-toolbar__select scene-switch-sr-only" aria-label="切换站点"></select>
     <div class="data-health-bar" id="dataHealthBar" data-state="ok" aria-live="polite" hidden>
@@ -4669,7 +4654,10 @@
          * 祝福总表：按顺序尝试，避免线上只带了旧文件名时整池为空（媒体仍在 content/，与 CSV 是否加载无关）。
          * 可选列「场景」填 A–E（或 1–5）覆盖默认规则；留空则按编号分段归入场景（见 inferSceneFromBlessingId）。
          */
-        /** 第一阶段先接本地真实数据；切云端时只需把这里改成 COS 的 content 根目录。 */
+        /**
+         * 媒体默认与页面同源（如 GitHub Pages 的 content/），不是单独 CDN。
+         * 若要用对象存储：CSV 里图片/音视频列写完整 https://… 即可；或把本变量改为 COS 根 URL（须 CORS 允许当前站点）。
+         */
         var CONTENT_BASE = "content/";
         var BLESSINGS_CSV_CANDIDATES = [
           CONTENT_BASE + "scene1-gallery.csv",
@@ -4950,8 +4938,12 @@
           };
           im.onerror = function () {
             st.ready = false;
+            try {
+              console.warn("[backdrop] 加载失败，将使用程序天幕：" + resolveCsvFetchUrl(st.url));
+            } catch (eLog) {}
           };
-          im.src = st.url;
+          /** 与 fetch 同源：子路径部署时用绝对 URL + 版本参数，避免部分浏览器把 content/ 解析到站点根目录或长期缓存旧 404 */
+          im.src = resolveCsvFetchUrl(st.url, DATA_SCHEMA_VERSION);
           st.img = im;
         }
 
@@ -5362,49 +5354,7 @@
           return true;
         }
 
-        /** 五关游戏均完成且五关「全部祝福」均已浏览后，弹出带「生日页」按钮的引导（不自动跳转） */
-        function openAllDoneBirthdayMilestoneModal() {
-          if (!sceneMilestoneRoot) return;
-          sceneMilestoneRoot.dataset.milestoneSid = "5";
-          sceneMilestoneRoot.dataset.nextSid = "";
-          sceneMilestoneRoot.dataset.mode = "all_done_birthday";
-          sceneMilestoneTitle.textContent = "可以去过生日啦";
-          if (sceneMilestoneCheck) sceneMilestoneCheck.hidden = false;
-          if (sceneMilestoneP1) {
-            sceneMilestoneP1.hidden = false;
-            sceneMilestoneP1.textContent =
-              "五关都已通关，且每一关的完整祝福你都读过啦。点击下方按钮前往生日页收下蛋糕～";
-          }
-          if (sceneMilestoneP2) {
-            sceneMilestoneP2.hidden = true;
-            sceneMilestoneP2.textContent = "";
-          }
-          if (sceneMilestonePending) sceneMilestonePending.hidden = true;
-          if (sceneMilestoneTargetSelect) sceneMilestoneTargetSelect.hidden = true;
-          if (sceneMilestoneNextBtn) sceneMilestoneNextBtn.hidden = true;
-          if (sceneMilestoneCakeBtn) sceneMilestoneCakeBtn.hidden = false;
-          if (sceneMilestoneOk) {
-            sceneMilestoneOk.className = "btn-secondary";
-            sceneMilestoneOk.textContent = "先留在草原";
-          }
-          sceneMilestoneRoot.hidden = false;
-          syncBodyModalChromeClass();
-        }
-
-        function maybeOfferBirthdayAfterFullShowcase() {
-          if (!allScenesComplete() || !allScenesFullShowcaseSeen()) return;
-          if (entryGateRoot && !entryGateRoot.hidden) return;
-          if (!modalRoot.hidden) return;
-          if (!listModalRoot.hidden) return;
-          if (sceneMilestoneRoot && !sceneMilestoneRoot.hidden) return;
-          if (wishCatchRoot && !wishCatchRoot.hidden) return;
-          if (currentScene === 1 && plate1AllReadViewActive) return;
-          if (currentScene === 2 && scene2AllReadViewActive) return;
-          if (currentScene === 3 && scene3ReviewModeActive) return;
-          if (currentScene === 4 && scene4ReviewModeActive) return;
-          if (currentScene === 5 && scene5ReviewModeActive) return;
-          openAllDoneBirthdayMilestoneModal();
-        }
+        function maybeOfferBirthdayAfterFullShowcase() {}
         var scene2StayMs = 0;
         var scene2LoveNextSpawnMs = 5000;
         var scene2LoveClaimed = false;
@@ -6713,14 +6663,14 @@
             var au = document.createElement("audio");
             au.controls = true;
             au.preload = "metadata";
-            au.src = aud;
+            au.src = resolveBlessingMediaUrl(aud);
             wa.appendChild(au);
             article.appendChild(wa);
           } else if (typ === "image" && img) {
             var wi = document.createElement("div");
             wi.className = "plate1-blessing-block__media";
             var im = document.createElement("img");
-            im.src = img;
+            im.src = resolveBlessingMediaUrl(img);
             im.alt = "";
             wi.appendChild(im);
             article.appendChild(wi);
@@ -6733,7 +6683,7 @@
             var wi2 = document.createElement("div");
             wi2.className = "plate1-blessing-block__media";
             var im2 = document.createElement("img");
-            im2.src = img;
+            im2.src = resolveBlessingMediaUrl(img);
             im2.alt = "";
             wi2.appendChild(im2);
             article.appendChild(wi2);
@@ -6743,7 +6693,7 @@
             var au2 = document.createElement("audio");
             au2.controls = true;
             au2.preload = "metadata";
-            au2.src = aud;
+            au2.src = resolveBlessingMediaUrl(aud);
             wa2.appendChild(au2);
             article.appendChild(wa2);
           }
@@ -9297,12 +9247,9 @@
 
         function openSceneMilestoneModal(sid) {
           if (!sceneMilestoneAllowByUser) return;
-          sceneMilestoneAllowByUser = false;
           if (!sceneMilestoneRoot) return;
-          if (allScenesComplete() && allScenesFullShowcaseSeen()) {
-            openAllDoneBirthdayMilestoneModal();
-            return;
-          }
+          if (allScenesComplete() && allScenesFullShowcaseSeen()) return;
+          sceneMilestoneAllowByUser = false;
           var curLetter = sceneLetterFromIndex(sid);
           var curName = SCENE_LABELS[sid - 1] || "";
           sceneMilestoneRoot.dataset.milestoneSid = String(sid);
@@ -9314,7 +9261,7 @@
             if (allScenesComplete() && !allScenesFullShowcaseSeen()) {
               sceneMilestoneP1.hidden = false;
               sceneMilestoneP1.textContent =
-                "五关进度都已完成。若还有关卡的「全部祝福」没读完，请从下方选一站去浏览；每一关都读过一遍后，会在这里出现去生日页的按钮。";
+                "五关进度都已完成。若还有关卡的「全部祝福」没读完，请从下方选一站去浏览。";
             } else {
               sceneMilestoneP1.hidden = true;
               sceneMilestoneP1.textContent = "";
@@ -9994,7 +9941,7 @@
           }
           if (n.type === "image" && n.image) {
             var img = document.createElement("img");
-            img.src = n.image;
+            img.src = resolveBlessingMediaUrl(n.image);
             img.alt = "祝福配图";
             img.style.width = "100%";
             img.style.borderRadius = "10px";
@@ -10002,7 +9949,7 @@
           } else if (n.type === "audio" && n.audio) {
             var aud = document.createElement("audio");
             aud.controls = true;
-            aud.src = n.audio;
+            aud.src = resolveBlessingMediaUrl(n.audio);
             aud.style.width = "100%";
             wishCatchList.appendChild(aud);
           } else if (n.type === "video" && n.video) {
@@ -10055,6 +10002,8 @@
         function appendOptimizedVideo(container, src, opts) {
           if (!container || !src) return null;
           opts = opts || {};
+          var resolvedSrc = resolveBlessingMediaUrl(String(src));
+          if (!resolvedSrc) return null;
           var isMobileView =
             window.matchMedia &&
             window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
@@ -10068,7 +10017,7 @@
           vid.setAttribute("webkit-playsinline", "true");
           vid.preload = shouldConservativeLoad ? "none" : "metadata";
           if (!shouldConservativeLoad) {
-            vid.src = src;
+            vid.src = resolvedSrc;
           }
           vid.style.width = "100%";
           if (opts.radius) vid.style.borderRadius = opts.radius;
@@ -10076,7 +10025,7 @@
 
           function ensureVideoSrc() {
             if (vid.src) return;
-            vid.src = src;
+            vid.src = resolvedSrc;
             try {
               vid.load();
             } catch (eLoad) {}
@@ -10630,6 +10579,22 @@
           }
         }
 
+        /**
+         * 祝福配图/音/视频地址：已是 http(s) 则视为云端或外链原样使用；
+         * 否则与 data.json 同源拼成绝对 URL（GitHub Pages 子路径下相对 content/ 才不会错到域名根目录）。
+         */
+        function resolveBlessingMediaUrl(raw) {
+          if (raw == null || typeof raw !== "string") return "";
+          var s = raw.trim();
+          if (!s) return "";
+          if (/^https?:\/\//i.test(s)) return s;
+          try {
+            return resolveCsvFetchUrl(s);
+          } catch (eM) {
+            return s;
+          }
+        }
+
         function fetchBlessingsManifest() {
           var url = resolveCsvFetchUrl(BLESSINGS_MANIFEST_URL, Date.now());
           return fetch(url, { cache: "no-store", credentials: "same-origin" })
@@ -11100,7 +11065,8 @@
         /** 加载 content/data.json（唯一正式数据源；无文件时返回 false） */
         function tryFetchBlessingsDataJsonBundle() {
           if (location.protocol === "file:") return Promise.resolve(false);
-          var url = resolveCsvFetchUrl(BLESSINGS_DATA_JSON_URL);
+          /** 每次加载带 v= 时间戳，避免 CDN/浏览器对 data.json 的缓存导致与最新 CSV 不一致（CI 每次会重建 data.json） */
+          var url = resolveCsvFetchUrl(BLESSINGS_DATA_JSON_URL, Date.now());
           return fetch(url, { cache: "no-store", credentials: "same-origin" })
             .then(function (resp) {
               if (!resp.ok) return Promise.resolve(false);
@@ -13021,13 +12987,13 @@
             var aud = document.createElement("audio");
             aud.controls = true;
             aud.preload = "metadata";
-            aud.src = data.audio;
+            aud.src = resolveBlessingMediaUrl(data.audio);
             modalMedia.appendChild(aud);
           } else if (t === "image" && data.image) {
             hasMedia = true;
             var img = document.createElement("img");
             img.className = "modal-media-img";
-            img.src = data.image;
+            img.src = resolveBlessingMediaUrl(data.image);
             img.alt = "小花旁的图画";
             modalMedia.appendChild(img);
           }

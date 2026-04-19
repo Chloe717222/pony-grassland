@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # 页面运行时只读 data.json / data.embed.js，不直接读 CSV；发布前必须重建，否则只改 CSV 线上仍是旧数据
+      - name: Rebuild data.json and data.embed.js from content/*.csv
+        run: npm run build:data
       - name: Verify grassland site and content/
         run: node scripts/verify-site-assets.mjs
       - uses: actions/configure-pages@v5
