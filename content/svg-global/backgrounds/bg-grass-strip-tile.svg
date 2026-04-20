@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" role="img">
-  <title>草地纹理条（平铺用占位）</title>
-  <desc>若用 CSS background-repeat 平铺草地纹理时使用。</desc>
-  <rect width="120" height="32" fill="#3d8b57"/>
-  <line x1="0" y1="16" x2="120" y2="16" stroke="#2a6b45" stroke-width="2" opacity="0.35"/>
-</svg>
