@@ -3111,17 +3111,20 @@
       .scene3-bubble {
         width: 96px;
         height: 96px;
-        background: rgba(255, 255, 255, 0.1);
+        /** 保留通透质感，同时略提高底色与边缘对比，便于在日落草地里被发现 */
+        background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.12) 52%, rgba(255, 255, 255, 0.08) 100%);
         border-radius: 50%;
         position: absolute;
         z-index: 2;
         margin: 0;
         padding: 0;
         box-shadow:
-          inset 0 10px 20px rgba(255, 255, 255, 0.3),
-          inset 0 -5px 15px rgba(255, 255, 255, 0.2),
-          0 5px 15px rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+          inset 0 12px 20px rgba(255, 255, 255, 0.42),
+          inset 0 -6px 14px rgba(255, 255, 255, 0.24),
+          0 6px 18px rgba(0, 0, 0, 0.09),
+          0 0 0 1px rgba(255, 255, 255, 0.18),
+          0 0 12px rgba(255, 255, 255, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.36);
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
         display: flex;
@@ -3146,7 +3149,7 @@
         left: 15%;
         width: 20px;
         height: 10px;
-        background: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.58);
         border-radius: 50%;
         transform: rotate(-30deg);
         pointer-events: none;
@@ -3160,7 +3163,10 @@
         line-height: 1;
         font-weight: 600;
         letter-spacing: 0.04em;
-        color: #c62828;
+        color: #be2424;
+        text-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.72),
+          0 0 6px rgba(255, 255, 255, 0.48);
         pointer-events: none;
         user-select: none;
         transition: opacity 0.16s ease, transform 0.18s ease;
