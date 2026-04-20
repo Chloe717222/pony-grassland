@@ -4027,7 +4027,7 @@
       /** 底部「上方年−1」条：整体上移（em 随 clamp 字号变化） */
       .scene5-year-run-big.scene5-year-run-bottom {
         position: relative;
-        top: -2em;
+        top: -1.25em;
       }
       .scene5-year-milestone-overlay {
         position: fixed;
@@ -7211,6 +7211,23 @@
           }
           if (scene3BubbleHintRoot) scene3BubbleHintRoot.hidden = true;
           syncBodyModalChromeClass();
+        }
+
+        /**
+         * 轻提示：使用与第三关同款气泡提示层；支持定时自动消失，也支持用户点屏立即关闭。
+         */
+        function showTapDismissGameplayHint(text, durationMs) {
+          dismissScene3BubbleGameplayHint();
+          if (!scene3BubbleHintRoot || !scene3BubbleHintText) return;
+          scene3BubbleHintText.textContent = String(text || "").trim();
+          scene3BubbleHintRoot.hidden = false;
+          syncBodyModalChromeClass();
+          var ms = Math.max(0, parseInt(durationMs, 10) || 0);
+          if (ms > 0) {
+            scene3BubbleHintTimer = setTimeout(function () {
+              dismissScene3BubbleGameplayHint();
+            }, ms);
+          }
         }
 
         /** 第三关互动区不展示说明文案（底部玩法卡片已关闭；恢复提示可在此函数内重新赋值并展示） */
@@ -14491,6 +14508,9 @@
             e.preventDefault();
             e.stopPropagation();
             dismissSceneGuideTip();
+            if (currentScene === 5 && !scene5ReviewModeActive && !scene5MolePassed) {
+              showTapDismissGameplayHint("长按屏幕，小马奔跑", 1000);
+            }
           });
         }
         
