@@ -4986,11 +4986,13 @@
         var SCENE2_DROP_HIT_RADIUS = 52;
         /** 第二关兜底随机：在「未集齐的类型优先」之外，G 与 H/I/J 的占比权重。 */
         var SCENE2_DROP_G_WEIGHT = 0.4;
-        /** 第二关降落速度（到达小马前所需步数）：增大前置步数即视觉减速。 */
-        var SCENE2_DROP_AHEAD_MIN = 15;
-        var SCENE2_DROP_AHEAD_SPAN = 12;
-        /** 第二关自然降落（步/秒）；数值越大图标越「追」小马，体感越快。 */
-        var SCENE2_DROP_FALL_STEPS_PER_SEC = 0.5;
+        /** 第二关首屏更快可见：前置步数降低，进入互动后无需先点按也会自然下落。 */
+        var SCENE2_DROP_AHEAD_MIN = 8;
+        var SCENE2_DROP_AHEAD_SPAN = 7;
+        /** 第二关自然降落（步/秒）；长按时应用 BOOST 倍率。 */
+        var SCENE2_DROP_FALL_STEPS_PER_SEC = 1.55;
+        var SCENE2_DROP_FALL_BOOST_MULT = 2.2;
+        var scene2DropBoostActive = false;
         /** 第一关六个热点与闪现文案顺序一致（与 SCENE1_CLICK_POSITIONS 下标对齐） */
         /** 与 SCENE1_CLICK_POSITIONS 下标一一对应：画笔、收音机、电视机、大熊猫、数独本、放大镜 */
         var SCENE1_ENLIGHTEN_ARIA = ["画笔", "收音机", "电视机", "大熊猫", "数独本", "放大镜"];
@@ -8924,6 +8926,7 @@
           if (sid === 5 && prev !== 5) scene5SkyRiseProgress = SCENE5_SKY_RISE_INITIAL;
           if (sid === 1 && prev !== 1) markPlate1EnterInteraction();
           currentScene = sid;
+          if (sid !== 2) scene2DropBoostActive = false;
           ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
           if (prev === 1 && sid !== 1) dismissScene1EnlightenToast();
           if (sid >= 2 && sid <= 5) {
@@ -11791,7 +11794,8 @@
           if (isSceneVisibleProgressEnded(2)) return;
           var sec = Math.max(0, dt || 0) / 1000;
           if (sec <= 0) return;
-          var fallSteps = SCENE2_DROP_FALL_STEPS_PER_SEC * sec;
+          var mul = scene2DropBoostActive ? SCENE2_DROP_FALL_BOOST_MULT : 1;
+          var fallSteps = SCENE2_DROP_FALL_STEPS_PER_SEC * mul * sec;
           if (fallSteps <= 0) return;
           for (var i = 0; i < roadside.length; i++) {
             var o = roadside[i];
@@ -11799,6 +11803,8 @@
             if (SCENE2_DROP_DECORS.indexOf(o.decor) < 0 && o.decor !== "scene2_love_100") continue;
             o.worldStep -= fallSteps;
           }
+          /** 第二关自然下落不依赖 oneStep，需主动清理屏幕底部外的掉落物，避免累积后阻塞新生成。 */
+          removeOffscreenItems();
         }
 
         /** 板块2：图标节奏分发；优先刷新尚未集齐的种类，减少卡关 */
@@ -11806,10 +11812,14 @@
           if (currentScene !== 2) return 0;
           if (scene2LoveClaimed || isSceneVisibleProgressEnded(2)) return 0;
           var alive = 0;
+          var aliveAheadMin = totalSteps - 3;
+          var aliveAheadMax = totalSteps + 20;
           for (var i = 0; i < roadside.length; i++) {
             var r = roadside[i];
             if (!r || r.kind !== "token") continue;
-            if (SCENE2_DROP_DECORS.indexOf(r.decor) >= 0) alive++;
+            if (SCENE2_DROP_DECORS.indexOf(r.decor) < 0) continue;
+            if (r.worldStep < aliveAheadMin || r.worldStep > aliveAheadMax) continue;
+            alive++;
           }
           if (alive >= 6) return 0;
           var goal = Math.random() < 0.72 ? 1 : 2;
@@ -13947,7 +13957,12 @@
           longPressTimer = setTimeout(function () {
             longPressTimer = null;
             if (!ptrMoved) {
-              startJog();
+              if (currentScene === 2) {
+                scene2DropBoostActive = true;
+                markInteraction();
+              } else {
+                startJog();
+              }
             }
           }, LONG_PRESS_MS);
         }
@@ -14010,6 +14025,7 @@
         function onCanvasPointerUp(e) {
           if (e.pointerId !== activePointerId) return;
           activePointerId = null;
+          if (currentScene === 2) scene2DropBoostActive = false;
           if (currentScene === 5) {
             scene5PointerPhysicallyDown = false;
             scene5PonyRunActive = false;
@@ -14361,6 +14377,7 @@
             if (v === 5 && prevEntry !== 5) scene5SkyRiseProgress = SCENE5_SKY_RISE_INITIAL;
               if (v === 1) markPlate1EnterInteraction();
               currentScene = v;
+              if (v !== 2) scene2DropBoostActive = false;
               saveCurrentScene();
               roadside = [];
               if (v === 2) {
