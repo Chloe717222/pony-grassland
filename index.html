@@ -10814,6 +10814,42 @@
           return parts.pop() || "blessing.png";
         }
 
+        /** 直链兜底：尝试让 COS 以附件下载响应返回 */
+        function blessingAttachmentUrl(url, filename) {
+          var u = String(url || "").trim();
+          if (!u) return "";
+          var name = encodeURIComponent(String(filename || "blessing.png"));
+          var sep = u.indexOf("?") >= 0 ? "&" : "?";
+          return (
+            u +
+            sep +
+            "response-content-disposition=" +
+            encodeURIComponent('attachment; filename="' + name + '"')
+          );
+        }
+
+        function triggerAnchorDownload(url, filename) {
+          var u = String(url || "").trim();
+          if (!u) return false;
+          try {
+            var a = document.createElement("a");
+            a.href = u;
+            a.download = String(filename || "blessing.png");
+            a.rel = "noopener";
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+              try {
+                a.remove();
+              } catch (eRm) {}
+            }, 0);
+            return true;
+          } catch (eA) {
+            return false;
+          }
+        }
+
         function openBlessingImageLightbox(rawOriginal) {
           if (!blessingImageLightboxRoot || !blessingImageLightboxImg) return;
           var raw = String(rawOriginal || "").trim();
@@ -10829,6 +10865,8 @@
             try {
               blessingImageLightboxSave.setAttribute("download", blessingImageBasenameForDownload(raw));
             } catch (e2) {}
+            blessingImageLightboxSave.setAttribute("data-download-url", fullUrl);
+            blessingImageLightboxSave.setAttribute("data-download-name", blessingImageBasenameForDownload(raw));
           }
           blessingImageLightboxRoot.hidden = false;
           blessingImageLightboxRoot.setAttribute("aria-hidden", "false");
@@ -14159,6 +14197,39 @@
         if (blessingImageLightboxRoot) {
           blessingImageLightboxRoot.addEventListener("click", function (e) {
             if (e.target === blessingImageLightboxRoot) closeBlessingImageLightbox();
+          });
+        }
+        if (blessingImageLightboxSave) {
+          blessingImageLightboxSave.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var rawUrl = blessingImageLightboxSave.getAttribute("data-download-url") || "";
+            var fileName = blessingImageLightboxSave.getAttribute("data-download-name") || "blessing.png";
+            if (!rawUrl) return;
+            fetch(rawUrl, { mode: "cors", credentials: "omit", cache: "no-store" })
+              .then(function (resp) {
+                if (!resp.ok) throw new Error("download fetch failed");
+                return resp.blob();
+              })
+              .then(function (blob) {
+                var objUrl = URL.createObjectURL(blob);
+                var ok = triggerAnchorDownload(objUrl, fileName);
+                setTimeout(function () {
+                  try {
+                    URL.revokeObjectURL(objUrl);
+                  } catch (eRv) {}
+                }, 12000);
+                if (!ok) throw new Error("blob anchor click failed");
+              })
+              .catch(function () {
+                var fallback = blessingAttachmentUrl(rawUrl, fileName);
+                var ok = triggerAnchorDownload(fallback, fileName);
+                if (!ok) {
+                  try {
+                    window.open(fallback, "_blank");
+                  } catch (eW) {}
+                }
+              });
           });
         }
 
