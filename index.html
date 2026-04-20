@@ -4027,7 +4027,8 @@
       /** 底部「上方年−1」条：整体上移（em 随 clamp 字号变化） */
       .scene5-year-run-big.scene5-year-run-bottom {
         position: relative;
-        top: -1.25em;
+        /** 再下移一档（约等效 0.75 个小马高度的视觉位移），避开小马与上方年份重叠 */
+        top: -0.45em;
       }
       .scene5-year-milestone-overlay {
         position: fixed;
@@ -4997,7 +4998,7 @@
         var SCENE2_DROP_AHEAD_SPAN = 7;
         /** 第二关自然降落（步/秒）；长按时应用 BOOST 倍率。 */
         var SCENE2_DROP_FALL_STEPS_PER_SEC = 3.1;
-        var SCENE2_DROP_FALL_BOOST_MULT = 1.5;
+        var SCENE2_DROP_FALL_BOOST_MULT = 1.7;
         var scene2DropBoostActive = false;
         /** 第一关六个热点与闪现文案顺序一致（与 SCENE1_CLICK_POSITIONS 下标对齐） */
         /** 与 SCENE1_CLICK_POSITIONS 下标一一对应：画笔、收音机、电视机、大熊猫、数独本、放大镜 */
