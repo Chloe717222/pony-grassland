@@ -448,9 +448,9 @@
           "content/0001.mp3",
         ];
         var bgmSourceIdx = 0;
-        /** 生日页弹幕专用数据源（与主站祝福库解耦） */
-        var BARRAGE_CSV_SRC = "content/cake-barrage.csv";
-        /** file:// 打开时 fetch 本地 CSV 往往会被浏览器拦截，这里提供同内容兜底 */
+        /** 生日页弹幕数据源：取第一关 CSV 的「用户id」列，格式化为「恋姐生日快乐@用户id」 */
+        var BARRAGE_USERID_CSV_SRC = "content/scene1-gallery.csv";
+        /** file:// 打开时 fetch 本地 CSV 往往会被浏览器拦截，这里提供兜底 */
         var EMBEDDED_BARRAGE_TEXTS = [
           "恋姐生日快乐-@草原来信1001",
           "恋姐生日快乐-@风铃小队1002",
@@ -807,7 +807,7 @@
           if (location.protocol === "file:") {
             return Promise.resolve(EMBEDDED_BARRAGE_TEXTS.slice());
           }
-          var url = BARRAGE_CSV_SRC + "?v=" + Date.now();
+          var url = BARRAGE_USERID_CSV_SRC + "?v=" + Date.now();
           var fetchPromise = fetch(url, { cache: "no-store", credentials: "same-origin" })
             .then(function (resp) {
               if (!resp.ok) return "";
@@ -819,11 +819,29 @@
                 return ln.trim().length > 0;
               });
               if (lines.length < 2) return [];
+              var header = parseCsvLine(lines[0] || "");
+              var idxUserId = -1;
+              for (var h = 0; h < header.length; h++) {
+                var key = String(header[h] || "")
+                  .replace(/^\uFEFF/, "")
+                  .replace(/\s+/g, "")
+                  .toLowerCase();
+                if (key === "用户id" || key === "userid") {
+                  idxUserId = h;
+                  break;
+                }
+              }
               var out = [];
+              var seenUid = {};
               for (var i = 1; i < lines.length; i++) {
                 var row = parseCsvLine(lines[i]);
-                var t = (row[0] || "").trim();
-                if (t) out.push(t);
+                if (!row || !row.length) continue;
+                var uidRaw = idxUserId >= 0 ? row[idxUserId] : row[row.length - 1];
+                var uid = String(uidRaw || "").trim();
+                if (!uid) continue;
+                if (seenUid[uid]) continue;
+                seenUid[uid] = true;
+                out.push("恋姐生日快乐@" + uid);
               }
               return out;
             })
