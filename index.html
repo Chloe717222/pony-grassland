@@ -4757,9 +4757,9 @@
          */
         var CONTENT_BASE = "content/";
         /**
-         * CSV 里媒体列仍写 content/xxx.png（与本地 content 文件夹一致即可），不必改成 COS 完整 URL。
-         * 读桶时二选一：① 上传时把文件放在桶根（image0085.png），下行 strip=true，运行时会自动去掉 data 里的 content/ 再拼域名；
-         * ② 上传时在桶里建 content 文件夹、键为 content/image0085.png，strip=false，与 CSV 一字不差对应。
+         * CSV 里媒体列仍写 content/xxx.png 即可：配置了 CDN 时运行时拼成桶 URL，不必把每格改成 https 完整串。
+         * 仓库可「只放代码」：大图只上传到 COS，GitHub 可不提交 image*.png/webp；CI 使用 SKIP_BLESSING_MEDIA_DISK_CHECK（见 verify-site-assets.mjs）。
+         * 读桶二选一：① 文件在桶根 image0085.png + strip=true；② 桶内键为 content/image0085.png + strip=false。
          * BLESSINGS_MEDIA_CDN_BASE 勿以 /content/ 结尾。CORS 来源：https://chloe717222.github.io
          * 若某条必须走外链，可在 CSV 直接写完整 https://…（不会被改写）。
          */

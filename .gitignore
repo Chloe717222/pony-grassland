@@ -1,3 +1,11 @@
+# 祝福配图/音视频若只托管 COS、不提交 GitHub，可取消下列注释（需与 CI 中 SKIP_BLESSING_MEDIA_DISK_CHECK 一致）
+# content/image*.png
+# content/image*.jpg
+# content/image*.jpeg
+# content/image*.webp
+# content/*.mp3
+# content/*.mp4
+
 # 图片批量整理脚本生成的重复件备份（勿提交）
 content/_duplicate_backup/
 

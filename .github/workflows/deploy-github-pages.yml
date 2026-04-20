@@ -27,7 +27,10 @@ jobs:
       # 页面运行时只读 data.json / data.embed.js，不直接读 CSV；发布前必须重建，否则只改 CSV 线上仍是旧数据
       - name: Rebuild data.json and data.embed.js from content/*.csv
         run: npm run build:data
+      # 祝福 PNG/JPG/WebP/音视频可仅放在 COS：仓库不强制包含这些二进制，故跳过其磁盘存在检查
       - name: Verify grassland site and content/
+        env:
+          SKIP_BLESSING_MEDIA_DISK_CHECK: "1"
         run: node scripts/verify-site-assets.mjs
       - uses: actions/configure-pages@v5
         with:

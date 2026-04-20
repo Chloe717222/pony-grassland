@@ -1,3 +1,10 @@
+/**
+ * 站点资源校验。默认：CSV 里出现的 content/… 图片/音/视频须在仓库磁盘存在（便于本地联调）。
+ * 若祝福媒体仅托管在 COS、仓库不提交大图：部署前设环境变量
+ *   SKIP_BLESSING_MEDIA_DISK_CHECK=1
+ * 则跳过「content/ 下栅格媒体文件」的磁盘存在检查（仍校验 CSV、静态底图 SVG、BGM 等）。
+ * 本地轻量校验：npm run verify:site:light
+ */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -55,6 +62,8 @@ const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
 const AUDIO_EXTS = [".aac", ".mp3", ".webm", ".ogg", ".m4a"];
 const VIDEO_EXTS = [".mp4", ".webm", ".mov"];
 
+const SKIP_BLESSING_MEDIA_DISK = process.env.SKIP_BLESSING_MEDIA_DISK_CHECK === "1";
+
 /** @param {string} ref */
 function extsForRef(ref) {
   const lower = ref.toLowerCase();
@@ -69,6 +78,18 @@ function normalizeContentRef(ref) {
   return String(ref || "")
     .trim()
     .replace(/^\.\//, "");
+}
+
+/** CSV 里 content/ 下的图片/音/视频：仓库可不存（仅 COS），由 SKIP_BLESSING_MEDIA_DISK_CHECK 跳过磁盘检查 */
+/** @param {string} ref */
+function isBlessingBinaryMediaRef(ref) {
+  const n = normalizeContentRef(ref);
+  if (!/^content\//i.test(n)) return false;
+  const lower = n.toLowerCase();
+  if (IMAGE_EXTS.some((e) => lower.endsWith(e))) return true;
+  if (AUDIO_EXTS.some((e) => lower.endsWith(e))) return true;
+  if (VIDEO_EXTS.some((e) => lower.endsWith(e))) return true;
+  return false;
 }
 
 /** @param {string} ref */
@@ -159,7 +180,10 @@ function main() {
       for (const ref of refs) {
         if (seen.has(ref)) continue;
         seen.add(ref);
-        if (!resolveContentRef(ref)) missing.push({ file: rel, line: i + 1, ref });
+        if (!resolveContentRef(ref)) {
+          if (SKIP_BLESSING_MEDIA_DISK && isBlessingBinaryMediaRef(ref)) continue;
+          missing.push({ file: rel, line: i + 1, ref });
+        }
       }
     }
   }
@@ -173,8 +197,9 @@ function main() {
     process.exit(1);
   }
 
+  var modeNote = SKIP_BLESSING_MEDIA_DISK ? "（已跳过 content 下祝福栅格媒体的本地磁盘检查）" : "";
   console.log(
-    `校验通过：${REQUIRED_ROOT.join("、")}；已扫描 ${scannedFiles} 个 CSV；${seen.size} 个不重复资源路径；${BGM_REL} 存在。`
+    `校验通过${modeNote}：${REQUIRED_ROOT.join("、")}；已扫描 ${scannedFiles} 个 CSV；${seen.size} 个不重复资源路径；${BGM_REL} 存在。`
   );
 }
 
