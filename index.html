@@ -4990,7 +4990,7 @@
         var SCENE2_DROP_AHEAD_MIN = 8;
         var SCENE2_DROP_AHEAD_SPAN = 7;
         /** 第二关自然降落（步/秒）；长按时应用 BOOST 倍率。 */
-        var SCENE2_DROP_FALL_STEPS_PER_SEC = 1.55;
+        var SCENE2_DROP_FALL_STEPS_PER_SEC = 3.1;
         var SCENE2_DROP_FALL_BOOST_MULT = 2.2;
         var scene2DropBoostActive = false;
         /** 第一关六个热点与闪现文案顺序一致（与 SCENE1_CLICK_POSITIONS 下标对齐） */
@@ -14004,6 +14004,13 @@
           }
           if (currentScene === 1 && !blockingOverlaysForInput()) {
             movePonyTowardTap(e.clientX);
+            ptrMoved = true;
+            e.preventDefault();
+            return;
+          }
+          if (currentScene === 2 && !blockingOverlaysForInput()) {
+            /** 第二关：直接拖拽小马，避免“只能点按一步/长按才动”导致横向接物不灵活。 */
+            setPonyFromClient(e.clientX, e.clientY);
             ptrMoved = true;
             e.preventDefault();
             return;
