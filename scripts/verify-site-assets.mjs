@@ -2,7 +2,7 @@
  * 站点资源校验。默认：CSV 里出现的 content/… 图片/音/视频须在仓库磁盘存在（便于本地联调）。
  * 若祝福媒体仅托管在 COS、仓库不提交大图：部署前设环境变量
  *   SKIP_BLESSING_MEDIA_DISK_CHECK=1
- * 则跳过「content/ 下栅格媒体文件」的磁盘存在检查（仍校验 CSV、静态底图 SVG、BGM 等）。
+ * 则跳过「content/ 下栅格媒体文件」及「生日页 BGM audio_happybirthday.aac」的磁盘存在检查（仍校验 CSV、静态底图 SVG 等）。
  * 本地轻量校验：npm run verify:site:light
  */
 import crypto from "node:crypto";
@@ -140,16 +140,18 @@ function main() {
     errors.push(`缺少祝福相关 CSV（以下均不存在）：${CSV_SCAN_CANDIDATES.join("、")}`);
   }
 
-  const bgmAbs = path.join(repoRoot, BGM_REL);
-  if (!fs.existsSync(bgmAbs)) {
-    errors.push(`缺少生日页 BGM：${BGM_REL}`);
-  } else {
-    const trapAbs = path.join(repoRoot, BGM_MUST_NOT_MATCH);
-    if (fs.existsSync(trapAbs) && sha256File(bgmAbs) === sha256File(trapAbs)) {
-      /** 不阻断 CI：占位 BGM 仍允许发布；替换为独立音轨后本提示会消失 */
-      console.warn(
-        `[verify] 提示：${BGM_REL} 与 ${BGM_MUST_NOT_MATCH} 内容相同（多为误复制）。建议覆盖为独立生日快乐音频。`
-      );
+  if (!SKIP_BLESSING_MEDIA_DISK) {
+    const bgmAbs = path.join(repoRoot, BGM_REL);
+    if (!fs.existsSync(bgmAbs)) {
+      errors.push(`缺少生日页 BGM：${BGM_REL}`);
+    } else {
+      const trapAbs = path.join(repoRoot, BGM_MUST_NOT_MATCH);
+      if (fs.existsSync(trapAbs) && sha256File(bgmAbs) === sha256File(trapAbs)) {
+        /** 不阻断 CI：占位 BGM 仍允许发布；替换为独立音轨后本提示会消失 */
+        console.warn(
+          `[verify] 提示：${BGM_REL} 与 ${BGM_MUST_NOT_MATCH} 内容相同（多为误复制）。建议覆盖为独立生日快乐音频。`
+        );
+      }
     }
   }
 
@@ -197,9 +199,12 @@ function main() {
     process.exit(1);
   }
 
-  var modeNote = SKIP_BLESSING_MEDIA_DISK ? "（已跳过 content 下祝福栅格媒体的本地磁盘检查）" : "";
+  var modeNote = SKIP_BLESSING_MEDIA_DISK
+    ? "（已跳过 content 下祝福栅格媒体 + 生日 BGM 的本地磁盘检查，假定仅 COS）"
+    : "";
+  var bgmNote = SKIP_BLESSING_MEDIA_DISK ? "生日 BGM 未校验本地" : `${BGM_REL} 存在`;
   console.log(
-    `校验通过${modeNote}：${REQUIRED_ROOT.join("、")}；已扫描 ${scannedFiles} 个 CSV；${seen.size} 个不重复资源路径；${BGM_REL} 存在。`
+    `校验通过${modeNote}：${REQUIRED_ROOT.join("、")}；已扫描 ${scannedFiles} 个 CSV；${seen.size} 个不重复资源路径；${bgmNote}。`
   );
 }
 

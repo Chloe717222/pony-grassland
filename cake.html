@@ -407,7 +407,41 @@
         var cakeBgm = document.getElementById("cakeBgm");
         var audioHint = document.getElementById("audioHint");
 
-        /** 生日页 BGM：主文件为 content/audio_happybirthday.aac，失败时回退旧名/MP3 */
+        /**
+         * 生日页 BGM：与主站 index.html 中 BLESSINGS_MEDIA_CDN_BASE / STRIP 保持一致时可只托管 COS，仓库可不存 aac。
+         * 留空字符串则仅用同源 content/… 路径。
+         */
+        var CAKE_MEDIA_CDN_BASE = "https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com/";
+        var CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT = true;
+
+        function resolveCakeMediaUrl(raw) {
+          var s = String(raw || "").trim();
+          if (!s) return "";
+          if (/^https?:\/\//i.test(s)) return s;
+          var cdn = String(CAKE_MEDIA_CDN_BASE || "").trim();
+          if (cdn) {
+            try {
+              var base = cdn.replace(/\/*$/, "/");
+              var rel = s.replace(/^\.\//, "");
+              if (CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT) rel = rel.replace(/^content\//i, "");
+              return new URL(rel, base).href;
+            } catch (eCdn) {}
+          }
+          try {
+            return new URL(s.replace(/^\.\//, ""), window.location.href).href;
+          } catch (e2) {
+            return s;
+          }
+        }
+
+        function versionedCakeMediaUrl(relPath) {
+          var u = resolveCakeMediaUrl(relPath);
+          if (!u) return "";
+          var sep = u.indexOf("?") >= 0 ? "&" : "?";
+          return u + sep + "v=" + encodeURIComponent(String(CAKE_PAGE_BUILD));
+        }
+
+        /** 生日页 BGM：优先主名；失败时回退旧名/MP3（路径均经 resolveCakeMediaUrl，可指向 COS） */
         var BGM_SRC_CANDIDATES = [
           "content/audio_happybirthday.aac",
           "content/happybirthday.aac",
@@ -439,16 +473,15 @@
           "恋姐生日快乐-@软糖祝福员1019",
           "恋姐生日快乐-@流星打卡人1020",
         ];
-        function versionedAssetUrl(relPath) {
-          return String(relPath || "") + "?v=" + Date.now();
-        }
-
         function applyBgmSourceByIndex(idx) {
           if (!cakeBgm) return false;
           if (idx < 0 || idx >= BGM_SRC_CANDIDATES.length) return false;
           bgmSourceIdx = idx;
           try {
-            cakeBgm.src = versionedAssetUrl(BGM_SRC_CANDIDATES[idx]);
+            try {
+              cakeBgm.referrerPolicy = "no-referrer";
+            } catch (eR) {}
+            cakeBgm.src = versionedCakeMediaUrl(BGM_SRC_CANDIDATES[idx]);
             cakeBgm.load();
             return true;
           } catch (eLoad) {
@@ -463,7 +496,8 @@
             if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) return;
             if (audioHint) {
               audioHint.hidden = false;
-              audioHint.textContent = "音乐加载失败，请检查 content/audio_happybirthday.aac";
+              audioHint.textContent =
+                "音乐加载失败：请确认 COS 已上传 audio_happybirthday.aac（与主站 strip 规则一致），或检查 cake.html 内 CAKE_MEDIA_CDN_BASE。";
             }
           });
         }

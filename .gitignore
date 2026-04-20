@@ -5,6 +5,7 @@
 # content/image*.webp
 # content/*.mp3
 # content/*.mp4
+# content/audio_happybirthday.aac
 
 # 图片批量整理脚本生成的重复件备份（勿提交）
 content/_duplicate_backup/
