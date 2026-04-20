@@ -5745,7 +5745,15 @@
           }
           if (!isGrasslandScene(currentScene)) return true;
           if (suppressSpawn || hugSceneActive) return true;
-          if (msSinceLastForwardStep() >= IDLE_PAUSE_ROADSIDE_SPAWN_MS) return true;
+          if (currentScene === 2) {
+            /** 第二关：进入规则弹窗时就允许自然生成并下落，不等点击；仅在其它遮罩（如列表/弹窗）时暂停。 */
+            var guideOpen = !!(sceneGuideTipRoot && !sceneGuideTipRoot.hidden);
+            var guideSid = sceneGuideTipRoot ? String(sceneGuideTipRoot.getAttribute("data-guide-sid") || "") : "";
+            var scene2GuideOpen = guideOpen && guideSid === "2" && !scene2LoveClaimed;
+            if (scene2GuideOpen) return false;
+          } else {
+            if (msSinceLastForwardStep() >= IDLE_PAUSE_ROADSIDE_SPAWN_MS) return true;
+          }
           if (hugOfferPauseRoadsideBlessings()) return true;
           if (hugOfferBtn && !hugOfferBtn.hidden) return true;
           if (blockingOverlaysForInput()) return true;
@@ -13957,7 +13965,12 @@
           longPressTimer = setTimeout(function () {
             longPressTimer = null;
             if (!ptrMoved) {
-              if (currentScene === 2) {
+              var scene2GuideOpen =
+                currentScene === 2 &&
+                sceneGuideTipRoot &&
+                !sceneGuideTipRoot.hidden &&
+                String(sceneGuideTipRoot.getAttribute("data-guide-sid") || "") === "2";
+              if (currentScene === 2 && !scene2GuideOpen && !scene2AllReadViewActive) {
                 scene2DropBoostActive = true;
                 markInteraction();
               } else {
