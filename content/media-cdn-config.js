@@ -25,5 +25,8 @@
   window.MEDIA_CDN_FALLBACK_COS_BASE =
     "https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com/";
 
-  window.MEDIA_CDN_STRIP_LEADING_CONTENT = true;
+  /**
+   * Worker 仅代理 /content/*，这里必须保留 content 前缀，避免媒体 URL 变成 /xxx.png 导致 404。
+   */
+  window.MEDIA_CDN_STRIP_LEADING_CONTENT = false;
 })();
