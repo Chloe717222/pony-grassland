@@ -1,10 +1,10 @@
 {
   "version": "2026-04-16-real-v2",
-  "generatedAt": "2026-04-25T15:09:15.708Z",
+  "generatedAt": "2026-04-25T16:13:22.989Z",
   "manifest": {
     "version": "2026-04-16-real-v2",
     "galleryCounts": {
-      "1": 443,
+      "1": 441,
       "2": 432,
       "3": 658,
       "4": 659,
@@ -282,17 +282,6 @@
       "video": "",
       "nickname": "",
       "userId": "一只蛋挞",
-      "scene": "1101"
-    },
-    {
-      "id": 10025,
-      "type": "text",
-      "text": "看浪姐三，初舞台的歌很精彩。从2023到2026，是第四年生日。",
-      "image": "",
-      "audio": "",
-      "video": "",
-      "nickname": "",
-      "userId": "Kims",
       "scene": "1101"
     },
     {
@@ -2757,17 +2746,6 @@
       "video": "",
       "nickname": "",
       "userId": "一只蛋挞",
-      "scene": "1102"
-    },
-    {
-      "id": 10253,
-      "type": "image",
-      "text": "",
-      "image": "content/0251102.png",
-      "audio": "",
-      "video": "",
-      "nickname": "",
-      "userId": "Kims",
       "scene": "1102"
     },
     {
