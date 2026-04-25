@@ -15,7 +15,7 @@
     <!-- 与正文 DATA_SCHEMA_VERSION、LS_KEY_CURRENT_SCENE 保持同步：在解析巨型主脚本前先预拉当前关静态底图 -->
     <script>
       (function () {
-        var SCHEMA_V = "2026-04-18-linear-no-post-blessing-buttons-v1";
+        var SCHEMA_V = "2026-04-25-mobile-adaptive-bg-cache-bust-v1";
         var LS_SCENE = "xmgrassland_v1_currentScene";
         try {
           var n = parseInt(localStorage.getItem(LS_SCENE) || "1", 10);
@@ -123,6 +123,21 @@
          * 高窄屏 300px 见下方 @media (max-width: 460px) and (min-height: 880px) 内覆写。
          */
         --app-top-bar-width-max: min(90cqw, 340px);
+      }
+      /**
+       * 手机端自适应：不再强制 9:16.2 信箱式舞台，直接铺满可用视口。
+       * 桌面端仍保持上面的 9:16.2 强制展示。
+       */
+      @media (hover: none) and (pointer: coarse) {
+        #appStage {
+          left: 0;
+          top: 0;
+          transform: none;
+          width: 100vw;
+          height: 100dvh;
+          max-width: none;
+          max-height: none;
+        }
       }
       /** 舞台内用 cqw/cqh 代替整窗 vw/vh，避免弹窗/信筒在宽屏上按整窗视口拉宽 */
       #appStage .modal-card,
@@ -4867,7 +4882,7 @@
         /** 当前数据结构版本；变更真实数据结构/编号规则/缓存结构时递增，用于自动清理旧本地缓存。 */
         var LS_KEY_DATA_SCHEMA_VERSION = "xmgrassland_v1_dataSchemaVersion";
         /** 与 <head> 内早期底图 preload 脚本中的 SCHEMA_V 须保持一致 */
-        var DATA_SCHEMA_VERSION = "2026-04-18-linear-no-post-blessing-buttons-v1";
+        var DATA_SCHEMA_VERSION = "2026-04-25-mobile-adaptive-bg-cache-bust-v1";
         /** 开发防回归护栏：设为 1 时输出场景2关键约束告警 */
         var LS_KEY_DEV_GUARDS = "xmgrassland_v1_devGuards";
         var devGuardLastWarnAt = {};
@@ -10949,6 +10964,30 @@
           return s.replace(/\.(png|jpe?g)$/i, ".webp");
         }
 
+        /** 可视区再加载：避免一次性给大量祝福图赋 src 导致并发下载/解码卡顿。 */
+        var blessingImgLazyObserver = null;
+        function ensureBlessingImgLazyObserver() {
+          if (blessingImgLazyObserver || typeof IntersectionObserver === "undefined") return blessingImgLazyObserver;
+          blessingImgLazyObserver = new IntersectionObserver(
+            function (entries, obs) {
+              for (var i = 0; i < entries.length; i++) {
+                var ent = entries[i];
+                if (!ent || !ent.isIntersecting) continue;
+                var el = ent.target;
+                if (!el) continue;
+                var src = el.getAttribute("data-lazy-src");
+                if (src && !el.getAttribute("src")) {
+                  el.src = src;
+                }
+                el.removeAttribute("data-lazy-src");
+                obs.unobserve(el);
+              }
+            },
+            { rootMargin: "280px 0px 280px 0px", threshold: 0.01 }
+          );
+          return blessingImgLazyObserver;
+        }
+
         function closeBlessingImageLightbox() {
           if (!blessingImageLightboxRoot) return;
           blessingImageLightboxRoot.hidden = true;
@@ -11102,7 +11141,21 @@
               el.onerror = null;
             } catch (e4) {}
           }
-          el.src = u;
+          if (tag === "img" && !useOriginal) {
+            var obs = ensureBlessingImgLazyObserver();
+            if (obs) {
+              el.setAttribute("data-lazy-src", u);
+              try {
+                obs.observe(el);
+              } catch (eObs) {
+                el.src = u;
+              }
+            } else {
+              el.src = u;
+            }
+          } else {
+            el.src = u;
+          }
         }
 
         function fetchBlessingsManifest() {
