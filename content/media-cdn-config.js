@@ -15,8 +15,8 @@
  */
 (function () {
   "use strict";
-  /** 填腾讯云 CDN 为该桶分配的加速域名，例如 https://cdn.example.com/ */
-  window.MEDIA_CDN_ACCELERATION_BASE = "";
+  /** Cloudflare Worker 自定义域名（线上走 CDN 代理与缓存）。 */
+  window.MEDIA_CDN_ACCELERATION_BASE = "https://static.lianbirthday.top/";
 
   /**
    * 未配置 CDN 时回退：COS 默认域名（直连桶，COS 外网下行计费）。
