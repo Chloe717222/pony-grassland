@@ -5843,7 +5843,7 @@
          */
         var SCENE5_MILESTONE_TEXT = {
           1996: "童年里，小马初次起速。",
-          2012: "成年后，跨入无限可能的旷野。",
+          2012: "毕业后，跨入无限可能的旷野。",
           2022: "乘风起，万千热爱在此刻汇流。",
           2026: "此时此刻，我们正并肩而行。",
         };
@@ -11157,6 +11157,70 @@
           tryNext();
         }
 
+        /**
+         * 音/视频的多源兜底：部分内核会长时间 pending 且不触发 error，这里加超时主动切换候选源。
+         */
+        function assignBlessingMediaWithFailover(el, urls, timeoutMs) {
+          if (!el) return;
+          var list = Array.isArray(urls)
+            ? urls.filter(function (u, i, arr) {
+                return !!u && arr.indexOf(u) === i;
+              })
+            : [];
+          if (!list.length) return;
+          var idx = 0;
+          var done = false;
+          var timer = 0;
+          function clearTimer() {
+            if (!timer) return;
+            clearTimeout(timer);
+            timer = 0;
+          }
+          function finish() {
+            done = true;
+            clearTimer();
+            try {
+              el.onerror = null;
+              el.onloadedmetadata = null;
+              el.oncanplay = null;
+              el.onloadeddata = null;
+            } catch (eUn) {}
+          }
+          function tryNext() {
+            if (done) return;
+            if (idx >= list.length) {
+              finish();
+              return;
+            }
+            var nextUrl = list[idx++];
+            try {
+              el.src = nextUrl;
+              if (typeof el.load === "function") el.load();
+            } catch (eSet) {}
+            clearTimer();
+            if (timeoutMs > 0) {
+              timer = setTimeout(function () {
+                if (done) return;
+                if (typeof el.readyState === "number" && el.readyState >= 1) return;
+                tryNext();
+              }, timeoutMs);
+            }
+          }
+          el.onerror = function () {
+            tryNext();
+          };
+          el.onloadedmetadata = function () {
+            finish();
+          };
+          el.oncanplay = function () {
+            finish();
+          };
+          el.onloadeddata = function () {
+            finish();
+          };
+          tryNext();
+        }
+
         function closeBlessingImageLightbox() {
           if (!blessingImageLightboxRoot) return;
           blessingImageLightboxRoot.hidden = true;
@@ -11328,6 +11392,8 @@
             }
           } else if (tag === "img") {
             assignBlessingImageWithFailover(el, urlCandidates, 3500);
+          } else if (tag === "audio" || tag === "video") {
+            assignBlessingMediaWithFailover(el, urlCandidates, isWeChatBrowser() ? 2600 : 3400);
           } else {
             el.src = u;
           }

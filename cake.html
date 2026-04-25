@@ -542,6 +542,35 @@
           return u + sep + "v=" + encodeURIComponent(String(CAKE_PAGE_BUILD));
         }
 
+        function resolveCakeMediaCandidates(relPath) {
+          var p = String(relPath || "").trim();
+          if (!p) return [];
+          if (/^https?:\/\//i.test(p)) return [p];
+          var out = [];
+          function push(u) {
+            if (!u || out.indexOf(u) >= 0) return;
+            out.push(u);
+          }
+          function pushByBase(baseRaw) {
+            var base = String(baseRaw || "").trim();
+            if (!base) return;
+            try {
+              var rel = p.replace(/^\.\//, "");
+              if (CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT) rel = rel.replace(/^content\//i, "");
+              var u = new URL(rel, base.replace(/\/*$/, "/"));
+              u.searchParams.set("v", String(CAKE_PAGE_BUILD));
+              push(u.href);
+            } catch (eBase) {}
+          }
+          pushByBase(CAKE_MEDIA_CDN_BASE);
+          try {
+            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
+            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
+          } catch (eW) {}
+          push(versionedCakeMediaUrl(p));
+          return out;
+        }
+
         /** 生日页 BGM：优先 MP3；失败时回退 aac/旧名（路径均经 resolveCakeMediaUrl，可指向 COS） */
         var BGM_SRC_CANDIDATES = [
           "content/happybirthday.mp3",
@@ -551,6 +580,9 @@
         ];
         var LETTER_CLOSE_BGM_SRC = "content/zaichang.mp3";
         var bgmSourceIdx = 0;
+        var bgmCandidateUrls = [];
+        var bgmCandidateCursor = 0;
+        var bgmFallbackTimer = null;
         /** 第五关 5501 场景：从 scene5-gallery.csv 取「文案」+「用户id」为一条弹幕 */
         var BARRAGE_SCENE_FILTER = "5501";
         var BARRAGE_USERID_CSV_SRC = "content/scene5-gallery.csv";
@@ -564,16 +596,34 @@
         /** 上升速度（px/s），整体偏慢便于阅读 */
         var BARRAGE_SPEED_MIN = 26;
         var BARRAGE_SPEED_MAX = 38;
-        function applyBgmSourceByIndex(idx) {
+        function clearBgmFallbackTimer() {
+          try {
+            if (bgmFallbackTimer) clearTimeout(bgmFallbackTimer);
+          } catch (eC) {}
+          bgmFallbackTimer = null;
+        }
+
+        function applyBgmCandidateAt(idx) {
           if (!cakeBgm) return false;
-          if (idx < 0 || idx >= BGM_SRC_CANDIDATES.length) return false;
-          bgmSourceIdx = idx;
+          if (idx < 0 || idx >= bgmCandidateUrls.length) return false;
+          bgmCandidateCursor = idx;
           try {
             try {
               cakeBgm.referrerPolicy = "no-referrer";
             } catch (eR) {}
-            cakeBgm.src = versionedCakeMediaUrl(BGM_SRC_CANDIDATES[idx]);
+            cakeBgm.src = bgmCandidateUrls[idx];
             cakeBgm.load();
+            clearBgmFallbackTimer();
+            bgmFallbackTimer = setTimeout(function () {
+              if (cakeBgm.readyState >= 1) return;
+              var next = bgmCandidateCursor + 1;
+              if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
+              if (audioHint) {
+                audioHint.hidden = false;
+                audioHint.textContent =
+                  "音乐加载超时：请检查 static 与 COS 的音频连通性和路径规则（含 content 前缀）。";
+              }
+            }, 3200);
             return true;
           } catch (eLoad) {
             return false;
@@ -581,22 +631,34 @@
         }
 
         if (cakeBgm) {
-          applyBgmSourceByIndex(0);
+          bgmCandidateUrls = [];
+          for (var bi = 0; bi < BGM_SRC_CANDIDATES.length; bi++) {
+            bgmSourceIdx = bi;
+            var oneList = resolveCakeMediaCandidates(BGM_SRC_CANDIDATES[bi]);
+            for (var bj = 0; bj < oneList.length; bj++) {
+              var one = oneList[bj];
+              if (one && bgmCandidateUrls.indexOf(one) < 0) bgmCandidateUrls.push(one);
+            }
+          }
+          applyBgmCandidateAt(0);
           cakeBgm.addEventListener("error", function () {
-            var next = bgmSourceIdx + 1;
-            if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) return;
+            var next = bgmCandidateCursor + 1;
+            if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
             if (audioHint) {
               audioHint.hidden = false;
               audioHint.textContent =
                 "音乐加载失败：请确认 COS/CDN 已上传 happybirthday.mp3（与主站 strip 规则一致），或检查 content/media-cdn-config.js。";
             }
           });
+          cakeBgm.addEventListener("loadedmetadata", clearBgmFallbackTimer);
+          cakeBgm.addEventListener("canplay", clearBgmFallbackTimer);
         }
 
         if (letterCloseBgm) {
           try {
             letterCloseBgm.referrerPolicy = "no-referrer";
-            letterCloseBgm.src = versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
+            var lcList = resolveCakeMediaCandidates(LETTER_CLOSE_BGM_SRC);
+            letterCloseBgm.src = lcList.length ? lcList[0] : versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
             letterCloseBgm.load();
           } catch (eLc) {}
         }
