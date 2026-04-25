@@ -14277,20 +14277,31 @@
             return;
           }
 
+          if (currentScene === 2) {
+            var scene2GuideOpen =
+              sceneGuideTipRoot &&
+              !sceneGuideTipRoot.hidden &&
+              String(sceneGuideTipRoot.getAttribute("data-guide-sid") || "") === "2";
+            if (!scene2GuideOpen && !scene2AllReadViewActive) {
+              /** 第二关：按下即加速，松手恢复。 */
+              scene2DropBoostActive = true;
+              markInteraction();
+            }
+          }
+
           longPressTimer = setTimeout(function () {
             longPressTimer = null;
-            if (!ptrMoved) {
-              var scene2GuideOpen =
-                currentScene === 2 &&
-                sceneGuideTipRoot &&
-                !sceneGuideTipRoot.hidden &&
-                String(sceneGuideTipRoot.getAttribute("data-guide-sid") || "") === "2";
-              if (currentScene === 2 && !scene2GuideOpen && !scene2AllReadViewActive) {
-                scene2DropBoostActive = true;
-                markInteraction();
-              } else {
-                startJog();
-              }
+          var scene2GuideOpen =
+            currentScene === 2 &&
+            sceneGuideTipRoot &&
+            !sceneGuideTipRoot.hidden &&
+            String(sceneGuideTipRoot.getAttribute("data-guide-sid") || "") === "2";
+          if (currentScene === 2 && !scene2GuideOpen && !scene2AllReadViewActive) {
+            /** 第二关：长按屏幕后图标下落加速；允许边按边拖，避免被 ptrMoved 阻断。 */
+            scene2DropBoostActive = true;
+            markInteraction();
+          } else if (!ptrMoved) {
+            startJog();
             }
           }, LONG_PRESS_MS);
         }
