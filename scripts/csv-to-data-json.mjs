@@ -1,5 +1,6 @@
 /**
  * 从 content 下各关 CSV 生成 content/data.json（UTF-8），供 index.html 唯一数据源使用。
+ * 可选：scene1–5 的 *-interact.csv、scene3-questions.csv；不存在则对应 interact / 判断题 为空。
  * 用法：node scripts/csv-to-data-json.mjs
  * 监听：node scripts/csv-to-data-json.mjs --watch
  *
@@ -26,23 +27,61 @@ function parseCSVLine(line) {
   const out = [];
   let cur = "";
   let inQ = false;
+  let atFieldStart = true;
   for (let i = 0; i < line.length; i++) {
     const c = line.charAt(i);
     if (c === '"') {
-      if (inQ && i + 1 < line.length && line.charAt(i + 1) === '"') {
-        cur += '"';
-        i++;
+      if (inQ) {
+        if (i + 1 < line.length && line.charAt(i + 1) === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQ = false;
+        }
+      } else if (atFieldStart) {
+        inQ = true;
       } else {
-        inQ = !inQ;
+        // 非字段起始处的半角引号，按普通字符保留（兼容用户文案里的裸引号）
+        cur += c;
       }
     } else if (c === "," && !inQ) {
       out.push(cur);
       cur = "";
+      atFieldStart = true;
     } else {
       cur += c;
+      atFieldStart = false;
     }
   }
   out.push(cur);
+  return out;
+}
+
+/**
+ * 将 CSV 文本拆成“记录”：
+ * - 第一行固定为表头
+ * - 后续以「编号列起始（数字+逗号）」识别新记录
+ * - 其余行并入上一条（兼容文案中的换行与未严格转义的英文双引号）
+ */
+function splitCsvRecords(text) {
+  const rawLines = String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .filter((ln) => ln.replace(/\s/g, "").length);
+  if (!rawLines.length) return [];
+  const out = [rawLines[0]];
+  for (let i = 1; i < rawLines.length; i++) {
+    const ln = rawLines[i];
+    if (/^\s*\d+\s*,/.test(ln)) {
+      out.push(ln);
+      continue;
+    }
+    if (!out.length) {
+      out.push(ln);
+    } else {
+      out[out.length - 1] += "\n" + ln;
+    }
+  }
   return out;
 }
 
@@ -99,7 +138,7 @@ function isBlessingRowShellOnlyUserId(row) {
 
 function parseBlessingsCSV(text) {
   text = String(text).replace(/^\uFEFF/, "");
-  const lines = text.split(/\r?\n/).filter((ln) => ln.replace(/\s/g, "").length);
+  const lines = splitCsvRecords(text);
   if (lines.length < 2) return [];
   const headerParts = parseCSVLine(lines[0]);
   const col = resolveBlessingCsvColumns(headerParts);
@@ -140,12 +179,12 @@ function parseBlessingsCSV(text) {
 }
 
 /**
- * 用关卡号打标；若 CSV「场景」列已含子场景（如 1A、2B），必须保留，供祝福页按问题分组。
+ * 用关卡号打标；若 CSV「场景」列已含子场景（如 1101、2202 或 1A、2B），必须保留，供祝福页按问题分组。
  */
 function tagBlessingsWithScene(list, sid) {
   return list.map((n) => {
     const cell = n.scene != null ? String(n.scene).trim() : "";
-    if (cell && /[A-Za-z]/.test(cell)) {
+    if (cell && (/[A-Za-z]/.test(cell) || /^\d{4}$/.test(cell))) {
       return { ...n, scene: cell };
     }
     return { ...n, scene: sid };
@@ -154,7 +193,7 @@ function tagBlessingsWithScene(list, sid) {
 
 function parseScene3QuestionsCSV(text) {
   text = String(text).replace(/^\uFEFF/, "");
-  const lines = text.split(/\r?\n/).filter((ln) => ln.replace(/\s/g, "").length);
+  const lines = splitCsvRecords(text);
   if (lines.length < 2) return [];
   const header = parseCSVLine(lines[0]);
   let idxId = 0;
@@ -209,7 +248,7 @@ function parseScene3QuestionsCSV(text) {
  */
 function parseScene1EnlightenModalCsv(text) {
   text = String(text).replace(/^\uFEFF/, "");
-  const lines = text.split(/\r?\n/).filter((ln) => ln.replace(/\s/g, "").length);
+  const lines = splitCsvRecords(text);
   if (lines.length < 2) return [];
   const header = parseCSVLine(lines[0]);
   let idxId = -1;
@@ -245,63 +284,22 @@ function parseScene1EnlightenModalCsv(text) {
   return rows;
 }
 
-function parseScene5HolesCSV(text) {
-  text = String(text).replace(/^\uFEFF/, "");
-  const lines = text.split(/\r?\n/).filter((ln) => ln.replace(/\s/g, "").length);
-  if (lines.length < 2) return [];
-  const headerParts = parseCSVLine(lines[0]);
-  const col = resolveBlessingCsvColumns(headerParts);
-  let idxDur = -1;
-  for (let hd = 0; hd < headerParts.length; hd++) {
-    const hk = String(headerParts[hd] || "")
-      .replace(/^\uFEFF/, "")
-      .replace(/\s+/g, "");
-    if (hk === "时长秒" || hk === "时长") idxDur = hd;
-  }
-  const usedIds = Object.create(null);
-  const out = [];
-  for (let r = 1; r < lines.length; r++) {
-    const parts = parseCSVLine(lines[r]);
-    if (parts.length < 2) continue;
-    let id = parseInt(csvCell(parts, col.idxId), 10);
-    if (Number.isNaN(id)) id = 510000 + r;
-    while (usedIds[String(id)]) id += 1;
-    usedIds[String(id)] = true;
-    const copy = csvCell(parts, col.idxCopy);
-    const img = normalizeAssetPath(csvCell(parts, col.idxImg));
-    const aud = normalizeAssetPath(csvCell(parts, col.idxAud));
-    const vid = normalizeAssetPath(csvCell(parts, col.idxVid));
-    let typ = "text";
-    if (vid) typ = "video";
-    else if (aud) typ = "audio";
-    else if (img) typ = "image";
-    const sceneCell = col.idxScene >= 0 ? csvCell(parts, col.idxScene) : "";
-    const userIdCell = col.idxUserId >= 0 ? csvCell(parts, col.idxUserId) : "";
-    const durRaw = idxDur >= 0 ? csvCell(parts, idxDur) : "";
-    const durNum = parseFloat(durRaw);
-    const rowHole = {
-      id,
-      type: typ,
-      text: copy,
-      image: img || "",
-      audio: aud || "",
-      video: vid || "",
-      nickname: "",
-      userId: userIdCell,
-      scene: sceneCell !== "" ? sceneCell : "E",
-      durSec: Number.isNaN(durNum) || durNum < 0 ? 0 : durNum,
-    };
-    if (isBlessingRowShellOnlyUserId(rowHole)) continue;
-    out.push(rowHole);
-  }
-  return out;
-}
-
 function countByScene(arr) {
   const m = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
   for (const row of arr) {
-    const s = parseInt(row.scene, 10);
-    if (!Number.isNaN(s) && s >= 1 && s <= 5) m[String(s)] += 1;
+    const cell = row.scene != null ? String(row.scene).trim() : "";
+    let sidN = null;
+    const n = parseInt(cell, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 5) {
+      sidN = n;
+    } else if (/^\d{4}$/.test(cell) && !Number.isNaN(n)) {
+      const pfx = Math.floor(n / 100);
+      if (pfx % 11 === 0) {
+        const s = pfx / 11;
+        if (s >= 1 && s <= 5) sidN = s;
+      }
+    }
+    if (sidN != null) m[String(sidN)] += 1;
   }
   return m;
 }
@@ -345,25 +343,17 @@ function buildDataBundle() {
   for (let sid = 1; sid <= SCENE_COUNT; sid++) {
     const gText = readRequiredCsv(`scene${sid}-gallery.csv`);
     gallery.push(...tagBlessingsWithScene(parseBlessingsCSV(gText), sid));
-    const iText = readRequiredCsv(`scene${sid}-interact.csv`);
+    const iText = readOptionalCsv(`scene${sid}-interact.csv`) ?? "";
     interact.push(...tagBlessingsWithScene(parseBlessingsCSV(iText), sid));
   }
 
-  const qText = readRequiredCsv("scene3-questions.csv");
+  const qText = readOptionalCsv("scene3-questions.csv") ?? "";
   const scene3Questions = parseScene3QuestionsCSV(qText);
 
   let scene1EnlightenModal = [];
   const enlightenPath = path.join(contentDir, "scene1-enlighten-modal.csv");
   if (fs.existsSync(enlightenPath)) {
     scene1EnlightenModal = parseScene1EnlightenModalCsv(decodeCsvText(fs.readFileSync(enlightenPath)));
-  }
-
-  const holesPath = path.join(contentDir, "scene5-holes.csv");
-  if (fs.existsSync(holesPath)) {
-    const holes = parseScene5HolesCSV(decodeCsvText(fs.readFileSync(holesPath)));
-    for (const h of holes) {
-      interact.push({ ...h, scene: 5 });
-    }
   }
 
   const manifest = {

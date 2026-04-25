@@ -53,7 +53,8 @@
        * 无 controls 的 BGM：<audio> 留在 DOM 内供播放，但移出视口。
        * 否则部分 iOS/WebKit 会在页面顶部画出一条长绿色「伪控件条」。
        */
-      #cakeBgm {
+      #cakeBgm,
+      #letterCloseBgm {
         position: fixed !important;
         left: -9999px !important;
         top: 0 !important;
@@ -86,11 +87,12 @@
         padding: max(16px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
           max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
         width: 100%;
-        max-width: 100vw;
+        max-width: min(96vw, 1280px);
+        margin-inline: auto;
       }
       h1 {
         margin: 0;
-        font-size: clamp(26px, 7vw, 36px);
+        font-size: clamp(28px, 7vw, 38px);
         font-weight: 800;
         letter-spacing: 0.06em;
         text-align: center;
@@ -98,11 +100,11 @@
       }
       .sub {
         margin: 0;
-        font-size: clamp(14px, 3.8vw, 17px);
+        font-size: clamp(16px, 3.8vw, 19px);
         color: var(--muted);
         text-align: center;
         line-height: 1.55;
-        max-width: 22em;
+        max-width: 28em;
       }
       .cake-stage {
         position: relative;
@@ -158,7 +160,7 @@
         transition: opacity 0.48s ease, transform 0.52s ease;
       }
       .hint-tap {
-        font-size: 12px;
+        font-size: 14px;
         color: var(--muted);
         margin: 0;
         text-align: center;
@@ -179,21 +181,33 @@
       }
       .letter-card {
         width: min(100%, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
-        max-width: 400px;
-        max-height: min(82dvh, 560px);
+        max-width: 560px;
+        max-height: min(88dvh, 680px);
         overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(61, 139, 110, 0.48) transparent;
         background: linear-gradient(165deg, #fffdf8 0%, #f5ebe0 100%);
         color: #2a1f28;
         border-radius: 16px;
-        padding: 22px 18px 18px;
+        padding: 26px 22px 20px;
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+      }
+      .letter-card::-webkit-scrollbar {
+        width: 3px;
+      }
+      .letter-card::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .letter-card::-webkit-scrollbar-thumb {
+        background: rgba(61, 139, 110, 0.42);
+        border-radius: 99px;
       }
       .letter-card h2 {
         margin: 0 0 14px;
-        font-size: 18px;
+        font-size: 20px;
       }
       #letterStream {
-        font-size: 16px;
+        font-size: 18px;
         line-height: 1.65;
         min-height: 120px;
       }
@@ -201,6 +215,11 @@
         margin: 0 0 10px;
         opacity: 0;
         animation: lineIn 0.55s ease forwards;
+      }
+      #letterStream.letter-instant p {
+        opacity: 1;
+        transform: none;
+        animation: none;
       }
       @keyframes lineIn {
         from {
@@ -212,6 +231,28 @@
           transform: translateY(0);
         }
       }
+      .letter-sig {
+        margin-top: 20px;
+        margin-bottom: 4px;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #5c4a58;
+        text-align: left;
+        letter-spacing: 0.02em;
+      }
+      #letterStream.letter-body--second p {
+        margin-bottom: 0.72em;
+      }
+      #letterStream.letter-body--second p.letter-para--section {
+        margin-top: 1.15em;
+      }
+      .letter-card h2.letter-title--long {
+        font-size: clamp(17px, 4.1vw, 20px);
+        line-height: 1.45;
+        text-align: left;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
       .letter-actions {
         margin-top: 16px;
       }
@@ -220,7 +261,7 @@
         padding: 14px;
         border: none;
         border-radius: 10px;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
         background: #3d8b6e;
         color: #fff;
@@ -238,35 +279,42 @@
         position: absolute;
         left: 0;
         top: 0;
-        max-width: min(90vw, 320px);
-        padding: 8px 14px;
+        width: max-content;
+        max-width: min(95vw, 560px);
+        padding: 10px 16px;
         border-radius: 14px;
         background: rgba(255, 255, 255, 0.92);
         color: var(--ink);
-        font-size: clamp(12px, 3.2vw, 14px);
-        line-height: 1.4;
+        font-size: clamp(13px, 3.85vw, 15px);
+        line-height: 1.45;
         border: 1px solid rgba(45, 122, 82, 0.2);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
         white-space: normal;
         word-break: break-word;
-        opacity: 0.95;
+        opacity: 0;
+        transform: translateY(12px);
+        transition: opacity 1.15s ease, transform 1.05s ease;
         will-change: top, left, transform, opacity;
         transform-origin: center center;
+      }
+      .float-line.float-line--show {
+        opacity: 0.95;
+        transform: translateY(0);
       }
       /* iPhone 16 Pro Max 等大屏手机适配 */
       @media (max-width: 460px) and (min-height: 880px) {
         .wrap {
-          width: min(100%, 430px);
+          width: min(100%, 520px);
           margin-inline: auto;
           gap: 16px;
           padding-top: calc(max(18px, env(safe-area-inset-top, 0px)) + 4px);
           padding-bottom: calc(max(22px, env(safe-area-inset-bottom, 0px)) + 8px);
         }
         h1 {
-          font-size: clamp(30px, 8vw, 40px);
+          font-size: clamp(32px, 8vw, 42px);
         }
         .sub {
-          font-size: clamp(15px, 4.1vw, 18px);
+          font-size: clamp(17px, 4.1vw, 20px);
         }
         .cake-stage {
           width: min(340px, 82vw);
@@ -275,15 +323,15 @@
           width: min(310px, 78vw);
         }
         .letter-card {
-          max-width: 430px;
-          padding: 24px 18px 18px;
+          max-width: 560px;
+          padding: 26px 20px 20px;
         }
         .letter-actions button {
           min-height: 50px;
-          font-size: 17px;
+          font-size: 19px;
         }
         .float-line {
-          font-size: 15px;
+          font-size: clamp(13px, 3.85vw, 15px);
         }
       }
     </style>
@@ -292,7 +340,7 @@
     <canvas id="fxCanvas" aria-hidden="true"></canvas>
     <div class="wrap">
       <h1>生日快乐</h1>
-      <p class="sub">来吧恋姐，点点绿色蛋糕吹蜡烛</p>
+      <p class="sub">来吧恋姐，点点蛋糕吹蜡烛</p>
       <div class="cake-stage">
         <button type="button" class="cake-btn" id="cakeBtn" aria-label="点击蛋糕吹蜡烛">
           <svg
@@ -362,10 +410,10 @@
 
     <div id="letterOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="letterTitle">
       <div class="letter-card">
-        <h2 id="letterTitle">一封信</h2>
+        <h2 id="letterTitle">恋姐：</h2>
         <div id="letterStream"></div>
         <div class="letter-actions">
-          <button type="button" id="letterNextBtn">下一句</button>
+          <button type="button" id="letterNextBtn">收信</button>
         </div>
       </div>
     </div>
@@ -373,46 +421,99 @@
     <div id="floatLayer" aria-hidden="true"></div>
 
     <audio id="cakeBgm" loop preload="auto" playsinline webkit-playsinline="true"></audio>
+    <audio id="letterCloseBgm" preload="auto" playsinline webkit-playsinline="true"></audio>
 
+    <script src="content/media-cdn-config.js"></script>
     <script>
       (function () {
         "use strict";
-        var CAKE_PAGE_BUILD = "20260414-hotfix-audio";
+        var CAKE_PAGE_BUILD = "20260425-barrage-readability";
         try {
-          var qs = new URLSearchParams(window.location.search || "");
-          if (!qs.get("v")) {
-            qs.set("v", CAKE_PAGE_BUILD);
-            var nextUrl = window.location.pathname + "?" + qs.toString() + window.location.hash;
-            window.location.replace(nextUrl);
-            return;
+          if (window.history && window.history.replaceState) {
+            var uV = new URL(window.location.href);
+            if (!uV.searchParams.get("v")) {
+              uV.searchParams.set("v", CAKE_PAGE_BUILD);
+              window.history.replaceState(null, "", uV.toString());
+            }
           }
         } catch (eUrl) {}
 
-        /** 长信：按句拆分，可整段替换为你们的正文 */
-        var LONG_LETTER_LINES = [
-          "恋姐，生日快乐。",
-          "草原上的每一步，都是大家悄悄攒下的喜欢。",
-          "A–J 十个场景走下来，你大概已经听够了「要开心」，可我们还是想再说一遍——要开心，也要好好睡觉。",
-          "蜡烛灭掉的一瞬间，愿望会自己长翅膀；你只管继续发光，我们在人群里当你的回声。",
-          "这封信写到这里就停笔啦，剩下的交给蛋糕、烟花，和还在播放的那首生日歌。",
+        var FIRST_LETTER_TITLE = "恋姐：";
+        var FIRST_LETTER_PARAS = [
+          "当你看到这里，我们已经一起走过了启蒙、成长、职场、舞台，也眺望了远方。",
+          "单车轮下的风、耳机里的律动、书本叠起的阶梯、学士帽飞起的高度，成长路上的每一步，你都走得那么漂亮。",
+          "职场的Brief没有框住你的灵感，舞台下的每一份期待，都被你用心点亮。",
+          "1990年，小马在爱的簇拥中跑出第一步；1996年，开始独自探索大千世界；2012年，小马跨入那片名为“无限可能”的旷野；2022年，乘风而起，一路走到了2026年的今天。",
+          "很开心在“地球体验计划”中与你相遇，很期待和你继续一路向前。",
+          "新的一岁，愿你继续自由奔跑，在时光里大声歌唱。",
+          "生日快乐，恋姐。",
         ];
+        var FIRST_LETTER_FOOTER = "爱你的驿站管理员 2026.04.25 01:58";
+        var SECOND_LETTER_TITLE = "庆祝春天，庆祝生日，庆祝你的存在";
+        /** 第二封长信：段与段之间用独立 <p>，避免挤成一段 */
+        var SECOND_LETTER_PARAS = [
+          "小马哒哒走过春日草地，留下一串柔软的脚印。",
+          "一位勇敢的女孩逃出爱的围栏，走上骑士的冒险。",
+          "她路过金黄的麦地，追逐逃课的流星。",
+          "她用浪漫和自由书写属于她的游记。",
+          "过去一年我们见证奇谈的伊始，目睹蝴蝶的蜕变。",
+          "刘恋的故事开启了一个新的纪元。",
+          "第一张专辑的诞生、短暂而生机勃勃的巡演、满满的OST和音乐节，她用歌声在这个飞速变化的时代种下属于我们的锚点。",
+          "不论相隔多远，我们都会为她奔赴。",
+          "健康快乐幸福灵感爆棚这样的祝福不论说过多少次，我们都还是会为所爱的人心甘情愿地重复。",
+          "所以还是要祝 @刘恋MrMiss ：",
+          "祝你在这个光速腐坏的世界有一颗永远鲜活的心，祝你永远拥有爱和被爱的能力、源源不断的灵感，祝你每一分才华、每一份努力都能被看见，祝我们常常相见。",
+          "每一次4月26日都是新的未来，但是无所谓明天怎么来，只要在此刻你存在。",
+          "生日快乐。",
+          "爱你的乐乐",
+        ];
+        /** 0=未打开 1=第一封 2=第二封 */
+        var letterPhase = 0;
 
         var canvas = document.getElementById("fxCanvas");
         var ctx = canvas.getContext("2d", { alpha: true });
         var cakeBtn = document.getElementById("cakeBtn");
         var letterOverlay = document.getElementById("letterOverlay");
+        var letterTitle = document.getElementById("letterTitle");
         var letterStream = document.getElementById("letterStream");
         var letterNextBtn = document.getElementById("letterNextBtn");
         var floatLayer = document.getElementById("floatLayer");
         var cakeBgm = document.getElementById("cakeBgm");
+        var letterCloseBgm = document.getElementById("letterCloseBgm");
         var audioHint = document.getElementById("audioHint");
 
         /**
-         * 生日页 BGM：与主站 index.html 中 BLESSINGS_MEDIA_CDN_BASE / STRIP 保持一致时可只托管 COS，仓库可不存 aac。
-         * 留空字符串则仅用同源 content/… 路径。
+         * 生日页 BGM：与主站共用 content/media-cdn-config.js（优先 CDN，未填则回退 COS），仓库可不存 aac。
+         * 若两处远程根均为空则仅用同源 content/… 路径。
          */
-        var CAKE_MEDIA_CDN_BASE = "https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com/";
-        var CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT = true;
+        var CAKE_MEDIA_CDN_BASE = (function () {
+          function preferLocalContentMedia() {
+            try {
+              if (typeof location === "undefined" || !location) return false;
+              if (location.protocol === "file:") return true;
+              var h = String(location.hostname || "").toLowerCase();
+              if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") return true;
+              var m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+              if (m) {
+                var a = +m[1];
+                var b = +m[2];
+                if (a === 10) return true;
+                if (a === 192 && b === 168) return true;
+                if (a === 172 && b >= 16 && b <= 31) return true;
+                if (a === 127) return true;
+              }
+            } catch (e) {}
+            return false;
+          }
+          if (preferLocalContentMedia()) return "";
+          var cdn = String(typeof window !== "undefined" && window.MEDIA_CDN_ACCELERATION_BASE ? window.MEDIA_CDN_ACCELERATION_BASE : "").trim();
+          if (cdn) return cdn;
+          return String(typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? window.MEDIA_CDN_FALLBACK_COS_BASE : "").trim();
+        })();
+        var CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT =
+          typeof window !== "undefined" && typeof window.MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined"
+            ? !!window.MEDIA_CDN_STRIP_LEADING_CONTENT
+            : true;
 
         function resolveCakeMediaUrl(raw) {
           var s = String(raw || "").trim();
@@ -441,38 +542,28 @@
           return u + sep + "v=" + encodeURIComponent(String(CAKE_PAGE_BUILD));
         }
 
-        /** 生日页 BGM：优先主名；失败时回退旧名/MP3（路径均经 resolveCakeMediaUrl，可指向 COS） */
+        /** 生日页 BGM：优先 MP3；失败时回退 aac/旧名（路径均经 resolveCakeMediaUrl，可指向 COS） */
         var BGM_SRC_CANDIDATES = [
+          "content/happybirthday.mp3",
           "content/audio_happybirthday.aac",
           "content/happybirthday.aac",
           "content/0001.mp3",
         ];
+        var LETTER_CLOSE_BGM_SRC = "content/zaichang.mp3";
         var bgmSourceIdx = 0;
-        /** 生日页弹幕数据源：取第一关 CSV 的「用户id」列，格式化为「恋姐生日快乐@用户id」 */
-        var BARRAGE_USERID_CSV_SRC = "content/scene1-gallery.csv";
-        /** file:// 打开时 fetch 本地 CSV 往往会被浏览器拦截，这里提供兜底 */
-        var EMBEDDED_BARRAGE_TEXTS = [
-          "恋姐生日快乐-@草原来信1001",
-          "恋姐生日快乐-@风铃小队1002",
-          "恋姐生日快乐-@晚霞旅人1003",
-          "恋姐生日快乐-@星光驿站1004",
-          "恋姐生日快乐-@软乎乎补给站1005",
-          "恋姐生日快乐-@流星接收员1006",
-          "恋姐生日快乐-@纸条穿越者1007",
-          "恋姐生日快乐-@时光胶囊客1008",
-          "恋姐生日快乐-@恋姐应援团1009",
-          "恋姐生日快乐-@小马草原1010",
-          "恋姐生日快乐-@晴天邮差1011",
-          "恋姐生日快乐-@夜空守望者1012",
-          "恋姐生日快乐-@薄荷风朋友1013",
-          "恋姐生日快乐-@云朵收藏家1014",
-          "恋姐生日快乐-@愿望投递员1015",
-          "恋姐生日快乐-@生日灯光组1016",
-          "恋姐生日快乐-@草地散步者1017",
-          "恋姐生日快乐-@晚风签收员1018",
-          "恋姐生日快乐-@软糖祝福员1019",
-          "恋姐生日快乐-@流星打卡人1020",
-        ];
+        /** 第五关 5501 场景：从 scene5-gallery.csv 取「文案」+「用户id」为一条弹幕 */
+        var BARRAGE_SCENE_FILTER = "5501";
+        var BARRAGE_USERID_CSV_SRC = "content/scene5-gallery.csv";
+        /**
+         * 不再使用测试/内置兜底。
+         * 读取失败时保持为空，不注入测试数据。
+         */
+        var EMBEDDED_BARRAGE_TEXTS = [];
+        /** 单栏渐显、上一条完整可见后再出下一条；略提高上限防长停留 */
+        var BARRAGE_MAX_ACTIVE = 24;
+        /** 上升速度（px/s），整体偏慢便于阅读 */
+        var BARRAGE_SPEED_MIN = 26;
+        var BARRAGE_SPEED_MAX = 38;
         function applyBgmSourceByIndex(idx) {
           if (!cakeBgm) return false;
           if (idx < 0 || idx >= BGM_SRC_CANDIDATES.length) return false;
@@ -497,9 +588,17 @@
             if (audioHint) {
               audioHint.hidden = false;
               audioHint.textContent =
-                "音乐加载失败：请确认 COS 已上传 audio_happybirthday.aac（与主站 strip 规则一致），或检查 cake.html 内 CAKE_MEDIA_CDN_BASE。";
+                "音乐加载失败：请确认 COS/CDN 已上传 happybirthday.mp3（与主站 strip 规则一致），或检查 content/media-cdn-config.js。";
             }
           });
+        }
+
+        if (letterCloseBgm) {
+          try {
+            letterCloseBgm.referrerPolicy = "no-referrer";
+            letterCloseBgm.src = versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
+            letterCloseBgm.load();
+          } catch (eLc) {}
         }
 
         var dpr = 1;
@@ -507,14 +606,12 @@
         var H = 0;
         var particles = [];
         var candlesOut = false;
-        var letterIndex = 0;
         var floatStarted = false;
         var floatSpawnIv = null;
         var floatStopTimer = null;
         var barrageItems = [];
         var barrageTexts = [];
         var barrageTextIdx = 0;
-        var barrageSpawnAccumMs = 0;
         var barrageActive = false;
         var lastT = 0;
         var bgmFadeTimer = null;
@@ -586,13 +683,43 @@
           }
         }
 
-        function boxesOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
-          return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+        /** 屏幕最靠下的一条（最新一条），用于「上一条完整可见」门闩 */
+        function findBottomMostBarrageItem() {
+          var best = null;
+          var maxY = -1e9;
+          for (var i = 0; i < barrageItems.length; i++) {
+            var it = barrageItems[i];
+            if (it.y > maxY) {
+              maxY = it.y;
+              best = it;
+            }
+          }
+          return best;
+        }
+
+        /** 整条已在视口内可读；超高卡用顶边进入视口作为门闩 */
+        function isBarrageFullyReadableInView(it) {
+          if (!it) return true;
+          if (H < 1) return false;
+          if (it.h > H) {
+            return it.y <= 0;
+          }
+          return it.y >= 0 && it.y + it.h <= H;
         }
 
         function trySpawnBarrageOne() {
+          if (W < 1 || H < 1) {
+            try {
+              resize();
+            } catch (eRz) {}
+            if (W < 1 || H < 1) return;
+          }
           if (!floatLayer || !barrageActive) return;
           if (!barrageTexts || !barrageTexts.length) return;
+          if (barrageItems.length >= BARRAGE_MAX_ACTIVE) return;
+          var gate = findBottomMostBarrageItem();
+          if (!isBarrageFullyReadableInView(gate)) return;
+
           var text = barrageTexts[barrageTextIdx % barrageTexts.length];
           barrageTextIdx++;
           var el = document.createElement("div");
@@ -600,45 +727,26 @@
           el.textContent = text;
           el.style.left = "0px";
           el.style.top = "0px";
-          el.style.opacity = "0.94";
           floatLayer.appendChild(el);
           var rect = el.getBoundingClientRect();
           var bw = Math.max(110, Math.ceil(rect.width || 160));
           var bh = Math.max(28, Math.ceil(rect.height || 34));
-          var sidePad = 10;
-          var minGap = 14;
-          var xMin = sidePad;
-          var xMax = Math.max(sidePad, W - sidePad - bw);
-          var spawnY = H + 8 + Math.random() * 14;
-          var speed = 64 + Math.random() * 34; // 每条独立随机上升速度
-          var pickedX = xMin;
-          var ok = false;
-          for (var t = 0; t < 32; t++) {
-            var x = xMin + Math.random() * Math.max(1, xMax - xMin);
-            var clash = false;
-            for (var i = 0; i < barrageItems.length; i++) {
-              var it = barrageItems[i];
-              // 仅检查屏幕底部附近弹幕，避免新弹幕一出生就重叠
-              if (it.y > H * 0.76 && boxesOverlap(x, spawnY, bw, bh + minGap, it.x, it.y, it.w, it.h + minGap)) {
-                clash = true;
-                break;
-              }
-            }
-            if (!clash) {
-              pickedX = x;
-              ok = true;
-              break;
-            }
-          }
-          if (!ok && barrageItems.length > 8) {
-            // 拥挤时放弃本次，下一帧再试，避免硬塞导致覆盖
-            try {
-              el.remove();
-            } catch (eRm) {}
-            return;
-          }
-          el.style.left = Math.round(pickedX) + "px";
+          var sidePad = 12;
+          /** 新一条固定从视口下缘外进入；与上一条时间错开，避免叠在同一纵带里抢读 */
+          var spawnY = H + 16 + Math.random() * 10;
+          /** 统一上升速度，避免后一条追上、与上一条竖直重叠 */
+          var speed = (BARRAGE_SPEED_MIN + BARRAGE_SPEED_MAX) * 0.5;
+          var pickedX = Math.round(Math.max(sidePad, Math.min((W - bw) / 2, W - sidePad - bw)));
+
+          el.style.left = pickedX + "px";
           el.style.top = Math.round(spawnY) + "px";
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              try {
+                el.classList.add("float-line--show");
+              } catch (eS) {}
+            });
+          });
           barrageItems.push({
             el: el,
             x: pickedX,
@@ -651,12 +759,7 @@
 
         function tickBarrage(dt) {
           if (!barrageActive) return;
-          barrageSpawnAccumMs += dt;
-          // 约 8 条 / 秒
-          while (barrageSpawnAccumMs >= 125) {
-            barrageSpawnAccumMs -= 125;
-            trySpawnBarrageOne();
-          }
+          trySpawnBarrageOne();
           var sec = dt / 1000;
           for (var i = barrageItems.length - 1; i >= 0; i--) {
             var it = barrageItems[i];
@@ -740,6 +843,29 @@
           }
         }
 
+        function tryPlayLetterCloseTrack() {
+          if (!letterCloseBgm) return;
+          if (bgmFadeTimer) {
+            clearInterval(bgmFadeTimer);
+            bgmFadeTimer = null;
+          }
+          if (cakeBgm) {
+            try {
+              cakeBgm.pause();
+            } catch (eP) {}
+            try {
+              cakeBgm.currentTime = 0;
+            } catch (eT) {}
+            bgmHasStarted = false;
+          }
+          try {
+            letterCloseBgm.volume = BGM_TARGET_VOLUME;
+            letterCloseBgm.currentTime = 0;
+          } catch (eV) {}
+          var p2 = letterCloseBgm.play();
+          if (p2 && typeof p2.then === "function") p2.catch(function () {});
+        }
+
         function blowCandles() {
           candlesOut = true;
           var flames = cakeBtn ? cakeBtn.querySelectorAll(".flame") : [];
@@ -754,29 +880,64 @@
           }, 700);
         }
 
-        function startLetter() {
-          letterIndex = 0;
+        function renderFirstLetterFull() {
           letterStream.innerHTML = "";
-          letterOverlay.hidden = false;
-          pushLetterLine();
+          letterStream.className = "letter-instant";
+          if (letterTitle) {
+            letterTitle.textContent = FIRST_LETTER_TITLE;
+            letterTitle.classList.remove("letter-title--long");
+          }
+          var i, p, sig;
+          for (i = 0; i < FIRST_LETTER_PARAS.length; i++) {
+            p = document.createElement("p");
+            p.textContent = FIRST_LETTER_PARAS[i];
+            letterStream.appendChild(p);
+          }
+          sig = document.createElement("p");
+          sig.className = "letter-sig";
+          sig.textContent = FIRST_LETTER_FOOTER;
+          letterStream.appendChild(sig);
         }
 
-        function pushLetterLine() {
-          if (letterIndex >= LONG_LETTER_LINES.length) {
-            endLetter();
-            return;
+        function showSecondLongLetter() {
+          letterStream.innerHTML = "";
+          letterStream.className = "letter-instant letter-body--second";
+          if (letterTitle) {
+            letterTitle.textContent = SECOND_LETTER_TITLE;
+            letterTitle.classList.add("letter-title--long");
           }
-          var p = document.createElement("p");
-          p.textContent = LONG_LETTER_LINES[letterIndex];
-          letterStream.appendChild(p);
-          letterIndex++;
-          letterNextBtn.textContent =
-            letterIndex >= LONG_LETTER_LINES.length ? "收信" : "下一句";
+          for (var j = 0; j < SECOND_LETTER_PARAS.length; j++) {
+            var p2 = document.createElement("p");
+            p2.textContent = SECOND_LETTER_PARAS[j];
+            if (j === 4 || j === 8) p2.classList.add("letter-para--section");
+            letterStream.appendChild(p2);
+          }
+        }
+
+        function startLetter() {
+          letterPhase = 1;
+          renderFirstLetterFull();
+          if (letterNextBtn) letterNextBtn.textContent = "收信";
+          if (letterOverlay) letterOverlay.hidden = false;
         }
 
         function endLetter() {
-          letterOverlay.hidden = true;
+          var didCloseAfterSecondLetter = letterPhase === 2;
+          letterPhase = 0;
+          if (letterOverlay) letterOverlay.hidden = true;
+          if (letterStream) {
+            letterStream.innerHTML = "";
+            letterStream.className = "";
+          }
+          if (letterTitle) {
+            letterTitle.textContent = "恋姐：";
+            letterTitle.classList.remove("letter-title--long");
+          }
+          if (letterNextBtn) letterNextBtn.textContent = "收信";
           startFloatingBlessings();
+          if (didCloseAfterSecondLetter) {
+            tryPlayLetterCloseTrack();
+          }
         }
 
         function parseCsvLine(line) {
@@ -803,82 +964,177 @@
           return out;
         }
 
-        function loadBlessingTexts() {
-          if (location.protocol === "file:") {
-            return Promise.resolve(EMBEDDED_BARRAGE_TEXTS.slice());
+        /** 全文件解析，支持引号内换行（第五关长文案 CSV 需此逻辑） */
+        function parseCsvTextToRowArrays(csvText) {
+          var s = String(csvText || "").replace(/^\uFEFF/, "");
+          var rows = [];
+          var row = [];
+          var field = "";
+          var inQ = false;
+          for (var i = 0; i < s.length; i++) {
+            var c = s.charAt(i);
+            if (c === '"') {
+              if (inQ && i + 1 < s.length && s.charAt(i + 1) === '"') {
+                field += '"';
+                i++;
+              } else {
+                inQ = !inQ;
+              }
+            } else if (c === "," && !inQ) {
+              row.push(field);
+              field = "";
+            } else if ((c === "\n" || c === "\r") && !inQ) {
+              row.push(field);
+              field = "";
+              if (c === "\r" && i + 1 < s.length && s.charAt(i + 1) === "\n") {
+                i++;
+              }
+              var keep = false;
+              for (var rj = 0; rj < row.length; rj++) {
+                if (String(row[rj] || "").trim() !== "") {
+                  keep = true;
+                  break;
+                }
+              }
+              if (keep) {
+                rows.push(row);
+              }
+              row = [];
+            } else {
+              field += c;
+            }
           }
-          var url = BARRAGE_USERID_CSV_SRC + "?v=" + Date.now();
+          row.push(field);
+          if (row.length) {
+            var keep2 = false;
+            for (var rj2 = 0; rj2 < row.length; rj2++) {
+              if (String(row[rj2] || "").trim() !== "") {
+                keep2 = true;
+                break;
+              }
+            }
+            if (keep2) {
+              rows.push(row);
+            }
+          }
+          return rows;
+        }
+
+        function headerColumnIndex(header, wanted) {
+          for (var h = 0; h < header.length; h++) {
+            var key = String(header[h] || "")
+              .replace(/^\uFEFF/, "")
+              .replace(/\s+/g, "")
+              .toLowerCase();
+            if (wanted.indexOf(key) >= 0) {
+              return h;
+            }
+          }
+          return -1;
+        }
+
+        function normalizeCsvSceneId(val) {
+          var t = String(val != null ? val : "")
+            .trim()
+            .replace(/\s/g, "");
+          if (!t) return "";
+          if (/^[\d.]+$/.test(t)) {
+            var n = parseFloat(t);
+            if (!isNaN(n)) {
+              t = String(Math.round(n));
+            }
+          }
+          return t;
+        }
+
+        function resolveBarrageCsvUrl() {
+          try {
+            return new URL(BARRAGE_USERID_CSV_SRC, document.baseURI || window.location.href).href;
+          } catch (eU) {
+            return BARRAGE_USERID_CSV_SRC;
+          }
+        }
+
+        function loadBlessingTexts() {
+          var csvAbs = resolveBarrageCsvUrl();
+          var url = csvAbs + (csvAbs.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
           var fetchPromise = fetch(url, { cache: "no-store", credentials: "same-origin" })
             .then(function (resp) {
               if (!resp.ok) return "";
               return resp.text();
             })
             .then(function (text) {
-              text = String(text || "").replace(/^\uFEFF/, "");
-              var lines = text.split(/\r?\n/).filter(function (ln) {
-                return ln.trim().length > 0;
-              });
-              if (lines.length < 2) return [];
-              var header = parseCsvLine(lines[0] || "");
-              var idxUserId = -1;
-              for (var h = 0; h < header.length; h++) {
-                var key = String(header[h] || "")
-                  .replace(/^\uFEFF/, "")
-                  .replace(/\s+/g, "")
-                  .toLowerCase();
-                if (key === "用户id" || key === "userid") {
-                  idxUserId = h;
-                  break;
-                }
+              if (!String(text || "").trim()) {
+                return [];
+              }
+              var allRows = parseCsvTextToRowArrays(text);
+              if (allRows.length < 2) return [];
+              var header = allRows[0];
+              var idxScene = headerColumnIndex(header, ["场景", "scene"]);
+              var idxCopy = headerColumnIndex(header, ["文案", "copy", "blessing"]);
+              var idxUserId = headerColumnIndex(header, ["用户id", "userid"]);
+              if (idxUserId < 0) {
+                idxUserId = allRows[1] && allRows[1].length > 0 ? allRows[1].length - 1 : -1;
+              }
+              if (idxScene < 0 || idxCopy < 0 || idxUserId < 0) {
+                return [];
               }
               var out = [];
               var seenUid = {};
-              for (var i = 1; i < lines.length; i++) {
-                var row = parseCsvLine(lines[i]);
-                if (!row || !row.length) continue;
-                var uidRaw = idxUserId >= 0 ? row[idxUserId] : row[row.length - 1];
-                var uid = String(uidRaw || "").trim();
+              var wantScene = normalizeCsvSceneId(BARRAGE_SCENE_FILTER || "5501");
+              for (var r = 1; r < allRows.length; r++) {
+                var rrow = allRows[r];
+                if (!rrow || !rrow.length) continue;
+                var sc = normalizeCsvSceneId(rrow[idxScene] != null ? rrow[idxScene] : "");
+                if (sc !== wantScene) continue;
+                var uid = String(rrow[idxUserId] != null ? rrow[idxUserId] : "").trim();
                 if (!uid) continue;
                 if (seenUid[uid]) continue;
                 seenUid[uid] = true;
-                out.push("恋姐生日快乐@" + uid);
+                var copyRaw = String(rrow[idxCopy] != null ? rrow[idxCopy] : "");
+                var copyOneLine = copyRaw
+                  .replace(/[\r\n\u2028\u2029]+/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim();
+                if (copyOneLine) {
+                  out.push(copyOneLine + " @" + uid);
+                }
               }
               return out;
             })
             .catch(function () {
               return [];
             });
-          var timeoutPromise = new Promise(function (resolve) {
-            setTimeout(function () {
-              resolve(EMBEDDED_BARRAGE_TEXTS.slice());
-            }, 1200);
-          });
-          return Promise.race([fetchPromise, timeoutPromise]).then(function (arr) {
-            if (!arr || !arr.length) return EMBEDDED_BARRAGE_TEXTS.slice();
+          return fetchPromise.then(function (arr) {
+            if (!arr || !arr.length) return [];
             return arr;
           });
         }
 
+        function applyBarrageTextsAndWarmSpawn(texts) {
+          if (!texts || !texts.length) texts = [];
+          barrageTexts = texts.slice();
+        }
+
         function startFloatingBlessings() {
-          if (floatStarted) return;
+          if (floatStarted) {
+            barrageActive = true;
+            if (!barrageTexts || !barrageTexts.length) {
+              loadBlessingTexts().then(applyBarrageTextsAndWarmSpawn);
+            }
+            return;
+          }
           floatStarted = true;
           barrageActive = true;
-          barrageSpawnAccumMs = 0;
           barrageTextIdx = 0;
           barrageItems = [];
           if (floatLayer) floatLayer.innerHTML = "";
-          loadBlessingTexts().then(function (texts) {
-            if (!texts || !texts.length) texts = EMBEDDED_BARRAGE_TEXTS.slice();
-            barrageTexts = texts.slice();
-            for (var warm = 0; warm < 10; warm++) {
-              setTimeout(trySpawnBarrageOne, warm * 90);
-            }
-          });
+          loadBlessingTexts().then(applyBarrageTextsAndWarmSpawn);
         }
 
         function resetCakeFlowToFirstOpen() {
           candlesOut = false;
-          letterIndex = 0;
+          letterPhase = 0;
           floatStarted = false;
           particles = [];
           if (floatSpawnIv) {
@@ -896,13 +1152,16 @@
           bgmHasStarted = false;
           if (audioHint) audioHint.hidden = true;
           if (letterOverlay) letterOverlay.hidden = true;
-          if (letterStream) letterStream.innerHTML = "";
-          if (letterNextBtn) letterNextBtn.textContent = "下一句";
+          if (letterStream) {
+            letterStream.innerHTML = "";
+            letterStream.className = "";
+          }
+          if (letterNextBtn) letterNextBtn.textContent = "收信";
+          if (letterTitle) letterTitle.classList.remove("letter-title--long");
           if (floatLayer) floatLayer.innerHTML = "";
           barrageItems = [];
           barrageTexts = [];
           barrageTextIdx = 0;
-          barrageSpawnAccumMs = 0;
           barrageActive = false;
           if (cakeBtn) {
             cakeBtn.disabled = false;
@@ -916,6 +1175,12 @@
               cakeBgm.volume = 0;
             } catch (eBgm) {}
           }
+          if (letterCloseBgm) {
+            try {
+              letterCloseBgm.pause();
+              letterCloseBgm.currentTime = 0;
+            } catch (eLc) {}
+          }
         }
 
         cakeBtn.addEventListener("click", function () {
@@ -924,11 +1189,17 @@
         });
 
         letterNextBtn.addEventListener("click", function () {
-          if (letterIndex >= LONG_LETTER_LINES.length) {
-            endLetter();
-          } else {
-            pushLetterLine();
+          if (letterPhase === 1) {
+            letterPhase = 2;
+            showSecondLongLetter();
+            letterNextBtn.textContent = "关闭";
+            return;
           }
+          if (letterPhase === 2) {
+            endLetter();
+            return;
+          }
+          endLetter();
         });
 
         document.body.addEventListener(
@@ -940,9 +1211,11 @@
         );
 
         window.addEventListener("resize", resize);
-        window.addEventListener("pageshow", function () {
-          // 处理手机端返回缓存：每次进入生日页都强制视为首次打开
-          resetCakeFlowToFirstOpen();
+        window.addEventListener("pageshow", function (ev) {
+          // 从往返缓存/后台页恢复时重置；勿在普通首次展示时再跑，否则可能打断进行中的吹蜡烛/弹幕
+          if (ev && ev.persisted) {
+            resetCakeFlowToFirstOpen();
+          }
         });
         resetCakeFlowToFirstOpen();
         resize();

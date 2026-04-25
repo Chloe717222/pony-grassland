@@ -5,6 +5,7 @@
     "unify:csv": "node scripts/unify-content-csv.mjs",
     "build:data": "node scripts/csv-to-data-json.mjs",
     "verify:site": "node scripts/verify-site-assets.mjs",
+    "verify:data": "node scripts/verify-data-json-media.mjs",
     "verify:site:light": "node scripts/run-verify-site-assets-light.mjs",
     "watch:data": "node scripts/csv-to-data-json.mjs --watch",
     "start:local": "npm run build:data && node server/start-static-server.mjs",

@@ -18,3 +18,7 @@ content/.content-import001-rewrite-tmp.csv
 Thumbs.db
 *.log
 server/quiz-logs.jsonl
+
+# 超过 GitHub 100MB 限制的视频文件
+content/zhufu1.mov
+content/zhufu2.MOV

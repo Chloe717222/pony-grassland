@@ -10,6 +10,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+/** 与 scripts/csv-to-data-json.mjs 一致：UTF-8 或 GBK，避免 Excel 另存为 ANSI 时校验误报 */
+/** @param {Buffer} buf */
+function decodeCsvText(buf) {
+  const utf8 = buf.toString("utf8").replace(/^\uFEFF/, "");
+  const first = utf8.split(/\r?\n/)[0] || "";
+  if (/编号/.test(first) && (/文案/.test(first) || /题目/.test(first))) return utf8;
+  try {
+    return new TextDecoder("gbk").decode(buf).replace(/^\uFEFF/, "");
+  } catch {
+    return utf8;
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
@@ -33,6 +46,8 @@ const CSV_SCAN_CANDIDATES = [
   "content/blessings-test-five-plates.csv",
 ];
 const BGM_REL = "content/audio_happybirthday.aac";
+/** 本地不提交生日页 BGM 时设 VERIFY_SKIP_BGM=1，仅跳过此项（仍会校验 CSV 等） */
+const SKIP_BGM_DISK = process.env.VERIFY_SKIP_BGM === "1";
 /** 常见误操作：把某条祝福语音复制成生日 BGM 文件名（旧编号资源；不存在则跳过比对） */
 const BGM_MUST_NOT_MATCH = "content/0001.mp3";
 /** 与 index.html 中 SCENE_STATIC_BACKDROP 路径一致（缺则线上回退程序草原） */
@@ -140,7 +155,7 @@ function main() {
     errors.push(`缺少祝福相关 CSV（以下均不存在）：${CSV_SCAN_CANDIDATES.join("、")}`);
   }
 
-  if (!SKIP_BLESSING_MEDIA_DISK) {
+  if (!SKIP_BLESSING_MEDIA_DISK && !SKIP_BGM_DISK) {
     const bgmAbs = path.join(repoRoot, BGM_REL);
     if (!fs.existsSync(bgmAbs)) {
       errors.push(`缺少生日页 BGM：${BGM_REL}`);
@@ -153,6 +168,8 @@ function main() {
         );
       }
     }
+  } else if (SKIP_BGM_DISK) {
+    console.warn(`[verify] 已跳过 ${BGM_REL} 存在性检查（VERIFY_SKIP_BGM=1）`);
   }
 
   if (errors.length) {
@@ -165,7 +182,7 @@ function main() {
   let scannedFiles = 0;
 
   for (const { rel, abs } of csvFilesToScan) {
-    const csvText = fs.readFileSync(abs, "utf8");
+    const csvText = decodeCsvText(fs.readFileSync(abs));
     const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
     if (lines.length < 2) {
       console.error(`${rel}：无数据行`);

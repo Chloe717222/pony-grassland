@@ -3,7 +3,7 @@
  * 表头：编号,场景,文案,图片url,音频url,视频url,用户id
  *
  * - scene*-gallery.csv：由 GBK/UTF-8 读入后重写为 UTF-8
- * - scene*-interact.csv：补「场景」列，值为 1B…5B（与 gallery 的 1A…5A 区分）
+ * - scene*-interact.csv：补「场景」列，值为 1102…5502 等子场景题号（与 gallery 的 1101、2201 等对应）
  * - scene3-questions.csv：题目→文案，答案→图片url，解析→音频url；场景固定 3Q
  *
  * 用法：node scripts/unify-content-csv.mjs
