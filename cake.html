@@ -172,7 +172,10 @@
         position: fixed;
         inset: 0;
         z-index: 40;
-        background: rgba(20, 32, 26, 0.5);
+        background:
+          radial-gradient(120% 78% at 14% 10%, rgba(143, 221, 174, 0.2) 0%, rgba(143, 221, 174, 0) 52%),
+          radial-gradient(112% 80% at 86% 85%, rgba(115, 173, 255, 0.16) 0%, rgba(115, 173, 255, 0) 58%),
+          rgba(12, 28, 22, 0.62);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -186,11 +189,46 @@
         overflow: auto;
         scrollbar-width: thin;
         scrollbar-color: rgba(61, 139, 110, 0.48) transparent;
-        background: linear-gradient(165deg, #fffdf8 0%, #f5ebe0 100%);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 255, 249, 0.9)),
+          linear-gradient(165deg, #fffdf8 0%, #f5ebe0 100%);
         color: #2a1f28;
+        border: 1px solid rgba(255, 255, 255, 0.62);
         border-radius: 16px;
-        padding: 26px 22px 20px;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+        padding: 28px 22px 20px;
+        box-shadow:
+          0 20px 48px rgba(5, 24, 17, 0.34),
+          0 2px 0 rgba(255, 255, 255, 0.28) inset;
+        position: relative;
+        overflow: hidden auto;
+        backdrop-filter: blur(20px) saturate(118%);
+        -webkit-backdrop-filter: blur(20px) saturate(118%);
+      }
+      .letter-card::before {
+        content: "";
+        position: absolute;
+        left: -24%;
+        top: -50%;
+        width: 170%;
+        height: 70%;
+        background: linear-gradient(
+          110deg,
+          rgba(255, 255, 255, 0.48) 0%,
+          rgba(255, 255, 255, 0.14) 40%,
+          rgba(255, 255, 255, 0) 74%
+        );
+        pointer-events: none;
+      }
+      .letter-card::after {
+        content: "";
+        position: absolute;
+        right: 14px;
+        top: 12px;
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 30%, rgba(170, 244, 196, 0.58), rgba(170, 244, 196, 0));
+        pointer-events: none;
       }
       .letter-card::-webkit-scrollbar {
         width: 3px;
@@ -204,7 +242,14 @@
       }
       .letter-card h2 {
         margin: 0 0 14px;
-        font-size: 20px;
+        font-size: clamp(20px, 5.2vw, 24px);
+        font-weight: 900;
+        letter-spacing: 0.03em;
+        background: linear-gradient(135deg, #1f8a58 0%, #155f46 48%, #0e4d49 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 2px 18px rgba(36, 140, 95, 0.12);
       }
       #letterStream {
         font-size: 18px;
@@ -259,14 +304,18 @@
       .letter-actions button {
         width: 100%;
         padding: 14px;
-        border: none;
+        border: 1px solid rgba(24, 96, 65, 0.12);
         border-radius: 10px;
         font-size: 18px;
-        font-weight: 600;
-        background: #3d8b6e;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: linear-gradient(180deg, #39a96c 0%, #2f8f5d 100%);
         color: #fff;
         cursor: pointer;
         touch-action: manipulation;
+        box-shadow:
+          0 10px 18px rgba(17, 80, 53, 0.22),
+          0 1px 0 rgba(255, 255, 255, 0.28) inset;
       }
       #floatLayer {
         position: fixed;
@@ -591,6 +640,14 @@
          * 读取失败时保持为空，不注入测试数据。
          */
         var EMBEDDED_BARRAGE_TEXTS = [];
+        var FALLBACK_BARRAGE_TEXTS = [
+          "生日快乐，愿你一直自由歌唱。",
+          "新的一岁，平安顺遂，灵感满满。",
+          "永远在场，永远爱你。",
+          "愿你所愿，都能被温柔接住。",
+          "祝你快乐不止今天。",
+          "我们会一直在你身后。",
+        ];
         /** 单栏渐显、上一条完整可见后再出下一条；略提高上限防长停留 */
         var BARRAGE_MAX_ACTIVE = 24;
         /** 上升速度（px/s），整体偏慢便于阅读 */
@@ -619,9 +676,7 @@
               var next = bgmCandidateCursor + 1;
               if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
               if (audioHint) {
-                audioHint.hidden = false;
-                audioHint.textContent =
-                  "音乐加载超时：请检查 static 与 COS 的音频连通性和路径规则（含 content 前缀）。";
+                audioHint.hidden = true;
               }
             }, 3200);
             return true;
@@ -645,9 +700,7 @@
             var next = bgmCandidateCursor + 1;
             if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
             if (audioHint) {
-              audioHint.hidden = false;
-              audioHint.textContent =
-                "音乐加载失败：请确认 COS/CDN 已上传 happybirthday.mp3（与主站 strip 规则一致），或检查 content/media-cdn-config.js。";
+              audioHint.hidden = true;
             }
           });
           cakeBgm.addEventListener("loadedmetadata", clearBgmFallbackTimer);
@@ -972,6 +1025,7 @@
             var p2 = document.createElement("p");
             p2.textContent = SECOND_LETTER_PARAS[j];
             if (j === 4 || j === 8) p2.classList.add("letter-para--section");
+            if (j === SECOND_LETTER_PARAS.length - 1) p2.classList.add("letter-sig");
             letterStream.appendChild(p2);
           }
         }
@@ -1138,7 +1192,7 @@
               if (idxUserId < 0) {
                 idxUserId = allRows[1] && allRows[1].length > 0 ? allRows[1].length - 1 : -1;
               }
-              if (idxScene < 0 || idxCopy < 0 || idxUserId < 0) {
+              if (idxScene < 0 || idxUserId < 0) {
                 return [];
               }
               var out = [];
@@ -1153,13 +1207,15 @@
                 if (!uid) continue;
                 if (seenUid[uid]) continue;
                 seenUid[uid] = true;
-                var copyRaw = String(rrow[idxCopy] != null ? rrow[idxCopy] : "");
+                var copyRaw = idxCopy >= 0 ? String(rrow[idxCopy] != null ? rrow[idxCopy] : "") : "";
                 var copyOneLine = copyRaw
                   .replace(/[\r\n\u2028\u2029]+/g, " ")
                   .replace(/\s+/g, " ")
                   .trim();
                 if (copyOneLine) {
                   out.push(copyOneLine + " @" + uid);
+                } else {
+                  out.push("生日快乐 @" + uid);
                 }
               }
               return out;
@@ -1174,7 +1230,12 @@
         }
 
         function applyBarrageTextsAndWarmSpawn(texts) {
-          if (!texts || !texts.length) texts = [];
+          if (!texts || !texts.length) {
+            texts = FALLBACK_BARRAGE_TEXTS.slice();
+            if (EMBEDDED_BARRAGE_TEXTS && EMBEDDED_BARRAGE_TEXTS.length) {
+              texts = EMBEDDED_BARRAGE_TEXTS.slice();
+            }
+          }
           barrageTexts = texts.slice();
         }
 
@@ -1192,6 +1253,11 @@
           barrageItems = [];
           if (floatLayer) floatLayer.innerHTML = "";
           loadBlessingTexts().then(applyBarrageTextsAndWarmSpawn);
+          setTimeout(function () {
+            if (!barrageTexts || !barrageTexts.length) {
+              applyBarrageTextsAndWarmSpawn([]);
+            }
+          }, 1800);
         }
 
         function resetCakeFlowToFirstOpen() {

@@ -112,7 +112,7 @@
        */
       #appStage {
         position: fixed;
-        z-index: 0;
+        z-index: 2;
         left: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
@@ -256,6 +256,22 @@
         position: fixed;
         inset: 0;
       }
+      body {
+        background:
+          radial-gradient(130% 86% at 14% 10%, rgba(171, 238, 200, 0.22) 0%, rgba(171, 238, 200, 0) 54%),
+          radial-gradient(116% 84% at 86% 86%, rgba(160, 196, 255, 0.18) 0%, rgba(160, 196, 255, 0) 58%),
+          linear-gradient(160deg, #0b241c 0%, #12362c 46%, #123737 100%);
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: rgba(236, 248, 242, 0.1);
+        backdrop-filter: blur(16px) saturate(112%);
+        -webkit-backdrop-filter: blur(16px) saturate(112%);
+      }
       /** 无 controls 的 <audio>：避免 WebKit/iOS 在视口顶部画出长条绿色伪控件 */
       audio:not([controls]) {
         position: fixed !important;
@@ -373,15 +389,23 @@
         height: 100%;
       }
       .scene4-mask-piece {
-        fill: rgba(88, 96, 104, 0.6);
-        stroke: rgba(255, 255, 255, 0.22);
-        stroke-width: 0.14;
+        fill: rgba(220, 232, 242, 0.34);
+        stroke: rgba(255, 255, 255, 0.56);
+        stroke-width: 0.2;
         vector-effect: non-scaling-stroke;
         cursor: pointer;
-        transition: opacity 0.18s ease;
+        transition:
+          opacity 0.18s ease,
+          filter 0.18s ease;
+        filter:
+          drop-shadow(0 1px 0 rgba(255, 255, 255, 0.22))
+          drop-shadow(0 8px 16px rgba(10, 26, 36, 0.18));
       }
       .scene4-mask-piece:active {
-        opacity: 0.88;
+        opacity: 0.86;
+        filter:
+          drop-shadow(0 1px 0 rgba(255, 255, 255, 0.16))
+          drop-shadow(0 5px 12px rgba(10, 26, 36, 0.15));
       }
       @keyframes scene4MaskPieceShake {
         0% {
@@ -5829,6 +5853,7 @@
         var scene5MilestonePendingFinish = false;
         var scene5LastPointerClientX = 0;
         var scene5LastPointerClientY = 0;
+        var scene5NextReferenceSpawnAt = 0;
         /** 第四关通关后：在信筒层展示本关全部祝福（星空信笺），不再走 wishCatch 双按钮 */
         var scene4ReviewModeActive = false;
         var modalNavEntries = null;
@@ -6323,6 +6348,39 @@
           "5A": "写给2026年的刘恋",
           "5B": "写给2030年的我们",
         };
+        /**
+         * 各关题面分组在列表/已收页中的展示顺序（与祝福页左滑顺序一致，勿随「最近收到」时间倒序重排）。
+         * 同时兼容四位题号（1101）与历史键（1A）。
+         */
+        var BLESSING_GROUP_ORDER_BY_SCENE = {
+          1: ["1101", "1A", "1102", "1B"],
+          2: ["2201", "2A", "2202", "2B"],
+          3: ["3301", "3A", "3302", "3B", "3303", "3C"],
+          4: ["4401", "4A", "4402", "4B", "4403", "4C"],
+          5: ["5501", "5A", "5502", "5B"],
+        };
+
+        function sortBlessingQuestionGroupsCanonical(sidN, groups) {
+          if (!groups || !groups.length) return groups;
+          var s = parseInt(sidN, 10);
+          if (isNaN(s) || s < 1) s = 1;
+          var preferred = BLESSING_GROUP_ORDER_BY_SCENE[s];
+          if (!preferred || !preferred.length) return groups;
+          var rank = {};
+          for (var r = 0; r < preferred.length; r++) {
+            rank[preferred[r]] = r;
+          }
+          return groups.slice().sort(function (a, b) {
+            var ka = a && a.key != null ? String(a.key) : "";
+            var kb = b && b.key != null ? String(b.key) : "";
+            var ra = rank[ka];
+            var rb = rank[kb];
+            if (ra != null && rb != null) return ra - rb;
+            if (ra != null) return -1;
+            if (rb != null) return 1;
+            return ka.localeCompare(kb, "en");
+          });
+        }
         /** @deprecated 使用 BLESSING_PAGE_QUESTIONS；保留别名以免外部脚本依赖旧名 */
         var QUESTION_GROUP_LABELS = BLESSING_PAGE_QUESTIONS;
 
@@ -6398,7 +6456,7 @@
             if (!lab) lab = "（未标注对应场景）";
             out.push({ key: k, label: lab, items: itemsK });
           }
-          return out;
+          return sortBlessingQuestionGroupsCanonical(sidN, out);
         }
 
         function sceneLetterFromIndex(sid) {
@@ -6578,6 +6636,10 @@
                 video: bp.video,
                 nickname: bp.nickname,
                 userId: bp.userId != null ? String(bp.userId) : "",
+                sceneQuestionKey:
+                  bp.sceneQuestionKey != null && String(bp.sceneQuestionKey).trim() !== ""
+                    ? String(bp.sceneQuestionKey).trim()
+                    : "",
                 isGolden: false,
                 milestoneValue: 0,
                 extraLine: "",
@@ -6732,6 +6794,10 @@
                     video: n.video,
                     nickname: n.nickname,
                     userId: n.userId || "",
+                    sceneQuestionKey:
+                      n.sceneQuestionKey != null && String(n.sceneQuestionKey).trim() !== ""
+                        ? String(n.sceneQuestionKey).trim()
+                        : "",
                     isGolden: false,
                     milestoneValue: 0,
                     extraLine: "",
@@ -7069,6 +7135,8 @@
             emp.className = "plate1-blessing-empty";
             emp.textContent = "本关暂无内容。";
             pagesRoot.appendChild(emp);
+            bindBlessingImagePrimeOnScroll(pagesRoot);
+            primeBlessingImagesNearViewport(pagesRoot, 0);
             return pagesRoot;
           }
           var groups = groupBlessingsByQuestionKey(items, sidN);
@@ -7115,6 +7183,8 @@
             appendBlessingShowcaseStepRowInPage(page, pagesRoot, gi, groups.length, sidN);
             pagesRoot.appendChild(page);
           }
+          bindBlessingImagePrimeOnScroll(pagesRoot);
+          primeBlessingImagesNearViewport(pagesRoot, 0);
           return pagesRoot;
         }
 
@@ -7791,6 +7861,7 @@
           scene5PointerPhysicallyDown = false;
           scene5LongPressOnPonyArmed = false;
           scene5MilestonePendingFinish = false;
+          scene5NextReferenceSpawnAt = 0;
           if (scene5LongPressPonyTimer) {
             clearTimeout(scene5LongPressPonyTimer);
             scene5LongPressPonyTimer = null;
@@ -7952,6 +8023,7 @@
           if (currentScene !== 5 || scene5MolePassed || scene5ReviewModeActive) return;
           if (isScene5YearMilestoneOpen()) return;
           var now = performance.now();
+          if (scene5PonyRunActive) tickScene5RunReferenceSpawns(now);
           if (!scene5PonyRunActive) return;
           if (scene5RunYear >= SCENE5_YEAR_END) {
             scene5PonyRunActive = false;
@@ -7966,6 +8038,44 @@
           if (Object.prototype.hasOwnProperty.call(SCENE5_MILESTONE_TEXT, scene5RunYear)) {
             openScene5YearMilestoneModal(scene5RunYear, scene5RunYear === SCENE5_YEAR_END);
           }
+        }
+
+        function scene5EffectiveStepFloat() {
+          return totalSteps + scene5GrassVirtualScrollPx / PIXELS_PER_STEP;
+        }
+
+        function spawnScene5RunReferenceItem() {
+          var m = ponyMargin();
+          var zone = (W - 2 * m) * 0.3;
+          var side = Math.random() < 0.5 ? "left" : "right";
+          var x =
+            side === "left" ? m + Math.random() * zone : W - m - Math.random() * zone;
+          var ws = Math.max(0, Math.floor(scene5EffectiveStepFloat() + 8 + Math.random() * 18));
+          var refKinds = ["flag", "post", "tuft"];
+          var refKind = refKinds[randInt(0, refKinds.length - 1)];
+          roadside.push({
+            id: "s5r_" + Date.now() + "_" + Math.random().toString(16).slice(2),
+            kind: "scene5_ref",
+            refKind: refKind,
+            worldStep: ws,
+            x: x,
+            side: side,
+          });
+        }
+
+        function tickScene5RunReferenceSpawns(now) {
+          if (scene5MolePassed || scene5ReviewModeActive) return;
+          if (isScene5YearMilestoneOpen()) return;
+          if (!scene5PonyRunActive) return;
+          if (!scene5NextReferenceSpawnAt) scene5NextReferenceSpawnAt = now + 320;
+          if (now < scene5NextReferenceSpawnAt) return;
+          scene5NextReferenceSpawnAt = now + 280 + Math.random() * 260;
+          spawnScene5RunReferenceItem();
+          var minWs = Math.floor(scene5EffectiveStepFloat()) - 8;
+          roadside = roadside.filter(function (o) {
+            if (!o || o.kind !== "scene5_ref") return true;
+            return o.worldStep >= minWs;
+          });
         }
 
         function renderScene5YearRunGame() {
@@ -9061,6 +9171,7 @@
             }
             out.push({ key: k, label: lab, items: itemsK });
           }
+          out = sortBlessingQuestionGroupsCanonical(sidN, out);
           for (var gi = 0; gi < out.length; gi++) {
             out[gi].items.sort(function (a, b) {
               return (b.at || 0) - (a.at || 0);
@@ -9078,6 +9189,26 @@
             }
             var arr = JSON.parse(raw);
             receivedBlessings = Array.isArray(arr) ? arr : [];
+            var touched = false;
+            for (var i = 0; i < receivedBlessings.length; i++) {
+              var e = receivedBlessings[i];
+              if (!e || typeof e !== "object") continue;
+              var qk = e.sceneQuestionKey != null ? String(e.sceneQuestionKey).trim() : "";
+              if (qk) continue;
+              if (e.poolId == null || e.poolId === "") continue;
+              var canonical = findCanonicalBlessingByPoolId(e.poolId);
+              if (!canonical) continue;
+              var nC = normalizeBlessing(canonical);
+              var qkC = nC.sceneQuestionKey != null ? String(nC.sceneQuestionKey).trim() : "";
+              if (!qkC) continue;
+              e.sceneQuestionKey = qkC;
+              touched = true;
+            }
+            if (touched) {
+              try {
+                localStorage.setItem(LS_KEY_RECEIVED, JSON.stringify(receivedBlessings));
+              } catch (eSaveQk) {}
+            }
           } catch (e) {
             receivedBlessings = [];
           }
@@ -9188,6 +9319,19 @@
 
         /** 在路边点开内容弹窗时记一条「已收获祝福」 */
         function recordReceivedBlessing(snapshot) {
+          var snapshotQuestionKey =
+            snapshot && snapshot.sceneQuestionKey != null && String(snapshot.sceneQuestionKey).trim() !== ""
+              ? String(snapshot.sceneQuestionKey).trim()
+              : "";
+          if (!snapshotQuestionKey && snapshot && snapshot.poolId != null && snapshot.poolId !== "") {
+            var canonical = findCanonicalBlessingByPoolId(snapshot.poolId);
+            if (canonical) {
+              var normC = normalizeBlessing(canonical);
+              if (normC.sceneQuestionKey != null && String(normC.sceneQuestionKey).trim() !== "") {
+                snapshotQuestionKey = String(normC.sceneQuestionKey).trim();
+              }
+            }
+          }
           var sidRaw = blessingResolvedSceneFromSnapshot(snapshot);
           if (isNaN(sidRaw) || sidRaw < 1) sidRaw = 1;
           if (sidRaw > SCENE_COUNT) sidRaw = SCENE_COUNT;
@@ -9202,9 +9346,7 @@
             nickname: snapshot.nickname || "",
             userId: snapshot.userId != null ? String(snapshot.userId) : "",
             sceneQuestionKey:
-              snapshot.sceneQuestionKey != null && String(snapshot.sceneQuestionKey).trim() !== ""
-                ? String(snapshot.sceneQuestionKey).trim()
-                : "",
+              snapshotQuestionKey,
             isGolden: !!snapshot.isGolden,
             milestoneValue: snapshot.milestoneValue || 0,
             extraLine: snapshot.extraLine || "",
@@ -11209,10 +11351,15 @@
             return false;
           }
         }
-        var BLESSING_IMG_PRELOAD_AHEAD_PX = 2200;
+        var BLESSING_IMG_PRELOAD_AHEAD_PX = 3600;
+        var BLESSING_IMG_PRIME_MAX_PER_RAF = 40;
 
         function triggerBlessingImgLoadFromDataset(el) {
           if (!el || el.getAttribute("src")) return;
+          try {
+            el.loading = "eager";
+            if (el.fetchPriority !== "high") el.fetchPriority = "auto";
+          } catch (eEager) {}
           var srcListRaw = el.getAttribute("data-lazy-src-list");
           if (srcListRaw) {
             try {
@@ -11238,9 +11385,11 @@
         }
 
         /**
-         * 前瞻预取：用户即将滚到的位置提前装填图片，尽量避免滑到卡片时才开始请求。
+         * 前瞻预取：在视口附近带状区域内优先装填 src；快滑时分多帧补完，避免单帧 14 条上限导致整屏未触发加载。
          */
-        function primeBlessingImagesNearViewport(root) {
+        function primeBlessingImagesNearViewport(root, passDepth) {
+          passDepth = passDepth | 0;
+          if (passDepth > 28) return;
           var host = root || document;
           var imgs = [];
           try {
@@ -11251,8 +11400,11 @@
           if (!imgs || !imgs.length) return;
           var vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
           var ahead = BLESSING_IMG_PRELOAD_AHEAD_PX;
-          var loadedThisPass = 0;
-          var passCap = 14;
+          var vTop = -ahead;
+          var vBottom = vh + ahead;
+          var cap = BLESSING_IMG_PRIME_MAX_PER_RAF;
+          var pending = [];
+          var pl;
           for (var i = 0; i < imgs.length; i++) {
             var el = imgs[i];
             if (!el) continue;
@@ -11263,27 +11415,54 @@
               continue;
             }
             if (!r) continue;
-            if (r.top <= vh + ahead && r.bottom >= -Math.floor(ahead * 0.35)) {
-              if (!el.getAttribute("src")) {
-                if (loadedThisPass >= passCap) continue;
-                triggerBlessingImgLoadFromDataset(el);
-                loadedThisPass++;
-              } else if (
-                !el.complete &&
-                r.top <= vh * 1.25 &&
-                r.bottom >= -Math.floor(vh * 0.15) &&
-                el.getAttribute("data-visible-retry-once") !== "1"
-              ) {
-                el.setAttribute("data-visible-retry-once", "1");
-                var listRaw = el.getAttribute("data-media-src-list");
-                if (listRaw) {
-                  try {
-                    var list2 = JSON.parse(listRaw);
-                    assignBlessingImageWithFailover(el, list2, 2200);
-                  } catch (eVr) {}
-                }
+            if (!(r.top < vBottom && r.bottom > vTop)) continue;
+            if (!el.getAttribute("src")) {
+              pl = 0;
+            } else if (
+              !el.complete &&
+              r.top < vh * 1.35 &&
+              r.bottom > -vh * 0.2 &&
+              el.getAttribute("data-visible-retry-once") !== "1"
+            ) {
+              pl = 1;
+            } else {
+              continue;
+            }
+            var vis =
+              r.top < vh && r.bottom > 0
+                ? 0
+                : r.top >= vh
+                  ? 1
+                  : 2;
+            pending.push({ el: el, r: r, pl: pl, vis: vis });
+          }
+          pending.sort(function (a, b) {
+            if (a.pl !== b.pl) return a.pl - b.pl;
+            if (a.vis !== b.vis) return a.vis - b.vis;
+            return a.r.top - b.r.top;
+          });
+          var doneN = 0;
+          for (var j = 0; j < pending.length; j++) {
+            if (doneN >= cap) break;
+            var it = pending[j];
+            if (!it.pl) {
+              triggerBlessingImgLoadFromDataset(it.el);
+            } else {
+              it.el.setAttribute("data-visible-retry-once", "1");
+              var listRaw = it.el.getAttribute("data-media-src-list");
+              if (listRaw) {
+                try {
+                  var list2 = JSON.parse(listRaw);
+                  assignBlessingImageWithFailover(it.el, list2, 2200);
+                } catch (eVr) {}
               }
             }
+            doneN++;
+          }
+          if (pending.length > cap) {
+            requestAnimationFrame(function () {
+              primeBlessingImagesNearViewport(root, passDepth + 1);
+            });
           }
         }
 
@@ -11291,19 +11470,33 @@
           if (!scroller || scroller.__blessingPrimeBound) return;
           scroller.__blessingPrimeBound = true;
           var rafId = 0;
+          var tailT = 0;
           function onScroll() {
             if (rafId) return;
             rafId = requestAnimationFrame(function () {
               rafId = 0;
-              primeBlessingImagesNearViewport(scroller);
+              primeBlessingImagesNearViewport(scroller, 0);
             });
+            if (tailT) {
+              try {
+                clearTimeout(tailT);
+              } catch (eC) {}
+              tailT = 0;
+            }
+            tailT = setTimeout(function () {
+              tailT = 0;
+              primeBlessingImagesNearViewport(scroller, 0);
+            }, 200);
           }
           scroller.addEventListener("scroll", onScroll, { passive: true });
+          try {
+            scroller.addEventListener("scrollend", onScroll, { passive: true });
+          } catch (eSe) {}
           setTimeout(function () {
-            primeBlessingImagesNearViewport(scroller);
+            primeBlessingImagesNearViewport(scroller, 0);
           }, 0);
           setTimeout(function () {
-            primeBlessingImagesNearViewport(scroller);
+            primeBlessingImagesNearViewport(scroller, 0);
           }, 260);
         }
 
@@ -11320,7 +11513,7 @@
                 obs.unobserve(el);
               }
             },
-            { rootMargin: "1200px 0px 1200px 0px", threshold: 0.01 }
+            { rootMargin: "2200px 0px 2200px 0px", threshold: 0.01 }
           );
           return blessingImgLazyObserver;
         }
@@ -11330,6 +11523,9 @@
          */
         function assignBlessingImageWithFailover(el, urls, timeoutMs) {
           if (!el) return;
+          try {
+            el.loading = "eager";
+          } catch (eL0) {}
           var list = Array.isArray(urls)
             ? urls.filter(function (u, i, arr) {
                 return !!u && arr.indexOf(u) === i;
@@ -12932,7 +13128,9 @@
         }
 
         function screenYForWorldStep(worldStep) {
-          return ponyY() - (worldStep - totalSteps) * PIXELS_PER_STEP;
+          var stepNow = totalSteps;
+          if (currentScene === 5) stepNow = scene5EffectiveStepFloat();
+          return ponyY() - (worldStep - stepNow) * PIXELS_PER_STEP;
         }
 
         function ponyY() {
@@ -13886,6 +14084,45 @@
           ctx.restore();
         }
 
+        function drawScene5Reference(o, py, scale) {
+          var t = (o && o.refKind) || "post";
+          var sideSign = o && o.side === "left" ? -1 : 1;
+          ctx.save();
+          ctx.translate(o.x, py);
+          ctx.scale(scale, scale);
+          if (t === "flag") {
+            ctx.fillStyle = "rgba(238, 248, 255, 0.78)";
+            ctx.fillRect(-1.2, -13, 2.4, 16);
+            ctx.beginPath();
+            ctx.moveTo(sideSign * 1.2, -12);
+            ctx.lineTo(sideSign * 11, -8.5);
+            ctx.lineTo(sideSign * 1.2, -5.2);
+            ctx.closePath();
+            ctx.fillStyle = "rgba(180, 228, 201, 0.7)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          } else if (t === "tuft") {
+            ctx.strokeStyle = "rgba(204, 236, 214, 0.62)";
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(0, 6);
+            ctx.quadraticCurveTo(-3.5, -4, -5, -10);
+            ctx.moveTo(0, 6);
+            ctx.quadraticCurveTo(2.8, -4, 4.2, -10);
+            ctx.moveTo(0, 6);
+            ctx.quadraticCurveTo(0.2, -6, -0.2, -11.5);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = "rgba(236, 246, 255, 0.72)";
+            ctx.fillRect(-1.4, -12.5, 2.8, 15);
+            ctx.fillStyle = "rgba(180, 214, 196, 0.58)";
+            ctx.fillRect(sideSign * 1.4, -11, sideSign * 8.5, 4.4);
+          }
+          ctx.restore();
+        }
+
         function hitRadius(kind) {
           return kind === "carrot" ? 26 : 32;
         }
@@ -13906,6 +14143,7 @@
             var drawY = sy;
             if (o.kind === "carrot") drawCarrot(o.x, drawY, sc);
             else if (o.kind === "token") drawToken(o, drawY, sc);
+            else if (o.kind === "scene5_ref" && currentScene === 5) drawScene5Reference(o, drawY, sc);
           }
         }
 
@@ -13915,6 +14153,7 @@
           var bestD = 1e9;
           for (var i = 0; i < roadside.length; i++) {
             var o = roadside[i];
+            if (o.kind === "scene5_ref") continue;
             var sy = screenYForWorldStep(o.worldStep);
             var r =
               o.kind === "token" && SCENE2_DROP_DECORS.indexOf(o.decor) >= 0
@@ -14339,6 +14578,10 @@
                 })(groups[g].items[j]);
               }
             }
+          }
+          if (listModalBody) {
+            bindBlessingImagePrimeOnScroll(listModalBody);
+            primeBlessingImagesNearViewport(listModalBody, 0);
           }
         }
 
