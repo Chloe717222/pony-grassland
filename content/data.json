@@ -1,12 +1,12 @@
 {
   "version": "2026-04-16-real-v2",
-  "generatedAt": "2026-04-25T09:43:19.728Z",
+  "generatedAt": "2026-04-25T11:04:49.457Z",
   "manifest": {
     "version": "2026-04-16-real-v2",
     "galleryCounts": {
       "1": 443,
       "2": 432,
-      "3": 659,
+      "3": 658,
       "4": 659,
       "5": 443
     },
@@ -16874,17 +16874,6 @@
     },
     {
       "id": 30696,
-      "type": "video",
-      "text": "",
-      "image": "",
-      "audio": "",
-      "video": "content/zhufu1.mov",
-      "nickname": "",
-      "userId": "肖恩嗯呐_视频祝福",
-      "scene": "3303"
-    },
-    {
-      "id": 30697,
       "type": "video",
       "text": "",
       "image": "",
