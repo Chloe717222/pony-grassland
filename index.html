@@ -11012,6 +11012,9 @@
           if (!fullUrl) return;
           try {
             blessingImageLightboxImg.referrerPolicy = "no-referrer";
+            blessingImageLightboxImg.loading = "eager";
+            blessingImageLightboxImg.decoding = "sync";
+            blessingImageLightboxImg.fetchPriority = "high";
           } catch (eR) {}
           blessingImageLightboxImg.src = fullUrl;
           if (blessingImageLightboxSave) {
@@ -11066,6 +11069,12 @@
           if (!u) return;
           try {
             el.referrerPolicy = "no-referrer";
+            if (tag === "img") {
+              /** 预览图：默认懒加载并低优先级；点开原图时由 lightbox 改为 eager/high。 */
+              el.loading = useOriginal ? "eager" : "lazy";
+              el.decoding = useOriginal ? "sync" : "async";
+              el.fetchPriority = useOriginal ? "high" : "low";
+            }
           } catch (eR) {}
           if (tag === "img" && !useOriginal && /\.hei[cf]$/i.test(rawStr)) {
             var heicAlts = [
