@@ -6895,7 +6895,7 @@
             var wi = document.createElement("div");
             wi.className = "plate1-blessing-block__media";
             var im = document.createElement("img");
-            setBlessingMediaElementSrc(im, img);
+            setBlessingMediaElementSrc(im, img, { noLazy: true, fetchPriority: "high" });
             im.alt = "";
             wireBlessingImagePreviewClick(im, img);
             wi.appendChild(im);
@@ -6909,7 +6909,7 @@
             var wi2 = document.createElement("div");
             wi2.className = "plate1-blessing-block__media";
             var im2 = document.createElement("img");
-            setBlessingMediaElementSrc(im2, img);
+            setBlessingMediaElementSrc(im2, img, { noLazy: true, fetchPriority: "high" });
             im2.alt = "";
             wireBlessingImagePreviewClick(im2, img);
             wi2.appendChild(im2);
@@ -6926,7 +6926,13 @@
           }
           var p = document.createElement("p");
           p.className = "plate1-blessing-block__text";
-          p.textContent = n.text != null ? String(n.text).trim() : "";
+          var txt = n.text != null ? String(n.text).trim() : "";
+          if (!txt) {
+            if (typ === "image" || (!!img && !vid && !aud)) txt = "（图片祝福）";
+            else if (typ === "audio" || (!!aud && !vid && !img)) txt = "（音频祝福）";
+            else if (typ === "video" || !!vid) txt = "（视频祝福）";
+          }
+          p.textContent = txt;
           article.appendChild(p);
           var uidStr = n.userId != null ? String(n.userId).trim() : "";
           if (uidStr) {
@@ -6971,12 +6977,14 @@
             page.appendChild(qh);
             var answersWrap = document.createElement("div");
             answersWrap.className = "blessing-scene-page__answers";
+            bindBlessingImagePrimeOnScroll(answersWrap);
             for (var j = 0; j < g.items.length; j++) {
               var art = document.createElement("article");
               art.className = "plate1-blessing-block";
               fillShowcaseBlessingBlock(art, g.items[j]);
               answersWrap.appendChild(art);
             }
+            primeBlessingImagesNearViewport(answersWrap);
             page.appendChild(answersWrap);
             appendBlessingShowcaseStepRowInPage(page, pagesRoot, gi, groups.length, sidN);
             pagesRoot.appendChild(page);
@@ -11075,6 +11083,84 @@
             return false;
           }
         }
+        var BLESSING_IMG_PRELOAD_AHEAD_PX = 1400;
+
+        function triggerBlessingImgLoadFromDataset(el) {
+          if (!el || el.getAttribute("src")) return;
+          var srcListRaw = el.getAttribute("data-lazy-src-list");
+          if (srcListRaw) {
+            try {
+              var list = JSON.parse(srcListRaw);
+              var timeoutMs = parseInt(el.getAttribute("data-lazy-timeout-ms") || "0", 10);
+              assignBlessingImageWithFailover(el, list, isNaN(timeoutMs) ? 0 : timeoutMs);
+            } catch (eParse) {
+              var src0 = el.getAttribute("data-lazy-src");
+              if (src0) el.src = src0;
+            }
+          } else {
+            var src = el.getAttribute("data-lazy-src");
+            if (src) el.src = src;
+          }
+          el.removeAttribute("data-lazy-src");
+          el.removeAttribute("data-lazy-src-list");
+          el.removeAttribute("data-lazy-timeout-ms");
+          if (blessingImgLazyObserver) {
+            try {
+              blessingImgLazyObserver.unobserve(el);
+            } catch (eUnobs) {}
+          }
+        }
+
+        /**
+         * 前瞻预取：用户即将滚到的位置提前装填图片，尽量避免滑到卡片时才开始请求。
+         */
+        function primeBlessingImagesNearViewport(root) {
+          var host = root || document;
+          var imgs = [];
+          try {
+            imgs = host.querySelectorAll("img[data-lazy-src],img[data-lazy-src-list]");
+          } catch (eQ) {
+            return;
+          }
+          if (!imgs || !imgs.length) return;
+          var vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+          var ahead = BLESSING_IMG_PRELOAD_AHEAD_PX;
+          for (var i = 0; i < imgs.length; i++) {
+            var el = imgs[i];
+            if (!el || el.getAttribute("src")) continue;
+            var r;
+            try {
+              r = el.getBoundingClientRect();
+            } catch (eRect) {
+              continue;
+            }
+            if (!r) continue;
+            if (r.top <= vh + ahead && r.bottom >= -Math.floor(ahead * 0.35)) {
+              triggerBlessingImgLoadFromDataset(el);
+            }
+          }
+        }
+
+        function bindBlessingImagePrimeOnScroll(scroller) {
+          if (!scroller || scroller.__blessingPrimeBound) return;
+          scroller.__blessingPrimeBound = true;
+          var rafId = 0;
+          function onScroll() {
+            if (rafId) return;
+            rafId = requestAnimationFrame(function () {
+              rafId = 0;
+              primeBlessingImagesNearViewport(scroller);
+            });
+          }
+          scroller.addEventListener("scroll", onScroll, { passive: true });
+          setTimeout(function () {
+            primeBlessingImagesNearViewport(scroller);
+          }, 0);
+          setTimeout(function () {
+            primeBlessingImagesNearViewport(scroller);
+          }, 260);
+        }
+
         function ensureBlessingImgLazyObserver() {
           if (blessingImgLazyObserver || typeof IntersectionObserver === "undefined") return blessingImgLazyObserver;
           blessingImgLazyObserver = new IntersectionObserver(
@@ -11084,27 +11170,11 @@
                 if (!ent || !ent.isIntersecting) continue;
                 var el = ent.target;
                 if (!el) continue;
-                var srcListRaw = el.getAttribute("data-lazy-src-list");
-                if (srcListRaw && !el.getAttribute("src")) {
-                  try {
-                    var list = JSON.parse(srcListRaw);
-                    var timeoutMs = parseInt(el.getAttribute("data-lazy-timeout-ms") || "0", 10);
-                    assignBlessingImageWithFailover(el, list, isNaN(timeoutMs) ? 0 : timeoutMs);
-                  } catch (eParse) {
-                    var src = el.getAttribute("data-lazy-src");
-                    if (src) el.src = src;
-                  }
-                } else {
-                  var src = el.getAttribute("data-lazy-src");
-                  if (src && !el.getAttribute("src")) el.src = src;
-                }
-                el.removeAttribute("data-lazy-src");
-                el.removeAttribute("data-lazy-src-list");
-                el.removeAttribute("data-lazy-timeout-ms");
+                triggerBlessingImgLoadFromDataset(el);
                 obs.unobserve(el);
               }
             },
-            { rootMargin: "280px 0px 280px 0px", threshold: 0.01 }
+            { rootMargin: "1200px 0px 1200px 0px", threshold: 0.01 }
           );
           return blessingImgLazyObserver;
         }
@@ -11335,6 +11405,8 @@
           if (!rawStr) return;
           var tag = (el.tagName || "").toLowerCase();
           var useOriginal = !!opts.useOriginal;
+          var noLazy = !!opts.noLazy;
+          var forcePriority = opts.fetchPriority != null ? String(opts.fetchPriority) : "";
           var candidatePaths = [rawStr];
           if (tag === "img" && !useOriginal) {
             candidatePaths = [];
@@ -11362,9 +11434,12 @@
             el.referrerPolicy = "no-referrer";
             if (tag === "img") {
               /** 预览图：默认懒加载并低优先级；点开原图时由 lightbox 改为 eager/high。 */
-              el.loading = useOriginal ? "eager" : "lazy";
+              el.loading = useOriginal || noLazy ? "eager" : "lazy";
               el.decoding = useOriginal ? "sync" : "async";
               el.fetchPriority = useOriginal ? "high" : "low";
+              if (forcePriority === "high" || forcePriority === "low" || forcePriority === "auto") {
+                el.fetchPriority = forcePriority;
+              }
               if (!useOriginal && isWeChatBrowser()) {
                 /** 微信内核下低优先级会让首屏图长时间排队；改为 auto，交给浏览器按可视区调度。 */
                 el.fetchPriority = "auto";
@@ -11372,6 +11447,10 @@
             }
           } catch (eR) {}
           if (tag === "img" && !useOriginal) {
+            if (noLazy) {
+              assignBlessingImageWithFailover(el, urlCandidates, isWeChatBrowser() ? 2200 : 2800);
+              return;
+            }
             /** 微信内置浏览器中，IntersectionObserver + lazy 组合偶发长时间不触发，导致祝福图空白；这里直接落 src 兜底。 */
             if (isWeChatBrowser()) {
               assignBlessingImageWithFailover(el, urlCandidates, 2800);
