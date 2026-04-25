@@ -11020,6 +11020,44 @@
           }
         }
 
+        /**
+         * 媒体地址候选链（去重）：
+         * 1) 当前运行时首选基址（可能是 static，也可能是本地同源）
+         * 2) 显式加速域名（static）
+         * 3) 显式 COS 回退域名
+         * 4) 页面同源地址
+         */
+        function resolveBlessingMediaCandidates(raw) {
+          if (raw == null || typeof raw !== "string") return [];
+          var s = raw.trim();
+          if (!s) return [];
+          if (/^https?:\/\//i.test(s)) return [s];
+          var rel = s.replace(/^\.\//, "");
+          var out = [];
+          function pushUrl(u) {
+            if (!u || out.indexOf(u) >= 0) return;
+            out.push(u);
+          }
+          function pushByBase(baseRaw) {
+            var base = String(baseRaw || "").trim();
+            if (!base) return;
+            try {
+              var relPath = rel;
+              if (typeof BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined" && BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT) {
+                relPath = relPath.replace(/^content\//i, "");
+              }
+              pushUrl(new URL(relPath, base.replace(/\/*$/, "/")).href);
+            } catch (eBase) {}
+          }
+          pushByBase(BLESSINGS_MEDIA_CDN_BASE);
+          try {
+            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
+            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
+          } catch (eW) {}
+          pushUrl(resolveCsvFetchUrl(s));
+          return out;
+        }
+
         /** 列表与祝福流预览：PNG/JPEG 改为并列 .webp（须 npm run generate:webp 并上传 COS）；外链与其它格式不变 */
         function blessingRasterWebpVariant(raw) {
           var s = String(raw || "").trim();
@@ -11046,17 +11084,77 @@
                 if (!ent || !ent.isIntersecting) continue;
                 var el = ent.target;
                 if (!el) continue;
-                var src = el.getAttribute("data-lazy-src");
-                if (src && !el.getAttribute("src")) {
-                  el.src = src;
+                var srcListRaw = el.getAttribute("data-lazy-src-list");
+                if (srcListRaw && !el.getAttribute("src")) {
+                  try {
+                    var list = JSON.parse(srcListRaw);
+                    var timeoutMs = parseInt(el.getAttribute("data-lazy-timeout-ms") || "0", 10);
+                    assignBlessingImageWithFailover(el, list, isNaN(timeoutMs) ? 0 : timeoutMs);
+                  } catch (eParse) {
+                    var src = el.getAttribute("data-lazy-src");
+                    if (src) el.src = src;
+                  }
+                } else {
+                  var src = el.getAttribute("data-lazy-src");
+                  if (src && !el.getAttribute("src")) el.src = src;
                 }
                 el.removeAttribute("data-lazy-src");
+                el.removeAttribute("data-lazy-src-list");
+                el.removeAttribute("data-lazy-timeout-ms");
                 obs.unobserve(el);
               }
             },
             { rootMargin: "280px 0px 280px 0px", threshold: 0.01 }
           );
           return blessingImgLazyObserver;
+        }
+
+        /**
+         * 对单个 <img> 执行“超时 + onerror”双触发回退，避免某一节点长时间卡住导致持续空白。
+         */
+        function assignBlessingImageWithFailover(el, urls, timeoutMs) {
+          if (!el) return;
+          var list = Array.isArray(urls)
+            ? urls.filter(function (u, i, arr) {
+                return !!u && arr.indexOf(u) === i;
+              })
+            : [];
+          if (!list.length) return;
+          var idx = 0;
+          var done = false;
+          var timer = 0;
+          function clearTimer() {
+            if (!timer) return;
+            clearTimeout(timer);
+            timer = 0;
+          }
+          function finish() {
+            done = true;
+            clearTimer();
+          }
+          function tryNext() {
+            if (done) return;
+            if (idx >= list.length) {
+              finish();
+              return;
+            }
+            var nextUrl = list[idx++];
+            el.src = nextUrl;
+            clearTimer();
+            if (timeoutMs > 0) {
+              timer = setTimeout(function () {
+                if (done) return;
+                if (!el.complete) tryNext();
+              }, timeoutMs);
+            }
+          }
+          el.onerror = function () {
+            tryNext();
+          };
+          el.onload = function () {
+            finish();
+          };
+          tryNext();
         }
 
         function closeBlessingImageLightbox() {
@@ -11173,10 +11271,29 @@
           if (!rawStr) return;
           var tag = (el.tagName || "").toLowerCase();
           var useOriginal = !!opts.useOriginal;
-          var pathForResolve = rawStr;
-          if (tag === "img" && !useOriginal) pathForResolve = blessingRasterWebpVariant(rawStr);
-          var u = resolveBlessingMediaUrl(pathForResolve);
-          if (!u) return;
+          var candidatePaths = [rawStr];
+          if (tag === "img" && !useOriginal) {
+            candidatePaths = [];
+            var previewPath = blessingRasterWebpVariant(rawStr);
+            candidatePaths.push(previewPath);
+            if (previewPath !== rawStr) candidatePaths.push(rawStr);
+            if (/\.hei[cf]$/i.test(rawStr)) {
+              candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".jpg"));
+              candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".jpeg"));
+              candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".png"));
+              candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".webp"));
+            }
+          }
+          var urlCandidates = [];
+          for (var ci = 0; ci < candidatePaths.length; ci++) {
+            var arr = resolveBlessingMediaCandidates(candidatePaths[ci]);
+            for (var cj = 0; cj < arr.length; cj++) {
+              var one = arr[cj];
+              if (one && urlCandidates.indexOf(one) < 0) urlCandidates.push(one);
+            }
+          }
+          if (!urlCandidates.length) return;
+          var u = urlCandidates[0];
           try {
             el.referrerPolicy = "no-referrer";
             if (tag === "img") {
@@ -11190,49 +11307,27 @@
               }
             }
           } catch (eR) {}
-          if (tag === "img" && !useOriginal && /\.hei[cf]$/i.test(rawStr)) {
-            var heicAlts = [
-              rawStr.replace(/\.hei[cf]$/i, ".jpg"),
-              rawStr.replace(/\.hei[cf]$/i, ".jpeg"),
-              rawStr.replace(/\.hei[cf]$/i, ".png"),
-              rawStr.replace(/\.hei[cf]$/i, ".webp"),
-            ];
-            var heicIdx = 0;
-            el.onerror = function () {
-              if (heicIdx >= heicAlts.length) return;
-              var next = heicAlts[heicIdx++];
-              /** HEIC 回退已含 .jpg→.png→.webp，勿再对 .jpg/.jpeg 先套 webp 变体，避免与下一条生成本轮同一 URL、onerror 不前进 */
-              el.src = resolveBlessingMediaUrl(next);
-            };
-          } else if (tag === "img" && !useOriginal && blessingRasterWebpVariant(rawStr) !== rawStr) {
-            el.onerror = function () {
-              if (el.getAttribute("data-blessing-img-fallback") === "1") return;
-              el.setAttribute("data-blessing-img-fallback", "1");
-              el.onerror = null;
-              el.src = resolveBlessingMediaUrl(rawStr);
-            };
-          } else {
-            try {
-              el.onerror = null;
-            } catch (e4) {}
-          }
           if (tag === "img" && !useOriginal) {
             /** 微信内置浏览器中，IntersectionObserver + lazy 组合偶发长时间不触发，导致祝福图空白；这里直接落 src 兜底。 */
             if (isWeChatBrowser()) {
-              el.src = u;
+              assignBlessingImageWithFailover(el, urlCandidates, 2800);
               return;
             }
             var obs = ensureBlessingImgLazyObserver();
             if (obs) {
               el.setAttribute("data-lazy-src", u);
+              el.setAttribute("data-lazy-src-list", JSON.stringify(urlCandidates));
+              el.setAttribute("data-lazy-timeout-ms", "3200");
               try {
                 obs.observe(el);
               } catch (eObs) {
-                el.src = u;
+                assignBlessingImageWithFailover(el, urlCandidates, 3200);
               }
             } else {
-              el.src = u;
+              assignBlessingImageWithFailover(el, urlCandidates, 3200);
             }
+          } else if (tag === "img") {
+            assignBlessingImageWithFailover(el, urlCandidates, 3500);
           } else {
             el.src = u;
           }
