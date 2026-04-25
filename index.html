@@ -2427,7 +2427,7 @@
       }
       .blessing-scene-page__question {
         flex: 0 0 auto;
-        margin: 0 0 8px;
+        margin: -10px 0 8px;
         padding: 20px 24px;
         font-size: 14px;
         font-weight: 600;
@@ -2442,13 +2442,13 @@
         box-shadow: none;
       }
       .blessing-scene-page__question--stream {
-        margin: 16px 0 8px;
+        margin: 6px 0 8px;
       }
       .blessing-scene-page__question--mail {
-        margin: 0 0 10px;
+        margin: -10px 0 10px;
       }
       .blessing-scene-page__question--scene5 {
-        margin: 0 0 10px;
+        margin: -10px 0 10px;
         font-size: 13px;
       }
       .blessing-scene-page .blessing-scene-page__answers {
@@ -10966,6 +10966,13 @@
 
         /** 可视区再加载：避免一次性给大量祝福图赋 src 导致并发下载/解码卡顿。 */
         var blessingImgLazyObserver = null;
+        function isWeChatBrowser() {
+          try {
+            return /MicroMessenger/i.test(navigator.userAgent || "");
+          } catch (e0) {
+            return false;
+          }
+        }
         function ensureBlessingImgLazyObserver() {
           if (blessingImgLazyObserver || typeof IntersectionObserver === "undefined") return blessingImgLazyObserver;
           blessingImgLazyObserver = new IntersectionObserver(
@@ -11142,6 +11149,11 @@
             } catch (e4) {}
           }
           if (tag === "img" && !useOriginal) {
+            /** 微信内置浏览器中，IntersectionObserver + lazy 组合偶发长时间不触发，导致祝福图空白；这里直接落 src 兜底。 */
+            if (isWeChatBrowser()) {
+              el.src = u;
+              return;
+            }
             var obs = ensureBlessingImgLazyObserver();
             if (obs) {
               el.setAttribute("data-lazy-src", u);
