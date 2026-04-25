@@ -1,6 +1,6 @@
 {
   "version": "2026-04-16-real-v2",
-  "generatedAt": "2026-04-25T11:04:49.457Z",
+  "generatedAt": "2026-04-25T15:09:15.708Z",
   "manifest": {
     "version": "2026-04-16-real-v2",
     "galleryCounts": {
@@ -16865,7 +16865,7 @@
       "id": 30695,
       "type": "image",
       "text": "",
-      "image": "content/jianzhi.HEIC",
+      "image": "content/jianzhi.png",
       "audio": "",
       "video": "",
       "nickname": "",
