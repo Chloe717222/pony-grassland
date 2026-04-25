@@ -11,6 +11,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
+    <link rel="dns-prefetch" href="//static.lianbirthday.top" />
+    <link rel="preconnect" href="https://static.lianbirthday.top" crossorigin />
     <title>马儿驿站</title>
     <!-- 与正文 DATA_SCHEMA_VERSION、LS_KEY_CURRENT_SCENE 保持同步：在解析巨型主脚本前先预拉当前关静态底图 -->
     <script>
@@ -22,14 +24,22 @@
           if (isNaN(n) || n < 1 || n > 5) n = 1;
           if (n === 5) n = 1;
           var pad = { 1: "01", 2: "02", 3: "03", 4: "04" }[n] || "01";
-          var rel = "content/svg-global/backgrounds/bg-scene-" + pad + ".jpg?v=" + encodeURIComponent(SCHEMA_V);
-          var href = new URL(rel, location.href).href;
-          var L = document.createElement("link");
-          L.rel = "preload";
-          L.as = "image";
-          L.href = href;
-          L.setAttribute("fetchpriority", "high");
-          document.head.appendChild(L);
+          var relSvg = "content/svg-global/backgrounds/bg-scene-" + pad + ".svg?v=" + encodeURIComponent(SCHEMA_V);
+          var relJpg = "content/svg-global/backgrounds/bg-scene-" + pad + ".jpg?v=" + encodeURIComponent(SCHEMA_V);
+          var hrefSvg = new URL(relSvg, location.href).href;
+          var hrefJpg = new URL(relJpg, location.href).href;
+          var L1 = document.createElement("link");
+          L1.rel = "preload";
+          L1.as = "image";
+          L1.href = hrefSvg;
+          L1.setAttribute("fetchpriority", "high");
+          document.head.appendChild(L1);
+          var L2 = document.createElement("link");
+          L2.rel = "preload";
+          L2.as = "image";
+          L2.href = hrefJpg;
+          L2.setAttribute("fetchpriority", "high");
+          document.head.appendChild(L2);
         } catch (e0) {}
       })();
     </script>
@@ -5234,15 +5244,54 @@
          * 当前关迟迟 onload，用户会先看到程序草原/天幕；见 ensureSceneStaticBackdropsPreload 的分流策略。
          */
         var SCENE_STATIC_BACKDROP = {
-          1: { url: "content/svg-global/backgrounds/bg-scene-01.jpg", img: null, ready: false, started: false },
-          2: { url: "content/svg-global/backgrounds/bg-scene-02.jpg", img: null, ready: false, started: false },
-          3: { url: "content/svg-global/backgrounds/bg-scene-03.jpg", img: null, ready: false, started: false },
-          4: { url: "content/svg-global/backgrounds/bg-scene-04.jpg", img: null, ready: false, started: false },
+          1: {
+            svgUrl: "content/svg-global/backgrounds/bg-scene-01.svg",
+            jpgUrl: "content/svg-global/backgrounds/bg-scene-01.jpg",
+            img: null,
+            ready: false,
+            started: false,
+          },
+          2: {
+            svgUrl: "content/svg-global/backgrounds/bg-scene-02.svg",
+            jpgUrl: "content/svg-global/backgrounds/bg-scene-02.jpg",
+            img: null,
+            ready: false,
+            started: false,
+          },
+          3: {
+            svgUrl: "content/svg-global/backgrounds/bg-scene-03.svg",
+            jpgUrl: "content/svg-global/backgrounds/bg-scene-03.jpg",
+            img: null,
+            ready: false,
+            started: false,
+          },
+          4: {
+            svgUrl: "content/svg-global/backgrounds/bg-scene-04.svg",
+            jpgUrl: "content/svg-global/backgrounds/bg-scene-04.jpg",
+            img: null,
+            ready: false,
+            started: false,
+          },
         };
 
         function sceneStaticBackdropActive(sid) {
           var st = SCENE_STATIC_BACKDROP[sid];
           return !!(st && st.ready && st.img && st.img.naturalWidth > 0);
+        }
+
+        function resolveSceneBackdropFallbackUrl(path, versionTag) {
+          var p = String(path || "").trim();
+          if (!p) return "";
+          var base = typeof BLESSINGS_MEDIA_CDN_BASE === "string" ? BLESSINGS_MEDIA_CDN_BASE.trim() : "";
+          if (!base) return "";
+          try {
+            var rel = p.replace(/^\.\//, "");
+            var u = new URL(rel, base.replace(/\/*$/, "/"));
+            if (versionTag) u.searchParams.set("v", String(versionTag));
+            return u.href;
+          } catch (eCdn) {
+            return "";
+          }
         }
 
         function ensureSceneStaticBackdropLoad(sid, opts) {
@@ -5259,14 +5308,29 @@
           im.onload = function () {
             if (im.naturalWidth > 0) st.ready = true;
           };
+          var localSvg = resolveCsvFetchUrl(st.svgUrl, DATA_SCHEMA_VERSION);
+          var localJpg = resolveCsvFetchUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
+          var cosSvg = resolveSceneBackdropFallbackUrl(st.svgUrl, DATA_SCHEMA_VERSION);
+          var cosJpg = resolveSceneBackdropFallbackUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
+          var candidates = [localSvg, localJpg, cosSvg, cosJpg].filter(function (u, i, arr) {
+            return !!u && arr.indexOf(u) === i;
+          });
+          var tryIdx = 0;
+          function tryNextCandidate() {
+            if (tryIdx >= candidates.length) {
+              st.ready = false;
+              try {
+                console.warn("[backdrop] 全部候选加载失败，将使用程序天幕。");
+              } catch (eLog) {}
+              return;
+            }
+            im.src = candidates[tryIdx++];
+          }
           im.onerror = function () {
-            st.ready = false;
-            try {
-              console.warn("[backdrop] 加载失败，将使用程序天幕：" + resolveCsvFetchUrl(st.url));
-            } catch (eLog) {}
+            tryNextCandidate();
           };
-          /** 与 fetch 同源：子路径部署时用绝对 URL + 版本参数，避免部分浏览器把 content/ 解析到站点根目录或长期缓存旧 404 */
-          im.src = resolveCsvFetchUrl(st.url, DATA_SCHEMA_VERSION);
+          /** 优先同源 SVG，失败自动回退 JPG，再走 COS/CDN 同路径兜底。 */
+          tryNextCandidate();
           st.img = im;
         }
 
@@ -11120,6 +11184,10 @@
               el.loading = useOriginal ? "eager" : "lazy";
               el.decoding = useOriginal ? "sync" : "async";
               el.fetchPriority = useOriginal ? "high" : "low";
+              if (!useOriginal && isWeChatBrowser()) {
+                /** 微信内核下低优先级会让首屏图长时间排队；改为 auto，交给浏览器按可视区调度。 */
+                el.fetchPriority = "auto";
+              }
             }
           } catch (eR) {}
           if (tag === "img" && !useOriginal && /\.hei[cf]$/i.test(rawStr)) {
