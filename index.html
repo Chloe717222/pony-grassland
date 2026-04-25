@@ -7072,12 +7072,25 @@
             return pagesRoot;
           }
           var groups = groupBlessingsByQuestionKey(items, sidN);
-          /** 第五关仅保留两道题：写给2026年的刘恋 / 写给2030年的我们；过滤历史脏分组（如“问题5祝福页”）。 */
+          /**
+           * 第五关仅保留两道题，并将历史键 5A/5B 归并到 5501/5502：
+           * 避免同题出现两套键导致分页重复，最后一页「我看完了」误判为“还有下一页”。
+           */
           if (sidN === 5) {
-            groups = groups.filter(function (g) {
-              if (!g || !g.key) return false;
-              return g.key === "5501" || g.key === "5502" || g.key === "5A" || g.key === "5B";
-            });
+            var merged = { "5501": [], "5502": [] };
+            for (var gi0 = 0; gi0 < groups.length; gi0++) {
+              var g0 = groups[gi0];
+              if (!g0 || !g0.key) continue;
+              var k0 = String(g0.key);
+              if (k0 === "5501" || k0 === "5A") {
+                merged["5501"] = merged["5501"].concat(g0.items || []);
+              } else if (k0 === "5502" || k0 === "5B") {
+                merged["5502"] = merged["5502"].concat(g0.items || []);
+              }
+            }
+            groups = [];
+            if (merged["5501"].length) groups.push({ key: "5501", label: BLESSING_PAGE_QUESTIONS["5501"], items: merged["5501"] });
+            if (merged["5502"].length) groups.push({ key: "5502", label: BLESSING_PAGE_QUESTIONS["5502"], items: merged["5502"] });
           }
           for (var gi = 0; gi < groups.length; gi++) {
             var g = groups[gi];
