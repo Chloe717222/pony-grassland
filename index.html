@@ -1123,34 +1123,75 @@
       }
       #entryGateRoot {
         z-index: 200;
-        background: linear-gradient(165deg, rgba(14, 42, 32, 0.88) 0%, rgba(10, 34, 26, 0.92) 100%);
+        background:
+          radial-gradient(120% 75% at 16% 12%, rgba(143, 221, 174, 0.2) 0%, rgba(143, 221, 174, 0) 52%),
+          radial-gradient(115% 82% at 88% 84%, rgba(115, 173, 255, 0.18) 0%, rgba(115, 173, 255, 0) 58%),
+          linear-gradient(160deg, #0a251c 0%, #103428 46%, #0f2f2c 100%);
       }
       .entry-gate-card {
         width: min(100%, calc(100cqw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))));
         max-width: var(--app-top-bar-width-max);
-        background: var(--panel-solid);
-        border: 1px solid var(--panel-border);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 255, 249, 0.9)),
+          var(--panel-solid);
+        border: 1px solid rgba(255, 255, 255, 0.62);
         border-radius: var(--radius-lg);
-        padding: 22px 18px 18px;
-        box-shadow: var(--shadow-panel);
+        padding: 24px 20px 20px;
+        box-shadow:
+          0 20px 48px rgba(5, 24, 17, 0.34),
+          0 2px 0 rgba(255, 255, 255, 0.28) inset;
         color: var(--text);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(20px) saturate(118%);
+        -webkit-backdrop-filter: blur(20px) saturate(118%);
+        position: relative;
+        overflow: hidden;
+      }
+      .entry-gate-card::before {
+        content: "";
+        position: absolute;
+        left: -24%;
+        top: -50%;
+        width: 170%;
+        height: 70%;
+        background: linear-gradient(
+          110deg,
+          rgba(255, 255, 255, 0.48) 0%,
+          rgba(255, 255, 255, 0.14) 40%,
+          rgba(255, 255, 255, 0) 74%
+        );
+        pointer-events: none;
+      }
+      .entry-gate-card::after {
+        content: "";
+        position: absolute;
+        right: 14px;
+        top: 12px;
+        width: 58px;
+        height: 58px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 30%, rgba(170, 244, 196, 0.6), rgba(170, 244, 196, 0));
+        pointer-events: none;
       }
       .entry-gate-card h1 {
         margin: 0 0 10px;
-        font-size: clamp(18px, 5cqw, 22px);
+        font-size: clamp(20px, 5.6cqw, 25px);
         line-height: 1.3;
-        color: var(--text);
+        font-weight: 900;
+        letter-spacing: 0.03em;
+        background: linear-gradient(135deg, #1f8a58 0%, #155f46 48%, #0e4d49 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 2px 18px rgba(36, 140, 95, 0.12);
       }
       .entry-welcome {
-        margin: 0 0 12px;
-        font-size: 12px;
-        line-height: 1.55;
-        color: var(--text-muted);
+        margin: 0 0 14px;
+        font-size: 12.5px;
+        line-height: 1.62;
+        color: #38594b;
       }
       .entry-welcome p {
-        margin: 0 0 10px;
+        margin: 0 0 9px;
       }
       .entry-welcome-line {
         opacity: 0;
@@ -1169,6 +1210,13 @@
       }
       .entry-next-btn {
         margin-bottom: 10px;
+        min-height: 46px;
+        border: 1px solid rgba(24, 96, 65, 0.12);
+        background: linear-gradient(180deg, #39a96c 0%, #2f8f5d 100%);
+        box-shadow:
+          0 10px 18px rgba(17, 80, 53, 0.22),
+          0 1px 0 rgba(255, 255, 255, 0.28) inset;
+        letter-spacing: 0.04em;
       }
       .entry-flow-panel[hidden] {
         display: none !important;
@@ -1436,7 +1484,10 @@
         z-index: 118;
         pointer-events: auto;
         touch-action: manipulation;
-        background: var(--modal-bg);
+        background:
+          radial-gradient(120% 75% at 16% 12%, rgba(143, 221, 174, 0.18) 0%, rgba(143, 221, 174, 0) 52%),
+          radial-gradient(115% 82% at 88% 84%, rgba(115, 173, 255, 0.14) 0%, rgba(115, 173, 255, 0) 58%),
+          rgba(8, 28, 20, 0.54);
       }
       .scene-guide-tip-card {
         width: min(100%, calc(100cqw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))));
@@ -1445,50 +1496,91 @@
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        background: rgba(255, 255, 250, 0.92);
-        border: 1px solid rgba(74, 128, 95, 0.3);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 255, 249, 0.9)),
+          var(--panel-solid);
+        border: 1px solid rgba(255, 255, 255, 0.62);
         border-radius: var(--radius-lg);
-        box-shadow: 0 10px 28px rgba(18, 54, 38, 0.24);
-        padding: clamp(18px, 4.2cqh, 26px) clamp(16px, 4.2cqw, 22px);
+        box-shadow:
+          0 20px 48px rgba(5, 24, 17, 0.34),
+          0 2px 0 rgba(255, 255, 255, 0.28) inset;
+        padding: clamp(20px, 4.6cqh, 28px) clamp(18px, 4.6cqw, 24px);
         color: var(--text);
         text-align: left;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(20px) saturate(118%);
+        -webkit-backdrop-filter: blur(20px) saturate(118%);
         pointer-events: auto;
         box-sizing: border-box;
+        position: relative;
+        overflow: hidden auto;
+      }
+      .scene-guide-tip-card::before {
+        content: "";
+        position: absolute;
+        left: -24%;
+        top: -50%;
+        width: 170%;
+        height: 70%;
+        background: linear-gradient(
+          110deg,
+          rgba(255, 255, 255, 0.48) 0%,
+          rgba(255, 255, 255, 0.14) 40%,
+          rgba(255, 255, 255, 0) 74%
+        );
+        pointer-events: none;
+      }
+      .scene-guide-tip-card::after {
+        content: "";
+        position: absolute;
+        right: 14px;
+        top: 12px;
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 30%, rgba(170, 244, 196, 0.58), rgba(170, 244, 196, 0));
+        pointer-events: none;
       }
       .scene-guide-tip-actions {
-        margin-top: 16px;
+        margin-top: 18px;
       }
       .scene-guide-tip-start {
         width: 100%;
-        min-height: 48px;
+        min-height: 46px;
         padding: 12px 16px;
-        border: none;
+        border: 1px solid rgba(24, 96, 65, 0.12);
         border-radius: var(--radius-md);
-        font-size: clamp(14px, 4cqw, 16px);
+        font-size: clamp(14px, 3.9cqw, 16px);
         font-weight: 700;
         cursor: pointer;
         touch-action: manipulation;
-        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        letter-spacing: 0.04em;
+        background: linear-gradient(180deg, #39a96c 0%, #2f8f5d 100%);
         color: #fafff8;
-        box-shadow: 0 4px 18px rgba(18, 70, 45, 0.22);
+        box-shadow:
+          0 10px 18px rgba(17, 80, 53, 0.22),
+          0 1px 0 rgba(255, 255, 255, 0.28) inset;
       }
       .scene-guide-tip-title {
         margin: 0 0 10px;
-        font-size: clamp(16px, 4.5cqw, 20px);
+        font-size: clamp(18px, 4.9cqw, 22px);
         line-height: 1.35;
-        font-weight: 700;
+        font-weight: 900;
+        letter-spacing: 0.02em;
         text-align: center;
+        background: linear-gradient(135deg, #1f8a58 0%, #155f46 48%, #0e4d49 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 2px 18px rgba(36, 140, 95, 0.12);
       }
       .scene-guide-tip-body {
         margin: 0;
         text-align: left;
-        font-size: clamp(13px, 3.85cqw, 15px);
+        font-size: clamp(13px, 3.8cqw, 15px);
         line-height: 1.8;
-        font-weight: 300;
+        font-weight: 400;
         letter-spacing: 0.02em;
-        color: rgba(45, 62, 52, 0.82);
+        color: #38594b;
         white-space: pre-line;
       }
       #wishCatchRoot[hidden] {
@@ -6871,6 +6963,25 @@
         /**
          * 与「第一关全部祝福」一致：题面在页顶，块内仅为该题下的回答（媒体+正文+用户），不再重复印题面。
          */
+        function attachBlessingMediaLoadingHint(wrapper, mediaEl) {
+          if (!wrapper || !mediaEl) return;
+          var hint = document.createElement("p");
+          hint.className = "plate1-blessing-block__text";
+          hint.textContent = "努力加载中...";
+          hint.setAttribute("data-media-loading-hint", "1");
+          wrapper.appendChild(hint);
+          function clearHint() {
+            if (!hint || !hint.parentNode) return;
+            try {
+              hint.remove();
+            } catch (eRm) {}
+          }
+          mediaEl.addEventListener("load", clearHint, { once: true });
+          mediaEl.addEventListener("loadedmetadata", clearHint, { once: true });
+          mediaEl.addEventListener("loadeddata", clearHint, { once: true });
+          mediaEl.addEventListener("canplay", clearHint, { once: true });
+        }
+
         function fillShowcaseBlessingBlock(article, n) {
           if (!article || !n) return;
           var typ = (n.type != null ? String(n.type) : "text").toLowerCase();
@@ -6881,6 +6992,8 @@
             var wv = document.createElement("div");
             wv.className = "plate1-blessing-block__media";
             appendOptimizedVideo(wv, vid, {});
+            var v0 = wv.querySelector("video");
+            if (v0) attachBlessingMediaLoadingHint(wv, v0);
             article.appendChild(wv);
           } else if (typ === "audio" && aud) {
             var wa = document.createElement("div");
@@ -6890,29 +7003,34 @@
             au.preload = "metadata";
             setBlessingMediaElementSrc(au, aud);
             wa.appendChild(au);
+            attachBlessingMediaLoadingHint(wa, au);
             article.appendChild(wa);
           } else if (typ === "image" && img) {
             var wi = document.createElement("div");
             wi.className = "plate1-blessing-block__media";
             var im = document.createElement("img");
-            setBlessingMediaElementSrc(im, img, { noLazy: true, fetchPriority: "high" });
+            setBlessingMediaElementSrc(im, img, { fetchPriority: "auto" });
             im.alt = "";
             wireBlessingImagePreviewClick(im, img);
             wi.appendChild(im);
+            attachBlessingMediaLoadingHint(wi, im);
             article.appendChild(wi);
           } else if (vid) {
             var wv2 = document.createElement("div");
             wv2.className = "plate1-blessing-block__media";
             appendOptimizedVideo(wv2, vid, {});
+            var v1 = wv2.querySelector("video");
+            if (v1) attachBlessingMediaLoadingHint(wv2, v1);
             article.appendChild(wv2);
           } else if (img) {
             var wi2 = document.createElement("div");
             wi2.className = "plate1-blessing-block__media";
             var im2 = document.createElement("img");
-            setBlessingMediaElementSrc(im2, img, { noLazy: true, fetchPriority: "high" });
+            setBlessingMediaElementSrc(im2, img, { fetchPriority: "auto" });
             im2.alt = "";
             wireBlessingImagePreviewClick(im2, img);
             wi2.appendChild(im2);
+            attachBlessingMediaLoadingHint(wi2, im2);
             article.appendChild(wi2);
           } else if (aud) {
             var wa2 = document.createElement("div");
@@ -6922,17 +7040,12 @@
             au2.preload = "metadata";
             setBlessingMediaElementSrc(au2, aud);
             wa2.appendChild(au2);
+            attachBlessingMediaLoadingHint(wa2, au2);
             article.appendChild(wa2);
           }
           var p = document.createElement("p");
           p.className = "plate1-blessing-block__text";
-          var txt = n.text != null ? String(n.text).trim() : "";
-          if (!txt) {
-            if (typ === "image" || (!!img && !vid && !aud)) txt = "（图片祝福）";
-            else if (typ === "audio" || (!!aud && !vid && !img)) txt = "（音频祝福）";
-            else if (typ === "video" || !!vid) txt = "（视频祝福）";
-          }
-          p.textContent = txt;
+          p.textContent = n.text != null ? String(n.text).trim() : "";
           article.appendChild(p);
           var uidStr = n.userId != null ? String(n.userId).trim() : "";
           if (uidStr) {
@@ -11083,7 +11196,7 @@
             return false;
           }
         }
-        var BLESSING_IMG_PRELOAD_AHEAD_PX = 1400;
+        var BLESSING_IMG_PRELOAD_AHEAD_PX = 2200;
 
         function triggerBlessingImgLoadFromDataset(el) {
           if (!el || el.getAttribute("src")) return;
@@ -11125,9 +11238,11 @@
           if (!imgs || !imgs.length) return;
           var vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
           var ahead = BLESSING_IMG_PRELOAD_AHEAD_PX;
+          var loadedThisPass = 0;
+          var passCap = 14;
           for (var i = 0; i < imgs.length; i++) {
             var el = imgs[i];
-            if (!el || el.getAttribute("src")) continue;
+            if (!el) continue;
             var r;
             try {
               r = el.getBoundingClientRect();
@@ -11136,7 +11251,25 @@
             }
             if (!r) continue;
             if (r.top <= vh + ahead && r.bottom >= -Math.floor(ahead * 0.35)) {
-              triggerBlessingImgLoadFromDataset(el);
+              if (!el.getAttribute("src")) {
+                if (loadedThisPass >= passCap) continue;
+                triggerBlessingImgLoadFromDataset(el);
+                loadedThisPass++;
+              } else if (
+                !el.complete &&
+                r.top <= vh * 1.25 &&
+                r.bottom >= -Math.floor(vh * 0.15) &&
+                el.getAttribute("data-visible-retry-once") !== "1"
+              ) {
+                el.setAttribute("data-visible-retry-once", "1");
+                var listRaw = el.getAttribute("data-media-src-list");
+                if (listRaw) {
+                  try {
+                    var list2 = JSON.parse(listRaw);
+                    assignBlessingImageWithFailover(el, list2, 2200);
+                  } catch (eVr) {}
+                }
+              }
             }
           }
         }
@@ -11430,6 +11563,11 @@
           }
           if (!urlCandidates.length) return;
           var u = urlCandidates[0];
+          if (tag === "img") {
+            try {
+              el.setAttribute("data-media-src-list", JSON.stringify(urlCandidates));
+            } catch (eStore) {}
+          }
           try {
             el.referrerPolicy = "no-referrer";
             if (tag === "img") {
