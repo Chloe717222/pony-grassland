@@ -5342,9 +5342,6 @@
           { x: 36, y: 58 },
           { x: 86, y: 64 },
         ];
-        /** 与底图 scene1 成稿一致，用于首帧底图未 decode 时与 drawSceneStaticBackdropCover 同几何 */
-        var SCENE1_BACKDROP_DESIGN_W = 768;
-        var SCENE1_BACKDROP_DESIGN_H = 1376;
         var scene1ClickItems = [];
         var scene1CollectedByPoolId = {};
         /** 板块 1 日出亮度 0→1（单调不减，每次进入均完整播放） */
@@ -5623,11 +5620,6 @@
             if (im.naturalWidth > 0) {
               st.ready = true;
               st.retryAt = 0;
-              if (sid === 1) {
-                try {
-                  layoutScene1ClickHotspotPositions();
-                } catch (eL) {}
-              }
             }
           };
           /** 优先同源 SVG，失败自动回退 JPG，再走 COS/CDN 同路径兜底。 */
@@ -5669,52 +5661,6 @@
           var dy = (H - dh) * 0.5;
           ctx.drawImage(st.img, dx, dy, dw, dh);
           return true;
-        }
-
-        /**
-         * 第一关热点坐标为成稿上「图像内」百分比。铃筒栏列宽有上限、不能用 grid 内 % 对齐主画布，须与底图 cover 同几何。
-         * 与 drawSceneStaticBackdropCover 同式：在画布 W×H 上算 cover 矩形，再把 % 投到与底图一致的位置，并以 fixed 对齐 gameCanvas 的 getBoundingClientRect。
-         */
-        function getScene1BackdropCoverInCanvasSpace() {
-          var st = SCENE_STATIC_BACKDROP[1];
-          var iw = SCENE1_BACKDROP_DESIGN_W;
-          var ih = SCENE1_BACKDROP_DESIGN_H;
-          if (st && st.img && st.img.naturalWidth > 0 && st.img.naturalHeight > 0) {
-            iw = st.img.naturalWidth;
-            ih = st.img.naturalHeight;
-          }
-          if (W < 1 || H < 1) return null;
-          var scale = Math.max(W / iw, H / ih);
-          var dw = iw * scale;
-          var dh = ih * scale;
-          var dx = (W - dw) * 0.5;
-          var dy = (H - dh) * 0.5;
-          return { dx: dx, dy: dy, dw: dw, dh: dh };
-        }
-
-        function layoutScene1ClickHotspotPositions() {
-          if (currentScene !== 1 || plate1AllReadViewActive || !scene1ClickGrid) return;
-          if (!canvas || W < 1 || H < 1) return;
-          if (scene1ClickStage && scene1ClickStage.hidden) return;
-          var r = getScene1BackdropCoverInCanvasSpace();
-          if (!r) return;
-          try {
-            var cr = canvas.getBoundingClientRect();
-            var nList = scene1ClickGrid.querySelectorAll("button.scene1-click-btn");
-            for (var i = 0; i < nList.length; i++) {
-              var pos = SCENE1_CLICK_POSITIONS[i];
-              if (!pos) pos = { x: 50, y: 50 };
-              var lcx = r.dx + (pos.x / 100) * r.dw;
-              var lcy = r.dy + (pos.y / 100) * r.dh;
-              var btn = nList[i];
-              if (!btn) continue;
-              btn.style.position = "fixed";
-              btn.style.left = cr.left + lcx + "px";
-              btn.style.top = cr.top + lcy + "px";
-              btn.style.right = "auto";
-              btn.style.bottom = "auto";
-            }
-          } catch (eLayout) {}
         }
         /** 板块 1：小马纵向（画布坐标），由祝福流 #plate1BlessingStream 底边推算 */
         var plate1PonyYCanvasCache = 0;
@@ -7008,6 +6954,8 @@
               btn.type = "button";
               btn.className = "scene1-click-btn scene1-click-btn--ghost";
               var pos = SCENE1_CLICK_POSITIONS[idx] || { x: 50, y: 50 };
+              btn.style.left = pos.x + "%";
+              btn.style.top = pos.y + "%";
               btn.setAttribute("data-collected", collected ? "1" : "0");
               btn.setAttribute(
                 "aria-label",
@@ -7075,9 +7023,6 @@
             })(i, scene1ClickItems[i]);
           }
           syncScene1ClickTitle();
-          try {
-            layoutScene1ClickHotspotPositions();
-          } catch (eRender1) {}
         }
 
         function resetScene1ClickMissionState() {
@@ -8907,11 +8852,6 @@
           if (sceneHud) sceneHud.classList.toggle("scene-hud--scene2-allread", allReadHud);
           if (sceneHudProgress) sceneHudProgress.classList.toggle("scene-hud--scene2-allread", allReadHud);
           updateSceneHud();
-          if (currentScene === 1 && !plate1AllReadViewActive) {
-            try {
-              layoutScene1ClickHotspotPositions();
-            } catch (eSync1) {}
-          }
         }
 
         function loadScene100ShownMap() {
@@ -11321,11 +11261,6 @@
           syncScene4MaskGeometryAndVisibility();
           if (currentScene === 2) ensureScene2PathToWs(totalSteps + 500);
           ensureSceneStaticBackdropsPreload();
-          if (currentScene === 1) {
-            try {
-              layoutScene1ClickHotspotPositions();
-            } catch (eRes1) {}
-          }
         }
 
         /** CSV 里资源路径统一成站点根相对路径（与 index 同级） */
