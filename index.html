@@ -5621,14 +5621,12 @@
           if (cs >= 1 && cs <= SCENE_COUNT) {
             prime = SCENE_STATIC_BACKDROP[cs] ? cs : 1;
           }
-          ensureInlineBackdropPlaceholderLoad(prime);
           ensureSceneStaticBackdropLoad(prime, { fetchPriority: "high" });
           var delayMs = 0;
           for (var i = 1; i <= SCENE_COUNT; i++) {
             if (i === prime || !SCENE_STATIC_BACKDROP[i]) continue;
             (function (sid, d) {
               setTimeout(function () {
-                ensureInlineBackdropPlaceholderLoad(sid);
                 ensureSceneStaticBackdropLoad(sid, { fetchPriority: "low" });
               }, d);
             })(i, delayMs);
@@ -5841,89 +5839,13 @@
 
         function syncEntryGateBackdropReadyState() {
           if (!entryGateNextBtn) return true;
-          var sid = linearProgressEntrySceneId();
-          var hasStatic = !!SCENE_STATIC_BACKDROP[sid];
-          var allowByTimeout =
-            !!entryGateBackdropWaitStartedAt && Date.now() - entryGateBackdropWaitStartedAt >= 1800;
-          if (!hasStatic || sceneStaticBackdropActive(sid)) {
-            if (entryGateBackdropWaitTimer) {
-              clearInterval(entryGateBackdropWaitTimer);
-              entryGateBackdropWaitTimer = null;
-            }
-            entryGateBackdropWaitStartedAt = 0;
-            if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
-            entryGateNextBtn.disabled = false;
-            entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
-            return true;
-          }
-          if (allowByTimeout) {
-            if (entryGateBackdropWaitTimer) {
-              clearInterval(entryGateBackdropWaitTimer);
-              entryGateBackdropWaitTimer = null;
-            }
-            entryGateBackdropWaitStartedAt = 0;
-            if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
-            entryGateNextBtn.disabled = false;
-            entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
-            return true;
-          }
-          ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
           if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
-          entryGateNextBtn.disabled = true;
-          entryGateNextBtn.textContent = "背景加载中…";
-          if (!entryGateBackdropWaitStartedAt) entryGateBackdropWaitStartedAt = Date.now();
-          if (!entryGateBackdropWaitTimer) {
-            entryGateBackdropWaitTimer = setInterval(function () {
-              var targetSid = linearProgressEntrySceneId();
-              var timeoutHit = Date.now() - entryGateBackdropWaitStartedAt >= 1800;
-              if (timeoutHit) {
-                syncEntryGateBackdropReadyState();
-                return;
-              }
-              if (!SCENE_STATIC_BACKDROP[targetSid] || sceneStaticBackdropActive(targetSid)) {
-                syncEntryGateBackdropReadyState();
-                return;
-              }
-              ensureSceneStaticBackdropLoad(targetSid, { fetchPriority: "high" });
-            }, 180);
-          }
-          return false;
+          entryGateNextBtn.disabled = false;
+          entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
+          return true;
         }
         function startGameLoopWhenBackdropReady() {
-          var sid = currentScene;
-          var hasStatic = !!SCENE_STATIC_BACKDROP[sid];
-          if (!hasStatic) {
-            startGameLoopIfNeeded();
-            return;
-          }
-          var waitStartedAt = Date.now();
-          var waitMaxMs = 1800;
-          ensureInlineBackdropPlaceholderLoad(sid);
-          ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
-          if (sceneStaticBackdropActive(sid) || sceneInlineBackdropPlaceholderActive(sid)) {
-            startGameLoopIfNeeded();
-            return;
-          }
-          var waitTimer = setInterval(function () {
-            var curSid = currentScene;
-            if (!SCENE_STATIC_BACKDROP[curSid]) {
-              clearInterval(waitTimer);
-              startGameLoopIfNeeded();
-              return;
-            }
-            if (Date.now() - waitStartedAt >= waitMaxMs) {
-              /** 兜底：避免因 ready 标记异常导致整页不渲染。先启动循环，背景在后续帧继续重试加载。 */
-              clearInterval(waitTimer);
-              startGameLoopIfNeeded();
-              return;
-            }
-            ensureInlineBackdropPlaceholderLoad(curSid);
-            ensureSceneStaticBackdropLoad(curSid, { fetchPriority: "high" });
-            if (sceneStaticBackdropActive(curSid) || sceneInlineBackdropPlaceholderActive(curSid)) {
-              clearInterval(waitTimer);
-              startGameLoopIfNeeded();
-            }
-          }, 120);
+          startGameLoopIfNeeded();
         }
 
         function resetEntryLineReveal() {
@@ -13664,10 +13586,8 @@
         function drawSkyAndLayers(scrollPx) {
           var ph = getGrasslandBackdropPhase();
           if (currentScene >= 1 && currentScene <= SCENE_COUNT) {
-            ensureInlineBackdropPlaceholderLoad(currentScene);
             ensureSceneStaticBackdropLoad(currentScene);
             if (drawSceneStaticBackdropCover(currentScene)) return;
-            if (drawInlineBackdropPlaceholderCover(currentScene)) return;
           }
           if (currentScene === 1 || currentScene === 5) {
             drawPlate1SunriseSkyAndSun(scrollPx, ph);
@@ -15817,7 +15737,6 @@
         function finalizeEntryGateToGrassland() {
           if (!entryGateRoot) return;
             var v = linearProgressEntrySceneId();
-            if (!syncEntryGateBackdropReadyState()) return;
             selectedEntrySceneId = v;
             if (!isNaN(v) && v >= 1 && v <= SCENE_COUNT) {
               var prevEntry = currentScene;
@@ -15861,7 +15780,6 @@
           entryGateNextBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            if (!syncEntryGateBackdropReadyState()) return;
             finalizeEntryGateToGrassland();
           });
         }
