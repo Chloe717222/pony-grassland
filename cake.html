@@ -159,12 +159,6 @@
         transform: scale(0.15, 0.35) translateY(6px);
         transition: opacity 0.48s ease, transform 0.52s ease;
       }
-      .hint-tap {
-        font-size: 14px;
-        color: var(--muted);
-        margin: 0;
-        text-align: center;
-      }
       #letterOverlay[hidden] {
         display: none !important;
       }
@@ -454,7 +448,6 @@
           </svg>
         </button>
       </div>
-      <p class="hint-tap" id="audioHint" hidden>若音乐未响，再轻点一下屏幕</p>
     </div>
 
     <div id="letterOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="letterTitle">
@@ -530,7 +523,6 @@
         var floatLayer = document.getElementById("floatLayer");
         var cakeBgm = document.getElementById("cakeBgm");
         var letterCloseBgm = document.getElementById("letterCloseBgm");
-        var audioHint = document.getElementById("audioHint");
 
         /**
          * 生日页 BGM：与主站共用 content/media-cdn-config.js（优先 CDN，未填则回退 COS），仓库可不存 aac。
@@ -647,7 +639,6 @@
          * 文件在 content/ 下，运行时同源优先、再走 CDN / COS 候选；换文件请递增 CAKE_PAGE_BUILD。
          */
         var LETTER_CLOSE_BGM_SRC = "content/zaichang2.mp3";
-        var bgmSourceIdx = 0;
         var bgmCandidateUrls = [];
         var bgmCandidateCursor = 0;
         var bgmFallbackTimer = null;
@@ -694,9 +685,6 @@
               if (cakeBgm.readyState >= 1) return;
               var next = bgmCandidateCursor + 1;
               if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
-              if (audioHint) {
-                audioHint.hidden = true;
-              }
             }, 3200);
             return true;
           } catch (eLoad) {
@@ -707,7 +695,6 @@
         if (cakeBgm) {
           bgmCandidateUrls = [];
           for (var bi = 0; bi < BGM_SRC_CANDIDATES.length; bi++) {
-            bgmSourceIdx = bi;
             var oneList = resolveCakeMediaCandidates(BGM_SRC_CANDIDATES[bi]);
             for (var bj = 0; bj < oneList.length; bj++) {
               var one = oneList[bj];
@@ -718,9 +705,6 @@
           cakeBgm.addEventListener("error", function () {
             var next = bgmCandidateCursor + 1;
             if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
-            if (audioHint) {
-              audioHint.hidden = true;
-            }
           });
           cakeBgm.addEventListener("loadedmetadata", clearBgmFallbackTimer);
           cakeBgm.addEventListener("canplay", clearBgmFallbackTimer);
@@ -1015,7 +999,10 @@
         function tryPlayBgm() {
           if (!cakeBgm) return;
           if (bgmHasStarted) return;
-          if (!cakeBgm.src) applyBgmSourceByIndex(0);
+          if (!cakeBgm.src) {
+            if (bgmCandidateUrls.length) applyBgmCandidateAt(0);
+          }
+          if (!cakeBgm.src) return;
           bgmHasStarted = true;
           try {
             cakeBgm.volume = 0;
@@ -1025,8 +1012,8 @@
             p.then(function () {
               startBgmFadeIn();
             }).catch(function () {
-              var next = bgmSourceIdx + 1;
-              if (next < BGM_SRC_CANDIDATES.length && applyBgmSourceByIndex(next)) {
+              var nextU = bgmCandidateCursor + 1;
+              if (nextU < bgmCandidateUrls.length && applyBgmCandidateAt(nextU)) {
                 bgmHasStarted = false;
                 setTimeout(function () {
                   tryPlayBgm();
@@ -1034,7 +1021,6 @@
                 return;
               }
               bgmHasStarted = false;
-              if (audioHint) audioHint.hidden = false;
             });
           } else {
             startBgmFadeIn();
@@ -1373,7 +1359,6 @@
             bgmFadeTimer = null;
           }
           bgmHasStarted = false;
-          if (audioHint) audioHint.hidden = true;
           if (letterOverlay) letterOverlay.hidden = true;
           if (letterStream) {
             letterStream.innerHTML = "";
