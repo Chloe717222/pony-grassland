@@ -12,8 +12,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
-    <link rel="dns-prefetch" href="//static.lianbirthday.top" />
-    <link rel="preconnect" href="https://static.lianbirthday.top" crossorigin />
+    <link rel="dns-prefetch" href="//liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com" />
+    <link rel="preconnect" href="https://liulian20260426true-1409956502.cos.ap-guangzhou.myqcloud.com" crossorigin />
     <title>马儿驿站</title>
     <!-- 与正文 DATA_SCHEMA_VERSION、LS_KEY_CURRENT_SCENE 保持同步：在解析巨型主脚本前先预拉当前关静态底图 -->
     <script>
@@ -5019,7 +5019,7 @@
          * CSV 里媒体列仍写 content/xxx.png 即可：配置了远程根时运行时拼成 URL，不必把每格改成 https 完整串。
          * 仓库可「只放代码」：大图只上传到 COS，GitHub 可不提交 image*.png/webp；CI 使用 SKIP_BLESSING_MEDIA_DISK_CHECK（见 verify-site-assets.mjs）。
          * 读桶二选一：① 文件在桶根 image0085.png + strip=true；② 桶内键为 content/image0085.png + strip=false。
-         * 远程根勿以 /content/ 结尾。优先 CDN（见 content/media-cdn-config.js），未填则回退 COS 默认域名。CORS 来源：https://chloe717222.github.io
+         * 远程根勿以 /content/ 结尾。线上见 media-cdn-config.js：默认同页直连 COS 桶，不经加速域名。CORS：https://chloe717222.github.io
          * 若某条必须走外链，可在 CSV 直接写完整 https://…（不会被改写）。
          */
         /** file:// 或本机/局域网：不用 COS 兜底，相對路径走与页面同源的 content/（本地大图为仓库/静态服务） */
@@ -5043,9 +5043,13 @@
             return false;
           }
           if (preferLocalContentMedia()) return "";
-          var cdn = String(typeof window !== "undefined" && window.MEDIA_CDN_ACCELERATION_BASE ? window.MEDIA_CDN_ACCELERATION_BASE : "").trim();
-          if (cdn) return cdn;
-          return String(typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? window.MEDIA_CDN_FALLBACK_COS_BASE : "").trim();
+          var cosB = String(
+            typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? window.MEDIA_CDN_FALLBACK_COS_BASE : ""
+          ).trim();
+          if (cosB) return cosB;
+          return String(
+            typeof window !== "undefined" && window.MEDIA_CDN_ACCELERATION_BASE ? window.MEDIA_CDN_ACCELERATION_BASE : ""
+          ).trim();
         })();
         var BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT =
           typeof window !== "undefined" && typeof window.MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined"
@@ -5545,19 +5549,6 @@
             return "";
           }
         }
-        function resolveSceneBackdropRepoMirrorUrl(path, versionTag) {
-          var p = String(path || "").trim();
-          if (!p) return "";
-          try {
-            var rel = p.replace(/^\.\//, "");
-            var u = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + rel);
-            if (versionTag) u.searchParams.set("v", String(versionTag));
-            return u.href;
-          } catch (eMirror) {
-            return "";
-          }
-        }
-
         function ensureSceneStaticBackdropLoad(sid, opts) {
           var st = SCENE_STATIC_BACKDROP[sid];
           if (!st) return;
@@ -5577,10 +5568,6 @@
           var localJpgVer = resolveCsvFetchUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
           var localSvgRaw = resolveCsvFetchUrl(st.svgUrl);
           var localJpgRaw = resolveCsvFetchUrl(st.jpgUrl);
-          var mirrorSvgVer = resolveSceneBackdropRepoMirrorUrl(st.svgUrl, DATA_SCHEMA_VERSION);
-          var mirrorJpgVer = resolveSceneBackdropRepoMirrorUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
-          var mirrorSvgRaw = resolveSceneBackdropRepoMirrorUrl(st.svgUrl, "");
-          var mirrorJpgRaw = resolveSceneBackdropRepoMirrorUrl(st.jpgUrl, "");
           var cosSvgVer = resolveSceneBackdropFallbackUrl(st.svgUrl, DATA_SCHEMA_VERSION);
           var cosJpgVer = resolveSceneBackdropFallbackUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
           var cosSvgRaw = resolveSceneBackdropFallbackUrl(st.svgUrl, "");
@@ -5591,16 +5578,12 @@
                 localJpgRaw,
                 localSvgVer,
                 localSvgRaw,
-                mirrorJpgVer,
-                mirrorJpgRaw,
-                mirrorSvgVer,
-                mirrorSvgRaw,
                 cosJpgVer,
                 cosJpgRaw,
                 cosSvgVer,
                 cosSvgRaw,
               ]
-            : [localJpgVer, localSvgVer, mirrorJpgVer, mirrorSvgVer, cosJpgVer, cosSvgVer];
+            : [localJpgVer, localSvgVer, cosJpgVer, cosSvgVer];
           candidates = candidates.filter(function (u, i, arr) {
             return !!u && arr.indexOf(u) === i;
           });
@@ -5626,7 +5609,7 @@
               st.retryAt = 0;
             }
           };
-          /** 优先同源 SVG，失败自动回退 JPG，再走 COS/CDN 同路径兜底。 */
+          /** 优先同源，再走 COS 桶同路径，不经第三方 CDN/镜像。 */
           tryNextCandidate();
           st.img = im;
         }
@@ -11564,10 +11547,10 @@
 
         /**
          * 媒体地址候选链（去重）：
-         * 1) 当前运行时首选基址（可能是 static，也可能是本地同源）
-         * 2) 显式加速域名（static）
-         * 3) 显式 COS 回退域名
-         * 4) 页面同源地址
+         * 1) 首选根（BLESSINGS_MEDIA_CDN_BASE，线上为 COS）
+         * 2) 显式 COS 桶域名（与上可能重复，去重后仅一条）
+         * 3) 页面同源（仓库随部署有资源时）
+         * 不追加加速域名/第三方 jsdelivr，一律直连 COS 优先，避免经 CDN 过慢。
          */
         function resolveBlessingMediaCandidates(raw) {
           if (raw == null || typeof raw !== "string") return [];
@@ -11597,18 +11580,8 @@
           }
           pushByBase(BLESSINGS_MEDIA_CDN_BASE);
           try {
-            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
             pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
           } catch (eW) {}
-          /** 与底图回退同思路：主 CDN / 页路径异常时，尝试 Git 仓库公开镜像（大体积 mp4 等须已在仓库中）。 */
-          try {
-            var relMirror = rel.replace(/^\//, "");
-            var mU = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror);
-            try {
-              mU.searchParams.set("v", String(DATA_SCHEMA_VERSION));
-            } catch (eM0) {}
-            pushUrl(mU.href);
-          } catch (eMirror) {}
           pushUrl(resolveCsvFetchUrl(s, DATA_SCHEMA_VERSION));
           return out;
         }
@@ -11721,7 +11694,7 @@
           }
         }
         /**
-         * 首轮多源均失败后：第二遍以「COS 直连 → 加速 → 主 CDN → 镜像 → 同源」优先，便于全列试过后再显式走桶。
+         * 首轮多源均失败后：第二遍仍以 COS → 页面同源 为主，不经第三方镜像。
          * 仅接受相对路径；绝对 http(s) 的外链无此阶段（与 resolveBlessingMediaCandidates 一致）。
          */
         function resolveBlessingMediaCosPrioForRetry(raw) {
@@ -11750,16 +11723,10 @@
             } catch (eBase) {}
           }
           pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
-          pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
           pushByBase(BLESSINGS_MEDIA_CDN_BASE);
           try {
-            var relMirror = rel.replace(/^\//, "");
-            var mU = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror);
-            try {
-              mU.searchParams.set("v", String(DATA_SCHEMA_VERSION));
-            } catch (eM0) {}
-            pushOne(mU.href);
-          } catch (eMirror) {}
+            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
+          } catch (e0) {}
           pushOne(resolveCsvFetchUrl(s, DATA_SCHEMA_VERSION));
           return out;
         }

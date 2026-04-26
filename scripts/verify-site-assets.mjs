@@ -2,7 +2,7 @@
  * 站点资源校验。默认：CSV 里出现的 content/… 图片/音/视频须在仓库磁盘存在（便于本地联调）。
  * 若祝福媒体仅托管在 COS、仓库不提交大图：部署前设环境变量
  *   SKIP_BLESSING_MEDIA_DISK_CHECK=1
- * 则跳过「content/ 下栅格媒体文件」及「生日页 BGM audio_happybirthday.aac」的磁盘存在检查（仍校验 CSV、静态底图 SVG 等）。
+ * 则跳过「content/ 下栅格媒体文件」及「生日页 BGM content/happybirthday.mp3」的磁盘存在检查（仍校验 CSV、静态底图 SVG 等）。
  * 本地轻量校验：npm run verify:site:light
  */
 import crypto from "node:crypto";
@@ -45,7 +45,7 @@ const CSV_SCAN_CANDIDATES = [
   "content/scene5-interact.csv",
   "content/blessings-test-five-plates.csv",
 ];
-const BGM_REL = "content/audio_happybirthday.aac";
+const BGM_REL = "content/happybirthday.mp3";
 /** 本地不提交生日页 BGM 时设 VERIFY_SKIP_BGM=1，仅跳过此项（仍会校验 CSV 等） */
 const SKIP_BGM_DISK = process.env.VERIFY_SKIP_BGM === "1";
 /** 常见误操作：把某条祝福语音复制成生日 BGM 文件名（旧编号资源；不存在则跳过比对） */

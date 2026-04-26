@@ -525,7 +525,7 @@
         var letterCloseBgm = document.getElementById("letterCloseBgm");
 
         /**
-         * 生日页 BGM：与主站共用 content/media-cdn-config.js（优先 CDN，未填则回退 COS），仓库可不存 aac。
+         * 生日页 BGM：与主站共用 content/media-cdn-config.js；线上默认直连 COS，与 index 一致。
          * 若两处远程根均为空则仅用同源 content/… 路径。
          */
         var CAKE_MEDIA_CDN_BASE = (function () {
@@ -548,9 +548,13 @@
             return false;
           }
           if (preferLocalContentMedia()) return "";
-          var cdn = String(typeof window !== "undefined" && window.MEDIA_CDN_ACCELERATION_BASE ? window.MEDIA_CDN_ACCELERATION_BASE : "").trim();
-          if (cdn) return cdn;
-          return String(typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? window.MEDIA_CDN_FALLBACK_COS_BASE : "").trim();
+          var cosB = String(
+            typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? window.MEDIA_CDN_FALLBACK_COS_BASE : ""
+          ).trim();
+          if (cosB) return cosB;
+          return String(
+            typeof window !== "undefined" && window.MEDIA_CDN_ACCELERATION_BASE ? window.MEDIA_CDN_ACCELERATION_BASE : ""
+          ).trim();
         })();
         var CAKE_MEDIA_CDN_STRIP_LEADING_CONTENT =
           typeof window !== "undefined" && typeof window.MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined"
@@ -619,24 +623,17 @@
           }
           pushByBase(CAKE_MEDIA_CDN_BASE);
           try {
-            pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
             pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
           } catch (eW) {}
           push(versionedCakeMediaUrl(p));
           return out;
         }
 
-        /** 生日页 BGM：优先 MP3；失败时回退 aac/旧名（路径均经 resolveCakeMediaUrl，可指向 COS） */
-        var BGM_SRC_CANDIDATES = [
-          "content/happybirthday.mp3",
-          "content/audio_happybirthday.aac",
-          "content/happybirthday.aac",
-          "content/0001.mp3",
-        ];
+        /** 点蛋糕主循环 BGM，固定 content/happybirthday.mp3；多源为同源+CDN+COS 同一文件的候选 URL。 */
+        var BGM_SRC_CANDIDATES = ["content/happybirthday.mp3"];
         /**
-         * 长信流程：仅在第二封长信界面点「关闭」后，由 endLetter → tryPlayLetterCloseTrack 播放本曲（与主蛋糕循环 BGM 分离）。
-         * 先看完第一封点「收信」进入第二封，再点「关闭」才会响；在 index 主站无此音轨。
-         * 文件在 content/ 下，运行时同源优先、再走 CDN / COS 候选；换文件请递增 CAKE_PAGE_BUILD。
+         * 长信读毕（第二封点「关闭」）后播放，固定 content/zaichang2.mp3；与主 BGM 分离。
+         * 在 index 主站无此音轨。
          */
         var LETTER_CLOSE_BGM_SRC = "content/zaichang2.mp3";
         var bgmCandidateUrls = [];
@@ -693,9 +690,17 @@
         }
 
         if (cakeBgm) {
+          /**
+           * 主 BGM：须与长信结束曲同样「同源 content/ 优先」。
+           * 否则列表仅有 CDN + COS，线上 Worker/COS 未传齐或 404 时，GHP/仓库里已有 MP3
+           * 却永远不会被尝试，表现为生日页主循环一直静音（长信曲曾单独加过 ghp 优先）。
+           */
           bgmCandidateUrls = [];
           for (var bi = 0; bi < BGM_SRC_CANDIDATES.length; bi++) {
-            var oneList = resolveCakeMediaCandidates(BGM_SRC_CANDIDATES[bi]);
+            var bPath = BGM_SRC_CANDIDATES[bi];
+            var gBgm = sameOriginVersionedCakeMediaUrl(bPath);
+            if (gBgm && bgmCandidateUrls.indexOf(gBgm) < 0) bgmCandidateUrls.push(gBgm);
+            var oneList = resolveCakeMediaCandidates(bPath);
             for (var bj = 0; bj < oneList.length; bj++) {
               var one = oneList[bj];
               if (one && bgmCandidateUrls.indexOf(one) < 0) bgmCandidateUrls.push(one);
