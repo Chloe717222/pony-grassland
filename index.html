@@ -5416,6 +5416,11 @@
               var b64 = String(txt || "").trim();
               if (!b64) return;
               SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid] = "data:image/jpeg;base64," + b64;
+              var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+              if (st && st.sourceKind !== "real") {
+                st.ready = false;
+                st.started = false;
+              }
             })
             .catch(function () {})
             .finally(function () {
@@ -5461,14 +5466,18 @@
         }
         function ensureInlineBackdropPlaceholderLoad(sid) {
           if (!SCENE_STATIC_BACKDROP[sid]) return;
+          var preferReal = !!SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid];
           var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
-          if (st && st.ready && st.img) return;
+          if (st && st.ready && st.img) {
+            if (!(preferReal && st.sourceKind !== "real")) return;
+          }
           if (st && st.started) return;
           var im = new Image();
           SCENE_INLINE_BACKDROP_PLACEHOLDER[sid] = {
             img: im,
             ready: false,
             started: true,
+            sourceKind: preferReal ? "real" : "gradient",
           };
           im.onload = function () {
             var cur = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
