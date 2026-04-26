@@ -4875,7 +4875,7 @@
       </div>
     </div>
     <p class="hint-bar" id="grasslandHintBar">
-      驿站会记住你走过哪一站；换浏览器会重新开始～ 约每走五百步路面会分岔，把小马挪到左或右，就能选一片不同的风景。
+      页面加载中...
     </p>
 
     <button type="button" class="hug-offer-btn" id="hugOfferBtn" hidden>
@@ -5366,6 +5366,7 @@
             img: null,
             ready: false,
             started: false,
+            retryAt: 0,
           },
           2: {
             svgUrl: "content/svg-global/backgrounds/bg-scene-02.svg",
@@ -5373,6 +5374,7 @@
             img: null,
             ready: false,
             started: false,
+            retryAt: 0,
           },
           3: {
             svgUrl: "content/svg-global/backgrounds/bg-scene-03.svg",
@@ -5380,6 +5382,7 @@
             img: null,
             ready: false,
             started: false,
+            retryAt: 0,
           },
           4: {
             svgUrl: "content/svg-global/backgrounds/bg-scene-04.svg",
@@ -5387,8 +5390,112 @@
             img: null,
             ready: false,
             started: false,
+            retryAt: 0,
           },
         };
+        /** 无网络兜底：内置极小 SVG 占位背景，避免出现纯绿屏。 */
+        var SCENE_INLINE_BACKDROP_PLACEHOLDER = {};
+        var SCENE1_REAL_BACKDROP_INLINE_DATA_URI =
+          "data:image/jpeg;base64,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";
+        var SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP = { 1: SCENE1_REAL_BACKDROP_INLINE_DATA_URI };
+        var SCENE_REAL_BACKDROP_INLINE_B64_LOADING = {};
+        function ensureSceneInlineBase64FromAsset(sid) {
+          if (sid < 2 || sid > 4) return;
+          if (SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid]) return;
+          if (SCENE_REAL_BACKDROP_INLINE_B64_LOADING[sid]) return;
+          SCENE_REAL_BACKDROP_INLINE_B64_LOADING[sid] = true;
+          var pad = sid < 10 ? "0" + sid : String(sid);
+          var rel = "content/svg-global/backgrounds/bg-scene-" + pad + ".inline-tiny.base64.txt";
+          var u = resolveCsvFetchUrl(rel, DATA_SCHEMA_VERSION);
+          fetch(u, { cache: "force-cache" })
+            .then(function (res) {
+              if (!res || !res.ok) throw new Error("b64 load failed");
+              return res.text();
+            })
+            .then(function (txt) {
+              var b64 = String(txt || "").trim();
+              if (!b64) return;
+              SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid] = "data:image/jpeg;base64," + b64;
+            })
+            .catch(function () {})
+            .finally(function () {
+              SCENE_REAL_BACKDROP_INLINE_B64_LOADING[sid] = false;
+            });
+        }
+        function inlineBackdropPlaceholderDataUriByScene(sid) {
+          ensureSceneInlineBase64FromAsset(sid);
+          if (SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid]) return SCENE_REAL_BACKDROP_INLINE_DATA_URI_MAP[sid];
+          var a = "#7ec0a0";
+          var b = "#4f8f72";
+          var c = "#2f5f49";
+          if (sid === 2) {
+            a = "#a4d8ff";
+            b = "#66a7d6";
+            c = "#3d6f98";
+          } else if (sid === 3) {
+            a = "#ffc8a2";
+            b = "#cf8b6f";
+            c = "#7b5b4b";
+          } else if (sid === 4) {
+            a = "#8aa6d8";
+            b = "#546b9b";
+            c = "#2f3f66";
+          }
+          var svg =
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1920' preserveAspectRatio='xMidYMid slice'>" +
+            "<defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>" +
+            "<stop offset='0%' stop-color='" +
+            a +
+            "'/><stop offset='55%' stop-color='" +
+            b +
+            "'/><stop offset='100%' stop-color='" +
+            c +
+            "'/></linearGradient>" +
+            "<radialGradient id='r' cx='50%' cy='28%' r='40%'>" +
+            "<stop offset='0%' stop-color='rgba(255,255,255,0.35)'/>" +
+            "<stop offset='100%' stop-color='rgba(255,255,255,0)'/></radialGradient></defs>" +
+            "<rect width='1080' height='1920' fill='url(#g)'/>" +
+            "<rect width='1080' height='1920' fill='url(#r)'/>" +
+            "</svg>";
+          return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+        }
+        function ensureInlineBackdropPlaceholderLoad(sid) {
+          if (!SCENE_STATIC_BACKDROP[sid]) return;
+          var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+          if (st && st.ready && st.img) return;
+          if (st && st.started) return;
+          var im = new Image();
+          SCENE_INLINE_BACKDROP_PLACEHOLDER[sid] = {
+            img: im,
+            ready: false,
+            started: true,
+          };
+          im.onload = function () {
+            var cur = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+            if (!cur) return;
+            cur.ready = im.naturalWidth > 0;
+          };
+          im.onerror = function () {
+            var cur = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+            if (!cur) return;
+            cur.ready = false;
+            cur.started = false;
+          };
+          im.src = inlineBackdropPlaceholderDataUriByScene(sid);
+        }
+        function drawInlineBackdropPlaceholderCover(sid) {
+          var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+          if (!st || !st.ready || !st.img || !st.img.naturalWidth || !st.img.naturalHeight) return false;
+          var iw = st.img.naturalWidth;
+          var ih = st.img.naturalHeight;
+          var scale = Math.max(W / iw, H / ih);
+          var dw = iw * scale;
+          var dh = ih * scale;
+          var dx = (W - dw) * 0.5;
+          var dy = (H - dh) * 0.5;
+          ctx.drawImage(st.img, dx, dy, dw, dh);
+          return true;
+        }
 
         function sceneStaticBackdropActive(sid) {
           var st = SCENE_STATIC_BACKDROP[sid];
@@ -5412,8 +5519,12 @@
 
         function ensureSceneStaticBackdropLoad(sid, opts) {
           var st = SCENE_STATIC_BACKDROP[sid];
-          if (!st || st.started) return;
+          if (!st) return;
+          var nowTs = Date.now();
+          if (st.started) return;
+          if (st.retryAt && nowTs < st.retryAt) return;
           st.started = true;
+          st.ready = false;
           opts = opts || {};
           var im = new Image();
           im.decoding = "async";
@@ -5421,9 +5532,6 @@
             var fp = opts.fetchPriority;
             if (fp === "high" || fp === "low") im.fetchPriority = fp;
           } catch (eFP) {}
-          im.onload = function () {
-            if (im.naturalWidth > 0) st.ready = true;
-          };
           var localSvg = resolveCsvFetchUrl(st.svgUrl, DATA_SCHEMA_VERSION);
           var localJpg = resolveCsvFetchUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
           var cosSvg = resolveSceneBackdropFallbackUrl(st.svgUrl, DATA_SCHEMA_VERSION);
@@ -5435,6 +5543,8 @@
           function tryNextCandidate() {
             if (tryIdx >= candidates.length) {
               st.ready = false;
+              st.started = false;
+              st.retryAt = Date.now() + 2500;
               try {
                 console.warn("[backdrop] 全部候选加载失败，将使用程序天幕。");
               } catch (eLog) {}
@@ -5444,6 +5554,12 @@
           }
           im.onerror = function () {
             tryNextCandidate();
+          };
+          im.onload = function () {
+            if (im.naturalWidth > 0) {
+              st.ready = true;
+              st.retryAt = 0;
+            }
           };
           /** 优先同源 SVG，失败自动回退 JPG，再走 COS/CDN 同路径兜底。 */
           tryNextCandidate();
@@ -5457,12 +5573,14 @@
           if (cs >= 1 && cs <= SCENE_COUNT) {
             prime = SCENE_STATIC_BACKDROP[cs] ? cs : 1;
           }
+          ensureInlineBackdropPlaceholderLoad(prime);
           ensureSceneStaticBackdropLoad(prime, { fetchPriority: "high" });
           var delayMs = 0;
           for (var i = 1; i <= SCENE_COUNT; i++) {
             if (i === prime || !SCENE_STATIC_BACKDROP[i]) continue;
             (function (sid, d) {
               setTimeout(function () {
+                ensureInlineBackdropPlaceholderLoad(sid);
                 ensureSceneStaticBackdropLoad(sid, { fetchPriority: "low" });
               }, d);
             })(i, delayMs);
@@ -5664,11 +5782,44 @@
         var clickGuideAutoTimer = null;
         var selectedEntrySceneId = 1;
         var entryLineTimer = null;
+        var entryGateBackdropWaitTimer = null;
+        var entryGateNextBtnDefaultLabel = "";
         var ENTRY_GATE_LINES = [
           "欢迎来到我们为”恋恋小马“打造的驿站。",
           "我们把那些关于起点、汗水与聚光的瞬间，藏进了5个时空盒子。",
           "请带着你的好奇心出发，收集 36 份成长碎片。",
         ];
+
+        function syncEntryGateBackdropReadyState() {
+          if (!entryGateNextBtn) return true;
+          var sid = linearProgressEntrySceneId();
+          var hasStatic = !!SCENE_STATIC_BACKDROP[sid];
+          if (!hasStatic || sceneStaticBackdropActive(sid)) {
+            if (entryGateBackdropWaitTimer) {
+              clearInterval(entryGateBackdropWaitTimer);
+              entryGateBackdropWaitTimer = null;
+            }
+            if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
+            entryGateNextBtn.disabled = false;
+            entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
+            return true;
+          }
+          ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
+          if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
+          entryGateNextBtn.disabled = true;
+          entryGateNextBtn.textContent = "背景加载中…";
+          if (!entryGateBackdropWaitTimer) {
+            entryGateBackdropWaitTimer = setInterval(function () {
+              var targetSid = linearProgressEntrySceneId();
+              if (!SCENE_STATIC_BACKDROP[targetSid] || sceneStaticBackdropActive(targetSid)) {
+                syncEntryGateBackdropReadyState();
+                return;
+              }
+              ensureSceneStaticBackdropLoad(targetSid, { fetchPriority: "high" });
+            }, 180);
+          }
+          return false;
+        }
 
         function resetEntryLineReveal() {
           if (entryLineTimer) {
@@ -5692,6 +5843,7 @@
             entryGateLead.appendChild(p);
           }
           if (entryGateNextBtn) entryGateNextBtn.disabled = false;
+          syncEntryGateBackdropReadyState();
         }
         var gameLoopStarted = false;
         /** 已尝试拉取 CSV 且全部失败（与「加载尚未返回」区分） */
@@ -7059,14 +7211,6 @@
           } catch (eReady) {}
         }
 
-        function isBlessingScene3303(n) {
-          if (!n || typeof n !== "object") return false;
-          var k = n.sceneQuestionKey != null ? String(n.sceneQuestionKey).trim() : "";
-          if (k === "3303") return true;
-          var sc = n.scene != null ? String(n.scene).trim() : "";
-          return sc === "3303";
-        }
-
         function fillShowcaseBlessingBlock(article, n) {
           if (!article || !n) return;
           var typ = (n.type != null ? String(n.type) : "text").toLowerCase();
@@ -7098,7 +7242,7 @@
             im.alt = "";
             wireBlessingImagePreviewClick(im, img);
             wi.appendChild(im);
-            if (!isBlessingScene3303(n)) attachBlessingMediaLoadingHint(wi, im);
+            attachBlessingMediaLoadingHint(wi, im);
             article.appendChild(wi);
           } else if (vid) {
             var wv2 = document.createElement("div");
@@ -7115,7 +7259,7 @@
             im2.alt = "";
             wireBlessingImagePreviewClick(im2, img);
             wi2.appendChild(im2);
-            if (!isBlessingScene3303(n)) attachBlessingMediaLoadingHint(wi2, im2);
+            attachBlessingMediaLoadingHint(wi2, im2);
             article.appendChild(wi2);
           } else if (aud) {
             var wa2 = document.createElement("div");
@@ -9631,8 +9775,15 @@
           } else if (sid === 5) {
             scene5ReviewModeActive = false;
           }
-          /** 第五关最后一页「我看完了」：五关通关且五关祝福均已读完 → 直接去蛋糕页，不弹「去哪」里程碑引导 */
-          if (sid === 5 && allScenesComplete() && allScenesFullShowcaseSeen()) {
+          /**
+           * 第五关最后一页「我看完了」：始终优先跳生日页。
+           * 过去仅在 allScenesComplete + allScenesFullShowcaseSeen 时跳转，任一历史标记缺失就会卡在原页。
+           * 这里放宽为「第五关祝福流读完即跳转」，避免再次出现“看完不跳”。
+           */
+          if (sid === 5) {
+            try {
+              saveScene5MoleProgress();
+            } catch (eS5) {}
             updateSceneHud();
             syncPlatePresentation();
             window.location.href = CAKE_PAGE_URL;
@@ -9676,7 +9827,7 @@
           if (sid === 5) {
             return {
               title: "关于远方",
-              body: "所有的向往，都将在时光的旷野里相遇。”长按屏幕“完成一场跨越时间的奔跑。",
+              body: "所有的向往，都将在时光的旷野里相遇。“拍拍小马”完成一场跨越时间的奔跑。",
             };
           }
           return { title: "", body: "" };
@@ -10764,8 +10915,22 @@
         function appendOptimizedVideo(container, src, opts) {
           if (!container || !src) return null;
           opts = opts || {};
-          var resolvedSrc = resolveBlessingMediaUrl(String(src));
-          if (!resolvedSrc) return null;
+          var rawSrc = String(src || "").trim();
+          if (!rawSrc) return null;
+          var candidatePaths = [rawSrc];
+          if (/\.mov$/i.test(rawSrc) || /\.m4v$/i.test(rawSrc)) {
+            var mp4Try = rawSrc.replace(/\.(mov|m4v)$/i, ".mp4");
+            if (mp4Try !== rawSrc) candidatePaths.unshift(mp4Try);
+          }
+          var urlCandidates = [];
+          for (var ci = 0; ci < candidatePaths.length; ci++) {
+            var arr = resolveBlessingMediaCandidates(candidatePaths[ci]);
+            for (var cj = 0; cj < arr.length; cj++) {
+              var one = arr[cj];
+              if (one && urlCandidates.indexOf(one) < 0) urlCandidates.push(one);
+            }
+          }
+          if (!urlCandidates.length) return null;
           var isMobileView =
             window.matchMedia &&
             window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
@@ -10777,47 +10942,14 @@
           vid.playsInline = true;
           vid.setAttribute("playsinline", "");
           vid.setAttribute("webkit-playsinline", "true");
-          vid.preload = shouldConservativeLoad ? "none" : "metadata";
+          vid.preload = shouldConservativeLoad ? "metadata" : "auto";
           try {
             vid.referrerPolicy = "no-referrer";
           } catch (eVr) {}
-          if (!shouldConservativeLoad) {
-            vid.src = resolvedSrc;
-          }
           vid.style.width = "100%";
           if (opts.radius) vid.style.borderRadius = opts.radius;
           container.appendChild(vid);
-
-          function ensureVideoSrc() {
-            if (vid.src) return;
-            vid.src = resolvedSrc;
-            try {
-              vid.load();
-            } catch (eLoad) {}
-          }
-          var r0 = String(src);
-          if (/\.mov$/i.test(r0) || /\.m4v$/i.test(r0)) {
-            var mp4Try = r0.replace(/\.(mov|m4v)$/i, ".mp4");
-            if (mp4Try !== r0) {
-              vid.addEventListener(
-                "error",
-                function onMovErr() {
-                  if (vid.getAttribute("data-blessing-video-mov-fallback") === "1") return;
-                  vid.setAttribute("data-blessing-video-mov-fallback", "1");
-                  vid.removeEventListener("error", onMovErr);
-                  vid.src = resolveBlessingMediaUrl(mp4Try);
-                  try {
-                    vid.load();
-                  } catch (e2) {}
-                },
-                { once: true }
-              );
-            }
-          }
-          vid.addEventListener("pointerdown", ensureVideoSrc, { once: true });
-          if (shouldConservativeLoad) {
-            setTimeout(ensureVideoSrc, 900);
-          }
+          assignBlessingMediaWithFailover(vid, urlCandidates, isWeChatBrowser() ? 2600 : 3400);
           return vid;
         }
 
@@ -13427,8 +13559,10 @@
         function drawSkyAndLayers(scrollPx) {
           var ph = getGrasslandBackdropPhase();
           if (currentScene >= 1 && currentScene <= SCENE_COUNT) {
+            ensureInlineBackdropPlaceholderLoad(currentScene);
             ensureSceneStaticBackdropLoad(currentScene);
             if (drawSceneStaticBackdropCover(currentScene)) return;
+            if (drawInlineBackdropPlaceholderCover(currentScene)) return;
           }
           if (currentScene === 1 || currentScene === 5) {
             drawPlate1SunriseSkyAndSun(scrollPx, ph);
@@ -15578,6 +15712,7 @@
         function finalizeEntryGateToGrassland() {
           if (!entryGateRoot) return;
             var v = linearProgressEntrySceneId();
+            if (!syncEntryGateBackdropReadyState()) return;
             selectedEntrySceneId = v;
             if (!isNaN(v) && v >= 1 && v <= SCENE_COUNT) {
               var prevEntry = currentScene;
@@ -15621,6 +15756,7 @@
           entryGateNextBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
+            if (!syncEntryGateBackdropReadyState()) return;
             finalizeEntryGateToGrassland();
           });
         }
@@ -15681,7 +15817,7 @@
             e.stopPropagation();
             dismissSceneGuideTip();
             if (currentScene === 5 && !scene5ReviewModeActive && !scene5MolePassed) {
-              showTapDismissGameplayHint("长按屏幕，小马奔跑", 1000, { centerScreen: true });
+              showTapDismissGameplayHint("拍拍小马，小马奔跑", 1000, { centerScreen: true });
             }
           });
         }
@@ -15822,6 +15958,7 @@
               entryGateNextBtn.disabled = false;
             }
             startEntryLineReveal();
+            syncEntryGateBackdropReadyState();
           } else {
             entryGateRoot.hidden = true;
             startGameLoopIfNeeded();
