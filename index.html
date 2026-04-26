@@ -100,7 +100,7 @@
         --app-design-aspect-h: 16.2;
       }
       /**
-       * 整页内容舞台：全设备（含手机、平板、桌面）统一 9:16.2 contain，四周墨绿为 body 底；
+       * 整页内容舞台默认：PC、平板、横屏、大屏竖屏均 9:16.2 contain（四周墨绿为 body 底）；仅「窄屏竖屏手机」见下方 @media 铺满视口。
        * 主画布/背景/第一关互动均限定在这块舞台内。子树 position:fixed 在含 transform 的祖先内以本层为参照，故
        * JS 里画布尺寸用 #appStage 的 getBoundingClientRect、left/top 用 0，不可再用 (vw-W)/2 对可视窗取偏。
        */
@@ -127,6 +127,20 @@
          * 高窄屏 300px 见下方 @media (max-width: 460px) and (min-height: 880px) 内覆写。
          */
         --app-top-bar-width-max: min(90cqw, 340px);
+      }
+      /**
+       * 窄屏竖屏手机：舞台 100vw×100dvh，与 PC/平板 9:16.2 信箱区分（iPad 类竖屏宽约 ≥600px，不命中本条件，仍走 9:16.2）。
+       */
+      @media (orientation: portrait) and (max-width: 520px) {
+        #appStage {
+          left: 0;
+          top: 0;
+          transform: none;
+          width: 100vw;
+          height: 100dvh;
+          max-width: none;
+          max-height: none;
+        }
       }
       /** 舞台内用 cqw/cqh 代替整窗 vw/vh，避免弹窗/信筒在宽屏上按整窗视口拉宽 */
       #appStage .modal-card,
@@ -11215,7 +11229,7 @@
           var vw = window.innerWidth;
           var vh = window.innerHeight;
           /**
-           * 主画布 W×H 必须等于 #appStage 的可见框（全设备 9:16.2 信箱，由 CSS 决定）；
+           * 主画布 W×H 必须等于 #appStage 的可见框：默认 9:16.2 信箱；仅窄屏竖屏手机为整窗，由 CSS 决定；
            * 与 drawSceneStaticBackdropCover、第一关 cover 比例热点一致。画布在舞台内 left/top=0，勿用 (vw-W)/2。
            */
           var arW = 9;
