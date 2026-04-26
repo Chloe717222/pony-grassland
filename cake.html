@@ -477,7 +477,7 @@
       (function () {
         "use strict";
         /** 换音乐/大资源时递增，?v= 全页带载与 resolveCakeMedia 缓存破坏（避免浏览器还播旧 MP3） */
-        var CAKE_PAGE_BUILD = "20260426-zaichang2-letter-close-bgm";
+        var CAKE_PAGE_BUILD = "20260427-letterclose-bgm-failover";
         try {
           if (window.history && window.history.replaceState) {
             var uV = new URL(window.location.href);
@@ -714,12 +714,63 @@
           cakeBgm.addEventListener("canplay", clearBgmFallbackTimer);
         }
 
+        /**
+         * 长信结束曲：与主 BGM 相同须走多源。此前仅用 lcList[0]（多为加速域名），
+         * 新文件名 zaichang2 在 CDN 未同步、仅 GitHub/COS 有时会 404，整段无 error 换源则关闭后一直静音。
+         */
+        var letterCloseCandidateUrls = [];
+        var letterCloseCursor = 0;
+        var letterCloseFallbackTimer = null;
+        function clearLetterCloseFallbackTimer() {
+          try {
+            if (letterCloseFallbackTimer) clearTimeout(letterCloseFallbackTimer);
+          } catch (eLcf) {}
+          letterCloseFallbackTimer = null;
+        }
+        function applyLetterCloseCandidateAt(idx) {
+          if (!letterCloseBgm) return false;
+          if (idx < 0 || idx >= letterCloseCandidateUrls.length) return false;
+          letterCloseCursor = idx;
+          try {
+            try {
+              letterCloseBgm.referrerPolicy = "no-referrer";
+            } catch (eR) {}
+            letterCloseBgm.src = letterCloseCandidateUrls[idx];
+            letterCloseBgm.load();
+            clearLetterCloseFallbackTimer();
+            letterCloseFallbackTimer = setTimeout(function () {
+              if (!letterCloseBgm) return;
+              if (letterCloseBgm.readyState >= 1) return;
+              var next2 = letterCloseCursor + 1;
+              if (next2 < letterCloseCandidateUrls.length && applyLetterCloseCandidateAt(next2)) return;
+            }, 3200);
+            return true;
+          } catch (eA) {
+            return false;
+          }
+        }
+
         if (letterCloseBgm) {
           try {
             letterCloseBgm.referrerPolicy = "no-referrer";
-            var lcList = resolveCakeMediaCandidates(LETTER_CLOSE_BGM_SRC);
-            letterCloseBgm.src = lcList.length ? lcList[0] : versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
-            letterCloseBgm.load();
+            var lcList2 = resolveCakeMediaCandidates(LETTER_CLOSE_BGM_SRC);
+            for (var lci = 0; lci < lcList2.length; lci++) {
+              var lcu = lcList2[lci];
+              if (lcu && letterCloseCandidateUrls.indexOf(lcu) < 0) letterCloseCandidateUrls.push(lcu);
+            }
+            if (!letterCloseCandidateUrls.length) {
+              var lcone = versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
+              if (lcone) letterCloseCandidateUrls.push(lcone);
+            }
+            if (letterCloseCandidateUrls.length) {
+              applyLetterCloseCandidateAt(0);
+              letterCloseBgm.addEventListener("error", function () {
+                var nextL = letterCloseCursor + 1;
+                if (nextL < letterCloseCandidateUrls.length && applyLetterCloseCandidateAt(nextL)) return;
+              });
+              letterCloseBgm.addEventListener("loadedmetadata", clearLetterCloseFallbackTimer);
+              letterCloseBgm.addEventListener("canplay", clearLetterCloseFallbackTimer);
+            }
           } catch (eLc) {}
         }
 
@@ -984,8 +1035,20 @@
             letterCloseBgm.volume = BGM_TARGET_VOLUME;
             letterCloseBgm.currentTime = 0;
           } catch (eV) {}
-          var p2 = letterCloseBgm.play();
-          if (p2 && typeof p2.then === "function") p2.catch(function () {});
+          function tryPlayLetterOnce() {
+            var p2 = letterCloseBgm.play();
+            if (p2 && typeof p2.then === "function") {
+              p2.catch(function () {
+                var nx = letterCloseCursor + 1;
+                if (nx < letterCloseCandidateUrls.length && applyLetterCloseCandidateAt(nx)) {
+                  setTimeout(function () {
+                    tryPlayLetterOnce();
+                  }, 0);
+                }
+              });
+            }
+          }
+          tryPlayLetterOnce();
         }
 
         function blowCandles() {
@@ -1315,6 +1378,9 @@
               letterCloseBgm.pause();
               letterCloseBgm.currentTime = 0;
             } catch (eLc) {}
+            if (letterCloseCandidateUrls.length) {
+              applyLetterCloseCandidateAt(0);
+            }
           }
         }
 
