@@ -5875,6 +5875,8 @@
             startGameLoopIfNeeded();
             return;
           }
+          var waitStartedAt = Date.now();
+          var waitMaxMs = 1800;
           ensureInlineBackdropPlaceholderLoad(sid);
           ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
           if (sceneStaticBackdropActive(sid) || sceneInlineBackdropPlaceholderActive(sid)) {
@@ -5884,6 +5886,12 @@
           var waitTimer = setInterval(function () {
             var curSid = currentScene;
             if (!SCENE_STATIC_BACKDROP[curSid]) {
+              clearInterval(waitTimer);
+              startGameLoopIfNeeded();
+              return;
+            }
+            if (Date.now() - waitStartedAt >= waitMaxMs) {
+              /** 兜底：避免因 ready 标记异常导致整页不渲染。先启动循环，背景在后续帧继续重试加载。 */
               clearInterval(waitTimer);
               startGameLoopIfNeeded();
               return;
