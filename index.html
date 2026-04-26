@@ -5548,6 +5548,18 @@
             return "";
           }
         }
+        function resolveSceneBackdropRepoMirrorUrl(path, versionTag) {
+          var p = String(path || "").trim();
+          if (!p) return "";
+          try {
+            var rel = p.replace(/^\.\//, "");
+            var u = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + rel);
+            if (versionTag) u.searchParams.set("v", String(versionTag));
+            return u.href;
+          } catch (eMirror) {
+            return "";
+          }
+        }
 
         function ensureSceneStaticBackdropLoad(sid, opts) {
           var st = SCENE_STATIC_BACKDROP[sid];
@@ -5568,6 +5580,10 @@
           var localJpgVer = resolveCsvFetchUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
           var localSvgRaw = resolveCsvFetchUrl(st.svgUrl);
           var localJpgRaw = resolveCsvFetchUrl(st.jpgUrl);
+          var mirrorSvgVer = resolveSceneBackdropRepoMirrorUrl(st.svgUrl, DATA_SCHEMA_VERSION);
+          var mirrorJpgVer = resolveSceneBackdropRepoMirrorUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
+          var mirrorSvgRaw = resolveSceneBackdropRepoMirrorUrl(st.svgUrl, "");
+          var mirrorJpgRaw = resolveSceneBackdropRepoMirrorUrl(st.jpgUrl, "");
           var cosSvgVer = resolveSceneBackdropFallbackUrl(st.svgUrl, DATA_SCHEMA_VERSION);
           var cosJpgVer = resolveSceneBackdropFallbackUrl(st.jpgUrl, DATA_SCHEMA_VERSION);
           var cosSvgRaw = resolveSceneBackdropFallbackUrl(st.svgUrl, "");
@@ -5578,12 +5594,16 @@
                 localJpgRaw,
                 localSvgVer,
                 localSvgRaw,
+                mirrorJpgVer,
+                mirrorJpgRaw,
+                mirrorSvgVer,
+                mirrorSvgRaw,
                 cosJpgVer,
                 cosJpgRaw,
                 cosSvgVer,
                 cosSvgRaw,
               ]
-            : [localJpgVer, localSvgVer, cosJpgVer, cosSvgVer];
+            : [localJpgVer, localSvgVer, mirrorJpgVer, mirrorSvgVer, cosJpgVer, cosSvgVer];
           candidates = candidates.filter(function (u, i, arr) {
             return !!u && arr.indexOf(u) === i;
           });
