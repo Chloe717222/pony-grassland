@@ -9,6 +9,7 @@
     <!-- 与视口留边一致：舞台外为白底，避免状态栏/边距与墨绿底冲突 -->
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
     <link rel="dns-prefetch" href="//static.lianbirthday.top" />
@@ -24,9 +25,7 @@
           if (isNaN(n) || n < 1 || n > 5) n = 1;
           if (n === 5) n = 1;
           var pad = { 1: "01", 2: "02", 3: "03", 4: "04" }[n] || "01";
-          var relSvg = "content/svg-global/backgrounds/bg-scene-" + pad + ".svg?v=" + encodeURIComponent(SCHEMA_V);
           var relJpg = "content/svg-global/backgrounds/bg-scene-" + pad + ".jpg?v=" + encodeURIComponent(SCHEMA_V);
-          var hrefSvg = new URL(relSvg, location.href).href;
           var hrefJpg = new URL(relJpg, location.href).href;
           var L1 = document.createElement("link");
           L1.rel = "preload";
@@ -34,12 +33,7 @@
           L1.href = hrefJpg;
           L1.setAttribute("fetchpriority", "high");
           document.head.appendChild(L1);
-          var L2 = document.createElement("link");
-          L2.rel = "preload";
-          L2.as = "image";
-          L2.href = hrefSvg;
-          L2.setAttribute("fetchpriority", "low");
-          document.head.appendChild(L2);
+          /** 运行时在 ensureSceneStaticBackdropLoad 中先试 JPG 再试 SVG；预加载双份时若 JPG 成功，SVG 从未赋给 Image，Chrome 会报 preload 未使用。 */
         } catch (e0) {}
       })();
     </script>
