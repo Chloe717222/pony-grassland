@@ -7247,6 +7247,23 @@
           mediaEl.addEventListener("loadedmetadata", clearHint, { once: true });
           mediaEl.addEventListener("loadeddata", clearHint, { once: true });
           mediaEl.addEventListener("canplay", clearHint, { once: true });
+          /** 多源全失败时 assignBlessingMediaWithFailover 会派发，避免「努力加载中」永不清除 */
+          mediaEl.addEventListener(
+            "blessingmediaexhausted",
+            function () {
+              clearHint();
+              if (!wrapper) return;
+              if (wrapper.querySelector("[data-media-load-failed]")) return;
+              var failP = document.createElement("p");
+              failP.className = "plate1-blessing-block__text";
+              failP.setAttribute("data-media-load-failed", "1");
+              failP.textContent = "媒体未能加载，可刷新重试，或检查网络/稍后再试。";
+              try {
+                wrapper.appendChild(failP);
+              } catch (eF) {}
+            },
+            { once: true }
+          );
           // Cached images/video may already be ready before listeners attach.
           try {
             var tag = (mediaEl.tagName || "").toLowerCase();
@@ -10996,7 +11013,9 @@
           vid.style.width = "100%";
           if (opts.radius) vid.style.borderRadius = opts.radius;
           container.appendChild(vid);
-          assignBlessingMediaWithFailover(vid, urlCandidates, isWeChatBrowser() ? 2600 : 3400);
+          /** 大体积 mp4 首包/元数据可能 >3.4s，过短会误判换源、永远播不出 */
+          var vFailMs = isWeChatBrowser() ? 10000 : 15000;
+          assignBlessingMediaWithFailover(vid, urlCandidates, vFailMs);
           return vid;
         }
 
@@ -11563,6 +11582,13 @@
             pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
             pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
           } catch (eW) {}
+          /** 与底图回退同思路：主 CDN / 页路径异常时，尝试 Git 仓库公开镜像（大体积 mp4 等须已在仓库中）。 */
+          try {
+            var relMirror = rel.replace(/^\//, "");
+            pushUrl(
+              new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror).href
+            );
+          } catch (eMirror) {}
           pushUrl(resolveCsvFetchUrl(s));
           return out;
         }
@@ -11668,10 +11694,21 @@
                   : 2;
             pending.push({ el: el, r: r, pl: pl, vis: vis });
           }
+          var vMid = vh * 0.5;
           pending.sort(function (a, b) {
-            if (a.pl !== b.pl) return a.pl - b.pl;
+            /** 1) 当前视口内（用户停留处）永远优先于仅在前瞻带中、屏外的项，避免 40/帧 上限饿死「努力加载中」的图。 */
             if (a.vis !== b.vis) return a.vis - b.vis;
-            return a.r.top - b.r.top;
+            if (a.vis === 0) {
+              /** 2) 同屏内：已发起加载但未完成 (pl=1) 的优先，避免与大量未触发的 pl=0 抢同一排序键。 */
+              if (a.pl !== b.pl) return b.pl - a.pl;
+              /** 3) 再按与视口垂直中心的距离，优先用户视线中央附近的图。 */
+              var aCy = (a.r.top + a.r.bottom) * 0.5;
+              var bCy = (b.r.top + b.r.bottom) * 0.5;
+              return Math.abs(aCy - vMid) - Math.abs(bCy - vMid);
+            }
+            if (a.pl !== b.pl) return a.pl - b.pl;
+            if (a.vis === 1) return a.r.top - b.r.top;
+            return b.r.top - a.r.top;
           });
           var doneN = 0;
           for (var j = 0; j < pending.length; j++) {
@@ -11839,6 +11876,9 @@
           function tryNext() {
             if (done) return;
             if (idx >= list.length) {
+              try {
+                el.dispatchEvent(new Event("blessingmediaexhausted", { bubbles: true }));
+              } catch (eEx) {}
               finish();
               return;
             }
@@ -12057,7 +12097,9 @@
           } else if (tag === "img") {
             assignBlessingImageWithFailover(el, urlCandidates, 3500);
           } else if (tag === "audio" || tag === "video") {
-            assignBlessingMediaWithFailover(el, urlCandidates, isWeChatBrowser() ? 2600 : 3400);
+            var aFailMs = isWeChatBrowser() ? 2600 : 3400;
+            if (tag === "video") aFailMs = isWeChatBrowser() ? 10000 : 15000;
+            assignBlessingMediaWithFailover(el, urlCandidates, aFailMs);
           } else {
             el.src = u;
           }
