@@ -5831,6 +5831,7 @@
         var selectedEntrySceneId = 1;
         var entryLineTimer = null;
         var entryGateBackdropWaitTimer = null;
+        var entryGateBackdropWaitStartedAt = 0;
         var entryGateNextBtnDefaultLabel = "";
         var ENTRY_GATE_LINES = [
           "欢迎来到我们为”恋恋小马“打造的驿站。",
@@ -5842,11 +5843,25 @@
           if (!entryGateNextBtn) return true;
           var sid = linearProgressEntrySceneId();
           var hasStatic = !!SCENE_STATIC_BACKDROP[sid];
+          var allowByTimeout =
+            !!entryGateBackdropWaitStartedAt && Date.now() - entryGateBackdropWaitStartedAt >= 1800;
           if (!hasStatic || sceneStaticBackdropActive(sid)) {
             if (entryGateBackdropWaitTimer) {
               clearInterval(entryGateBackdropWaitTimer);
               entryGateBackdropWaitTimer = null;
             }
+            entryGateBackdropWaitStartedAt = 0;
+            if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
+            entryGateNextBtn.disabled = false;
+            entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
+            return true;
+          }
+          if (allowByTimeout) {
+            if (entryGateBackdropWaitTimer) {
+              clearInterval(entryGateBackdropWaitTimer);
+              entryGateBackdropWaitTimer = null;
+            }
+            entryGateBackdropWaitStartedAt = 0;
             if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
             entryGateNextBtn.disabled = false;
             entryGateNextBtn.textContent = entryGateNextBtnDefaultLabel;
@@ -5856,9 +5871,15 @@
           if (!entryGateNextBtnDefaultLabel) entryGateNextBtnDefaultLabel = entryGateNextBtn.textContent || "开始";
           entryGateNextBtn.disabled = true;
           entryGateNextBtn.textContent = "背景加载中…";
+          if (!entryGateBackdropWaitStartedAt) entryGateBackdropWaitStartedAt = Date.now();
           if (!entryGateBackdropWaitTimer) {
             entryGateBackdropWaitTimer = setInterval(function () {
               var targetSid = linearProgressEntrySceneId();
+              var timeoutHit = Date.now() - entryGateBackdropWaitStartedAt >= 1800;
+              if (timeoutHit) {
+                syncEntryGateBackdropReadyState();
+                return;
+              }
               if (!SCENE_STATIC_BACKDROP[targetSid] || sceneStaticBackdropActive(targetSid)) {
                 syncEntryGateBackdropReadyState();
                 return;
