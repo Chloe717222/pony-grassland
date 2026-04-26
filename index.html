@@ -11012,6 +11012,9 @@
           vid.style.width = "100%";
           if (opts.radius) vid.style.borderRadius = opts.radius;
           container.appendChild(vid);
+          try {
+            vid.setAttribute("data-blessing-media-raw", rawSrc);
+          } catch (eMraw) {}
           /** 大体积 mp4 首包/元数据可能 >3.4s，过短会误判换源、永远播不出 */
           var vFailMs = isWeChatBrowser() ? 10000 : 15000;
           assignBlessingMediaWithFailover(vid, urlCandidates, vFailMs);
@@ -11610,6 +11613,102 @@
           return out;
         }
 
+        /** 30s 内仍无可用画面/可播状态时，只走桶域名再拉一次；图用「同源 stem 的 .webp」路径以匹配桶内主力格式 */
+        var BLESSING_MEDIA_COS_SAFETY_MS = 30000;
+        function resolveCosOnlyBlessingUrl(relPath) {
+          if (relPath == null || typeof relPath !== "string") return "";
+          var s = relPath.replace(/^\.\//, "").trim();
+          if (!s || /^https?:\/\//i.test(s)) return "";
+          var base = typeof window !== "undefined" && window.MEDIA_CDN_FALLBACK_COS_BASE ? String(window.MEDIA_CDN_FALLBACK_COS_BASE).trim() : "";
+          if (!base) return "";
+          try {
+            var relP = s;
+            if (typeof BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined" && BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT) {
+              relP = relP.replace(/^content\//i, "");
+            }
+            var uB = new URL(relP, base.replace(/\/*$/, "/"));
+            uB.searchParams.set("v", String(DATA_SCHEMA_VERSION));
+            uB.searchParams.set("cos", "1");
+            uB.searchParams.set("t", String(Date.now()));
+            return uB.href;
+          } catch (eB) {
+            return "";
+          }
+        }
+        function blessingImageCosWebpPathFromRaw(rawStr) {
+          var s = String(rawStr || "").trim();
+          if (!s || /^https?:\/\//i.test(s)) return "";
+          if (/\.webp$/i.test(s)) return s;
+          if (/\.(png|jpe?g)$/i.test(s)) return blessingRasterWebpVariant(s);
+          if (/\.hei[cf]$/i.test(s)) return s.replace(/\.hei[cf]$/i, ".webp");
+          return s;
+        }
+        function clearCosWatchdogOn(el) {
+          if (!el) return;
+          var tid = el.getAttribute("data-blessing-cos-tid");
+          if (tid) {
+            try {
+              clearTimeout(parseInt(tid, 10));
+            } catch (eC) {}
+            try {
+              el.removeAttribute("data-blessing-cos-tid");
+            } catch (eR) {}
+          }
+        }
+        function mediaElementLooksReadyForCos(el, tagHint) {
+          if (!el) return false;
+          var n = (tagHint || (el.tagName && el.tagName.toLowerCase()) || "").toLowerCase();
+          if (n === "img") return !!el.complete && el.naturalWidth > 0;
+          if (n === "video") {
+            if (typeof el.readyState === "number" && el.readyState >= 3) return true;
+            if (el.videoWidth > 0) return true;
+            return false;
+          }
+          if (n === "audio") return typeof el.readyState === "number" && el.readyState >= 2;
+          return false;
+        }
+        function cancelMediaCosHailMary(el) {
+          clearCosWatchdogOn(el);
+        }
+        function scheduleMediaCosHailMary(el, tagHint) {
+          if (!el) return;
+          if (!window.MEDIA_CDN_FALLBACK_COS_BASE || !String(window.MEDIA_CDN_FALLBACK_COS_BASE).trim()) return;
+          try {
+            clearCosWatchdogOn(el);
+          } catch (e0) {}
+          var n = (tagHint || (el.tagName && el.tagName.toLowerCase()) || "").toLowerCase();
+          var tId = setTimeout(function () {
+            try {
+              el.removeAttribute("data-blessing-cos-tid");
+            } catch (eR) {}
+            if (mediaElementLooksReadyForCos(el, n)) return;
+            var raw = (el.getAttribute("data-blessing-media-raw") || "").trim();
+            if (!raw || /^https?:\/\//i.test(raw)) return;
+            if (n === "img") {
+              var relW = blessingImageCosWebpPathFromRaw(raw);
+              if (!relW) return;
+              var u1 = resolveCosOnlyBlessingUrl(relW);
+              if (!u1) return;
+              try {
+                el.referrerPolicy = "no-referrer";
+              } catch (eRef) {}
+              el.src = u1;
+              if (typeof el.load === "function") el.load();
+            } else {
+              var u2 = resolveCosOnlyBlessingUrl(raw);
+              if (!u2) return;
+              try {
+                el.referrerPolicy = "no-referrer";
+              } catch (eRef2) {}
+              el.src = u2;
+              if (typeof el.load === "function") el.load();
+            }
+          }, BLESSING_MEDIA_COS_SAFETY_MS);
+          try {
+            el.setAttribute("data-blessing-cos-tid", String(tId));
+          } catch (eA) {}
+        }
+
         /** 裂图/错缓存后重试：在 URL 上加 r= 时间盐，强制走新请求，避免 404/空体被缓存键复用 */
         function blessingImageUrlWithRetryBust(href, salt) {
           if (!href || typeof href !== "string") return href;
@@ -11689,13 +11788,29 @@
           return out;
         }
 
-        /** 列表与祝福流预览：PNG/JPEG 改为并列 .webp（须 npm run generate:webp 并上传 COS）；外链与其它格式不变 */
+        /** 列表与祝福流预览：PNG/JPEG 改为并列 .webp（须 npm run generate:webp 并上传）；外链或其它格式不变 */
         function blessingRasterWebpVariant(raw) {
           var s = String(raw || "").trim();
           if (!s || /^https?:\/\//i.test(s)) return s;
           if (!/\.(png|jpe?g)$/i.test(s)) return s;
           return s.replace(/\.(png|jpe?g)$/i, ".webp");
         }
+        /**
+         * data 里若只写了 .webp，而 CDN 未传 webp 但传了 jpg/png 时，补同源 stem 的栅格回退，避免只打一链 404。
+         */
+        function blessingImageRasterPathFallbacks(rawStr) {
+          var s = String(rawStr || "").trim();
+          if (!s || /^https?:\/\//i.test(s)) return [];
+          if (!/\.webp$/i.test(s)) return [];
+          var stem = s.replace(/\.webp$/i, "");
+          return [stem + ".jpg", stem + ".jpeg", stem + ".png", stem + ".JPG", stem + ".PNG"];
+        }
+        /** 全候选失败时避免裂图问号，用轻量 SVG 垫底（与下方失败文案同显） */
+        var BLESSING_IMG_EXHAUSTED_PLACEHOLDER =
+          "data:image/svg+xml," +
+          encodeURIComponent(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360'><rect fill='#f0f0f0' width='100%' height='100%'/><text x='50%' y='45%' dominant-baseline='middle' text-anchor='middle' fill='#666' font-size='15' font-family='system-ui,sans-serif'>配图未能从网络加载</text><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' fill='#999' font-size='12' font-family='system-ui,sans-serif'>可刷新、换网络或稍后再试</text></svg>"
+          );
 
         /** 可视区再加载：避免一次性给大量祝福图赋 src 导致并发下载/解码卡顿。 */
         var blessingImgLazyObserver = null;
@@ -11934,6 +12049,11 @@
               try {
                 el.dispatchEvent(new Event("blessingmediaexhausted", { bubbles: true }));
               } catch (eEx) {}
+              try {
+                if (el && el.tagName && String(el.tagName).toLowerCase() === "img" && BLESSING_IMG_EXHAUSTED_PLACEHOLDER) {
+                  el.src = BLESSING_IMG_EXHAUSTED_PLACEHOLDER;
+                }
+              } catch (ePh) {}
               finish();
               return;
             }
@@ -11955,9 +12075,11 @@
               tryNext();
               return;
             }
+            cancelMediaCosHailMary(el);
             finish();
           };
           tryNext();
+          scheduleMediaCosHailMary(el, "img");
         }
 
         /**
@@ -12024,7 +12146,14 @@
           el.onloadeddata = function () {
             finish();
           };
+          el.addEventListener("canplay", function blessingCosCancel0() {
+            cancelMediaCosHailMary(el);
+          }, { once: true, passive: true });
+          el.addEventListener("playing", function blessingCosCancel1() {
+            cancelMediaCosHailMary(el);
+          }, { once: true, passive: true });
           tryNext();
+          scheduleMediaCosHailMary(el, (el.tagName && el.tagName.toLowerCase()) || "");
         }
 
         function closeBlessingImageLightbox() {
@@ -12149,6 +12278,10 @@
             var previewPath = blessingRasterWebpVariant(rawStr);
             candidatePaths.push(previewPath);
             if (previewPath !== rawStr) candidatePaths.push(rawStr);
+            var wfb = blessingImageRasterPathFallbacks(rawStr);
+            for (var wfi = 0; wfi < wfb.length; wfi++) {
+              if (wfb[wfi] && candidatePaths.indexOf(wfb[wfi]) < 0) candidatePaths.push(wfb[wfi]);
+            }
             if (/\.hei[cf]$/i.test(rawStr)) {
               candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".jpg"));
               candidatePaths.push(rawStr.replace(/\.hei[cf]$/i, ".jpeg"));
@@ -12166,10 +12299,12 @@
           }
           if (!urlCandidates.length) return;
           var u = urlCandidates[0];
-          if (tag === "img") {
+          if (tag === "img" || tag === "video" || tag === "audio") {
             try {
               el.setAttribute("data-blessing-media-raw", rawStr);
             } catch (eRaw) {}
+          }
+          if (tag === "img") {
             try {
               el.setAttribute("data-media-src-list", JSON.stringify(urlCandidates));
             } catch (eStore) {}
@@ -12191,30 +12326,33 @@
             }
           } catch (eR) {}
           if (tag === "img" && !useOriginal) {
+            /** 单 URL 超时过短会：慢网/COS 尚未首包就切下一源，表现为「努力加载中」很久后仍失败；略拉长 */
+            var imgFailMsNoLazy = isWeChatBrowser() ? 5200 : 6800;
+            var imgFailMsLazy = 9200;
             if (noLazy) {
-              assignBlessingImageWithFailover(el, urlCandidates, isWeChatBrowser() ? 2200 : 2800);
+              assignBlessingImageWithFailover(el, urlCandidates, imgFailMsNoLazy);
               return;
             }
             /** 微信内置浏览器中，IntersectionObserver + lazy 组合偶发长时间不触发，导致祝福图空白；这里直接落 src 兜底。 */
             if (isWeChatBrowser()) {
-              assignBlessingImageWithFailover(el, urlCandidates, 2800);
+              assignBlessingImageWithFailover(el, urlCandidates, imgFailMsNoLazy);
               return;
             }
             var obs = ensureBlessingImgLazyObserver();
             if (obs) {
               el.setAttribute("data-lazy-src", u);
               el.setAttribute("data-lazy-src-list", JSON.stringify(urlCandidates));
-              el.setAttribute("data-lazy-timeout-ms", "3200");
+              el.setAttribute("data-lazy-timeout-ms", String(imgFailMsLazy));
               try {
                 obs.observe(el);
               } catch (eObs) {
-                assignBlessingImageWithFailover(el, urlCandidates, 3200);
+                assignBlessingImageWithFailover(el, urlCandidates, imgFailMsLazy);
               }
             } else {
-              assignBlessingImageWithFailover(el, urlCandidates, 3200);
+              assignBlessingImageWithFailover(el, urlCandidates, imgFailMsLazy);
             }
           } else if (tag === "img") {
-            assignBlessingImageWithFailover(el, urlCandidates, 3500);
+            assignBlessingImageWithFailover(el, urlCandidates, 9000);
           } else if (tag === "audio" || tag === "video") {
             var aFailMs = isWeChatBrowser() ? 2600 : 3400;
             if (tag === "video") aFailMs = isWeChatBrowser() ? 10000 : 15000;

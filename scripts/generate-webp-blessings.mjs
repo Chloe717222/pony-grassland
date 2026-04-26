@@ -6,6 +6,9 @@
  * 强制覆盖已有 webp：npm run generate:webp -- --force
  *
  * 依赖：npm i（安装 sharp）。生成后需将 .webp 一并上传 COS（与 png/jpg 同路径规则）。
+ *
+ * 压缩策略（偏体积，便于弱网首包）：长边超 1920 先缩小再编码；WebP quality 约 76、effort 5。
+ * 重转：npm run generate:webp -- --force
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -55,7 +58,15 @@ async function convertOne(absIn, force) {
     const stOut = fs.statSync(outAbs);
     if (stOut.mtimeMs >= stIn.mtimeMs) return "skip";
   }
-  await sharp(absIn).webp({ quality: 88, effort: 4 }).toFile(outAbs);
+  const maxSide = 1920;
+  const meta = await sharp(absIn).metadata();
+  let pipeline = sharp(absIn).rotate();
+  if (meta.width && meta.height && (meta.width > maxSide || meta.height > maxSide)) {
+    pipeline = pipeline.resize(maxSide, maxSide, { fit: "inside", withoutEnlargement: true });
+  }
+  await pipeline
+    .webp({ quality: 76, effort: 5, smartSubsample: true, alphaQuality: 80 })
+    .toFile(outAbs);
   return "ok";
 }
 
