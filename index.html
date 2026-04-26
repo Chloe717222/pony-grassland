@@ -5521,6 +5521,10 @@
           var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
           return !!(st && st.ready && st.img && st.img.naturalWidth > 0);
         }
+        /** 全屏成稿或内联占位已铺满时，与 sceneStaticBackdropActive 一样跳过程序草/风/前景氛围 */
+        function sceneFullBleedBackdropCoverActive(sid) {
+          return sceneStaticBackdropActive(sid) || sceneInlineBackdropPlaceholderActive(sid);
+        }
 
         function sceneStaticBackdropActive(sid) {
           var st = SCENE_STATIC_BACKDROP[sid];
@@ -5635,6 +5639,7 @@
             prime = SCENE_STATIC_BACKDROP[cs] ? cs : 1;
           }
           ensureSceneStaticBackdropLoad(prime, { fetchPriority: "high" });
+          if (SCENE_STATIC_BACKDROP[prime]) ensureInlineBackdropPlaceholderLoad(prime);
           var delayMs = 0;
           for (var i = 1; i <= SCENE_COUNT; i++) {
             if (i === prime || !SCENE_STATIC_BACKDROP[i]) continue;
@@ -9733,6 +9738,7 @@
           currentScene = sid;
           if (sid !== 2) scene2DropBoostActive = false;
           ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
+          if (SCENE_STATIC_BACKDROP[sid]) ensureInlineBackdropPlaceholderLoad(sid);
           if (prev === 1 && sid !== 1) dismissScene1EnlightenToast();
           if (sid >= 2 && sid <= 5) {
             ponyNormX = 0.5;
@@ -11547,7 +11553,7 @@
             }
           }
           try {
-            return resolveCsvFetchUrl(s);
+            return resolveCsvFetchUrl(s, DATA_SCHEMA_VERSION);
           } catch (eM) {
             return s;
           }
@@ -11579,7 +11585,11 @@
               if (typeof BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined" && BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT) {
                 relPath = relPath.replace(/^content\//i, "");
               }
-              pushUrl(new URL(relPath, base.replace(/\/*$/, "/")).href);
+              var uB = new URL(relPath, base.replace(/\/*$/, "/"));
+              try {
+                uB.searchParams.set("v", String(DATA_SCHEMA_VERSION));
+              } catch (eV) {}
+              pushUrl(uB.href);
             } catch (eBase) {}
           }
           pushByBase(BLESSINGS_MEDIA_CDN_BASE);
@@ -11590,11 +11600,92 @@
           /** 与底图回退同思路：主 CDN / 页路径异常时，尝试 Git 仓库公开镜像（大体积 mp4 等须已在仓库中）。 */
           try {
             var relMirror = rel.replace(/^\//, "");
-            pushUrl(
-              new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror).href
-            );
+            var mU = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror);
+            try {
+              mU.searchParams.set("v", String(DATA_SCHEMA_VERSION));
+            } catch (eM0) {}
+            pushUrl(mU.href);
           } catch (eMirror) {}
-          pushUrl(resolveCsvFetchUrl(s));
+          pushUrl(resolveCsvFetchUrl(s, DATA_SCHEMA_VERSION));
+          return out;
+        }
+
+        /** 裂图/错缓存后重试：在 URL 上加 r= 时间盐，强制走新请求，避免 404/空体被缓存键复用 */
+        function blessingImageUrlWithRetryBust(href, salt) {
+          if (!href || typeof href !== "string") return href;
+          try {
+            var u = new URL(href, typeof window !== "undefined" ? window.location.href : "https://example.com/");
+            u.searchParams.set("r", String(salt));
+            return u.href;
+          } catch (eB) {
+            return href;
+          }
+        }
+        /**
+         * 首轮多源均失败后：第二遍以「COS 直连 → 加速 → 主 CDN → 镜像 → 同源」优先，便于全列试过后再显式走桶。
+         * 仅接受相对路径；绝对 http(s) 的外链无此阶段（与 resolveBlessingMediaCandidates 一致）。
+         */
+        function resolveBlessingMediaCosPrioForRetry(raw) {
+          if (raw == null || typeof raw !== "string") return [];
+          var s = raw.trim();
+          if (!s || /^https?:\/\//i.test(s)) return [];
+          var rel = s.replace(/^\.\//, "");
+          var out = [];
+          function pushOne(u) {
+            if (!u || out.indexOf(u) >= 0) return;
+            out.push(u);
+          }
+          function pushByBase(baseRaw) {
+            var base = String(baseRaw || "").trim();
+            if (!base) return;
+            try {
+              var relPath = rel;
+              if (typeof BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT !== "undefined" && BLESSINGS_MEDIA_CDN_STRIP_LEADING_CONTENT) {
+                relPath = relPath.replace(/^content\//i, "");
+              }
+              var uB = new URL(relPath, base.replace(/\/*$/, "/"));
+              try {
+                uB.searchParams.set("v", String(DATA_SCHEMA_VERSION));
+              } catch (eV) {}
+              pushOne(uB.href);
+            } catch (eBase) {}
+          }
+          pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_FALLBACK_COS_BASE : "");
+          pushByBase(typeof window !== "undefined" ? window.MEDIA_CDN_ACCELERATION_BASE : "");
+          pushByBase(BLESSINGS_MEDIA_CDN_BASE);
+          try {
+            var relMirror = rel.replace(/^\//, "");
+            var mU = new URL("https://cdn.jsdelivr.net/gh/Chloe717222/pony-grassland@main/" + relMirror);
+            try {
+              mU.searchParams.set("v", String(DATA_SCHEMA_VERSION));
+            } catch (eM0) {}
+            pushOne(mU.href);
+          } catch (eMirror) {}
+          pushOne(resolveCsvFetchUrl(s, DATA_SCHEMA_VERSION));
+          return out;
+        }
+        function buildBlessingImageRetryList(primaryList, el) {
+          var out = [];
+          function p(u) {
+            if (!u || out.indexOf(u) >= 0) return;
+            out.push(u);
+          }
+          var t0 = Date.now();
+          var n = 0;
+          var raw = "";
+          try {
+            raw = (el && el.getAttribute && el.getAttribute("data-blessing-media-raw")) || "";
+          } catch (eR) {}
+          raw = String(raw || "").trim();
+          if (raw) {
+            var cosPrio = resolveBlessingMediaCosPrioForRetry(raw);
+            for (var c = 0; c < cosPrio.length; c++) {
+              p(blessingImageUrlWithRetryBust(cosPrio[c], t0 + n++));
+            }
+          }
+          for (var i = 0; i < primaryList.length; i++) {
+            p(blessingImageUrlWithRetryBust(primaryList[i], t0 + 10000 + n++));
+          }
           return out;
         }
 
@@ -11800,6 +11891,7 @@
 
         /**
          * 对单个 <img> 执行“超时 + onerror”双触发回退，避免某一节点长时间卡住导致持续空白。
+         * 首轮全部失败后：自动跑第二轮——带 r= 的强制重发 + 优先 COS/桶域（见 buildBlessingImageRetryList），减轻裂图/坏缓存与末位 CDN 全挂。
          */
         function assignBlessingImageWithFailover(el, urls, timeoutMs) {
           if (!el) return;
@@ -11812,6 +11904,8 @@
               })
             : [];
           if (!list.length) return;
+          var primaryList = list.slice();
+          var pass = 0;
           var idx = 0;
           var done = false;
           var timer = 0;
@@ -11827,6 +11921,19 @@
           function tryNext() {
             if (done) return;
             if (idx >= list.length) {
+              if (pass === 0) {
+                var nlist = buildBlessingImageRetryList(primaryList, el);
+                if (nlist.length) {
+                  pass = 1;
+                  list = nlist;
+                  idx = 0;
+                  tryNext();
+                  return;
+                }
+              }
+              try {
+                el.dispatchEvent(new Event("blessingmediaexhausted", { bubbles: true }));
+              } catch (eEx) {}
               finish();
               return;
             }
@@ -11844,6 +11951,10 @@
             tryNext();
           };
           el.onload = function () {
+            if (el.naturalWidth < 1 || el.naturalHeight < 1) {
+              tryNext();
+              return;
+            }
             finish();
           };
           tryNext();
@@ -12056,6 +12167,9 @@
           if (!urlCandidates.length) return;
           var u = urlCandidates[0];
           if (tag === "img") {
+            try {
+              el.setAttribute("data-blessing-media-raw", rawStr);
+            } catch (eRaw) {}
             try {
               el.setAttribute("data-media-src-list", JSON.stringify(urlCandidates));
             } catch (eStore) {}
@@ -13316,7 +13430,7 @@
 
         function drawAmbientFront() {
           if (currentScene === 2) return;
-          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneStaticBackdropActive(currentScene)) return;
+          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneFullBleedBackdropCoverActive(currentScene)) return;
           var now = performance.now();
           if (ambientRabbit) {
             var rx = ambientRabbit.x;
@@ -13432,7 +13546,7 @@
          */
         function drawEndlessGrass(scrollPx, phOverride) {
           var ph = phOverride || getGrasslandBackdropPhase();
-          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneStaticBackdropActive(currentScene)) return;
+          if (currentScene >= 1 && currentScene <= SCENE_COUNT && sceneFullBleedBackdropCoverActive(currentScene)) return;
           var farY = H * 0.36;
           var grassA, grassB, grassC, strokeG, gradTop, gradBot;
           if (ph._hugDuskGrass) {
@@ -13655,6 +13769,11 @@
           if (currentScene >= 1 && currentScene <= SCENE_COUNT) {
             ensureSceneStaticBackdropLoad(currentScene);
             if (drawSceneStaticBackdropCover(currentScene)) return;
+            /** 高清成稿未 onload 时，用内联 data/SVG 占位（与程序天幕二选一），首屏即见「成稿感」而非等网络拉完 */
+            if (SCENE_STATIC_BACKDROP[currentScene]) {
+              ensureInlineBackdropPlaceholderLoad(currentScene);
+              if (drawInlineBackdropPlaceholderCover(currentScene)) return;
+            }
           }
           if (currentScene === 1 || currentScene === 5) {
             drawPlate1SunriseSkyAndSun(scrollPx, ph);
@@ -14551,7 +14670,7 @@
          */
         function drawPlate1GentleWind() {
           if (currentScene !== 1) return;
-          if (sceneStaticBackdropActive(1)) return;
+          if (sceneFullBleedBackdropCoverActive(1)) return;
           var u = smoothstep01(typeof plate1RiseProgress === "number" ? plate1RiseProgress : 0);
           var now = performance.now() * 0.001;
           ctx.save();
