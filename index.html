@@ -100,20 +100,20 @@
         --app-design-aspect-h: 16.2;
       }
       /**
-       * 整页内容舞台：在浏览器窗口内作 contain（上下或左右留边），
-       * 留边区域在 html/body 白底上，不单独拉伸主画布。子元素 position:fixed 以本层为参照（本层带 transform）。
-       * container 供子树内 100cqw/100cqh 等相对于舞台宽度/高度，而非整窗视口 100vw。
+       * 整页舞台：始终铺满视口，主画布 + 全屏底图 + 同坐标系交互（与 resize、第一关 fixed 热点一致）。
+       * 已取消桌面 9:16.2 两侧留边，避免用户只看到「中间一条图」、互动与背景对不齐；舞台避免 transform
+       * 以免曾导致子 fixed 画布相对舞台错位、被 overflow 裁切。
        */
       #appStage {
         position: fixed;
         z-index: 2;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: min(100vw, calc(100dvh * var(--app-design-aspect-w) / var(--app-design-aspect-h)));
-        height: min(100dvh, calc(100vw * var(--app-design-aspect-h) / var(--app-design-aspect-w)));
-        max-width: 100%;
-        max-height: 100%;
+        left: 0;
+        top: 0;
+        transform: none;
+        width: 100vw;
+        height: 100dvh;
+        max-width: none;
+        max-height: none;
         overflow: hidden;
         pointer-events: auto;
         isolation: isolate;
@@ -127,21 +127,6 @@
          * 高窄屏 300px 见下方 @media (max-width: 460px) and (min-height: 880px) 内覆写。
          */
         --app-top-bar-width-max: min(90cqw, 340px);
-      }
-      /**
-       * 手机端自适应：不再强制 9:16.2 信箱式舞台，直接铺满可用视口。
-       * 桌面端仍保持上面的 9:16.2 强制展示。
-       */
-      @media (hover: none) and (pointer: coarse), (max-width: 900px) {
-        #appStage {
-          left: 0;
-          top: 0;
-          transform: none;
-          width: 100vw;
-          height: 100dvh;
-          max-width: none;
-          max-height: none;
-        }
       }
       /** 舞台内用 cqw/cqh 代替整窗 vw/vh，避免弹窗/信筒在宽屏上按整窗视口拉宽 */
       #appStage .modal-card,
@@ -242,7 +227,7 @@
           "Hiragino Sans GB",
           "Microsoft YaHei",
           sans-serif;
-        /** 9:16.2 舞台外留白：恢复墨绿背景，主画面仍由 #appStage 内 canvas 绘制 */
+        /** 全屏时若尚未绘完：墨绿底；主画面由 #appStage 内 canvas 全幅绘制 */
         background: #123629;
         -webkit-font-smoothing: antialiased;
       }
@@ -5202,7 +5187,7 @@
         var FORK_INTERVAL_STEPS = 500;
 
         var canvas = document.getElementById("gameCanvas");
-        /** 动态层（如第五关里程弹窗、年份大字号）应挂到 #appStage，与主界面同一 9:16.2 坐标系，避免直接挂到 body */
+        /** 动态层（如第五关里程弹窗、年份大字号）应挂到 #appStage，与主界面同一全屏舞台坐标系，避免直接挂到 body */
         function mountToAppStage(node) {
           if (!node) return;
           var st = document.getElementById("appStage");
@@ -5343,6 +5328,9 @@
           { x: 36, y: 58 },
           { x: 86, y: 64 },
         ];
+        /** 与底图 scene1 成稿一致，用于首帧底图未 decode 时与 drawSceneStaticBackdropCover 同几何 */
+        var SCENE1_BACKDROP_DESIGN_W = 768;
+        var SCENE1_BACKDROP_DESIGN_H = 1376;
         var scene1ClickItems = [];
         var scene1CollectedByPoolId = {};
         /** 板块 1 日出亮度 0→1（单调不减，每次进入均完整播放） */
@@ -5621,6 +5609,11 @@
             if (im.naturalWidth > 0) {
               st.ready = true;
               st.retryAt = 0;
+              if (sid === 1) {
+                try {
+                  layoutScene1ClickHotspotPositions();
+                } catch (eL) {}
+              }
             }
           };
           /** 优先同源 SVG，失败自动回退 JPG，再走 COS/CDN 同路径兜底。 */
@@ -5662,6 +5655,52 @@
           var dy = (H - dh) * 0.5;
           ctx.drawImage(st.img, dx, dy, dw, dh);
           return true;
+        }
+
+        /**
+         * 第一关热点坐标为成稿上「图像内」百分比。铃筒栏 plate1-bell-inner 在横屏/平板上会远窄于全屏底图，不能用 grid 的 % 对齐画布。
+         * 与 drawSceneStaticBackdropCover 同式：在画布 W×H 上算 cover 矩形，再把 % 投到与底图一致的位置，并以 fixed 对齐 gameCanvas 的 getBoundingClientRect。
+         */
+        function getScene1BackdropCoverInCanvasSpace() {
+          var st = SCENE_STATIC_BACKDROP[1];
+          var iw = SCENE1_BACKDROP_DESIGN_W;
+          var ih = SCENE1_BACKDROP_DESIGN_H;
+          if (st && st.img && st.img.naturalWidth > 0 && st.img.naturalHeight > 0) {
+            iw = st.img.naturalWidth;
+            ih = st.img.naturalHeight;
+          }
+          if (W < 1 || H < 1) return null;
+          var scale = Math.max(W / iw, H / ih);
+          var dw = iw * scale;
+          var dh = ih * scale;
+          var dx = (W - dw) * 0.5;
+          var dy = (H - dh) * 0.5;
+          return { dx: dx, dy: dy, dw: dw, dh: dh };
+        }
+
+        function layoutScene1ClickHotspotPositions() {
+          if (currentScene !== 1 || plate1AllReadViewActive || !scene1ClickGrid) return;
+          if (!canvas || W < 1 || H < 1) return;
+          if (scene1ClickStage && scene1ClickStage.hidden) return;
+          var r = getScene1BackdropCoverInCanvasSpace();
+          if (!r) return;
+          try {
+            var cr = canvas.getBoundingClientRect();
+            var nList = scene1ClickGrid.querySelectorAll("button.scene1-click-btn");
+            for (var i = 0; i < nList.length; i++) {
+              var pos = SCENE1_CLICK_POSITIONS[i];
+              if (!pos) pos = { x: 50, y: 50 };
+              var lcx = r.dx + (pos.x / 100) * r.dw;
+              var lcy = r.dy + (pos.y / 100) * r.dh;
+              var btn = nList[i];
+              if (!btn) continue;
+              btn.style.position = "fixed";
+              btn.style.left = cr.left + lcx + "px";
+              btn.style.top = cr.top + lcy + "px";
+              btn.style.right = "auto";
+              btn.style.bottom = "auto";
+            }
+          } catch (eLayout) {}
         }
         /** 板块 1：小马纵向（画布坐标），由祝福流 #plate1BlessingStream 底边推算 */
         var plate1PonyYCanvasCache = 0;
@@ -6427,7 +6466,7 @@
         }
 
         /**
-         * 视口坐标 → 主画布内坐标。画布在 #appStage（含 transform）内，不能假定 clientX 与画布左缘对齐视口。
+         * 视口坐标 → 主画布内坐标。以 canvas.getBoundingClientRect 为准；勿假定全窗即画布等宽。
          */
         function clientToCanvasLocal(clientX, clientY) {
           if (canvas == null || W < 1 || H < 1) {
@@ -6955,8 +6994,6 @@
               btn.type = "button";
               btn.className = "scene1-click-btn scene1-click-btn--ghost";
               var pos = SCENE1_CLICK_POSITIONS[idx] || { x: 50, y: 50 };
-              btn.style.left = pos.x + "%";
-              btn.style.top = pos.y + "%";
               btn.setAttribute("data-collected", collected ? "1" : "0");
               btn.setAttribute(
                 "aria-label",
@@ -7024,6 +7061,9 @@
             })(i, scene1ClickItems[i]);
           }
           syncScene1ClickTitle();
+          try {
+            layoutScene1ClickHotspotPositions();
+          } catch (eRender1) {}
         }
 
         function resetScene1ClickMissionState() {
@@ -8853,6 +8893,11 @@
           if (sceneHud) sceneHud.classList.toggle("scene-hud--scene2-allread", allReadHud);
           if (sceneHudProgress) sceneHudProgress.classList.toggle("scene-hud--scene2-allread", allReadHud);
           updateSceneHud();
+          if (currentScene === 1 && !plate1AllReadViewActive) {
+            try {
+              layoutScene1ClickHotspotPositions();
+            } catch (eSync1) {}
+          }
         }
 
         function loadScene100ShownMap() {
@@ -11170,43 +11215,59 @@
           var vw = window.innerWidth;
           var vh = window.innerHeight;
           /**
-           * 尺寸策略与 CSS 保持一致：
-           * - 手机端（coarse pointer）全屏铺满视口；
-           * - 桌面端维持 9:16.2 contain。
-           * 背景绘制使用 drawSceneStaticBackdropCover，因此手机端即为 cover（铺满并允许裁切）。
+           * 主画布 W×H 取 #appStage.getBoundingClientRect()（整窗铺满 100vw×100dvh），与静态底图 cover、
+           * 第一关热点同坐标；画布 left/top 为 0。若取不到再回退 vw/vh 的 9:16.2 计算。
            */
           var arW = 9;
           var arH = 16.2;
-          var isMobileViewport = false;
-          try {
-            isMobileViewport =
-              !!window.matchMedia &&
-              window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-          } catch (eMm) {
-            isMobileViewport = false;
-          }
-          if (!isMobileViewport) {
-            try {
-              var hasTouch =
-                ("ontouchstart" in window) ||
-                ((navigator && navigator.maxTouchPoints) || 0) > 0;
-              var compactScreen = Math.min(vw, vh) <= 900;
-              if (hasTouch && compactScreen) isMobileViewport = true;
-            } catch (eTouch) {}
-          }
-          if (isMobileViewport) {
-            W = Math.max(1, Math.floor(vw));
-            H = Math.max(1, Math.floor(vh));
-          } else {
-            if (vw / vh > arW / arH) {
-              H = vh;
-              W = Math.max(1, Math.floor((vh * arW) / arH));
-            } else {
-              W = vw;
-              H = Math.max(1, Math.floor((vw * arH) / arW));
-            }
-          }
           syncStationChrome();
+          var stageEl = document.getElementById("appStage");
+          var sw = 0;
+          var sh = 0;
+          try {
+            if (stageEl) {
+              var sbr = stageEl.getBoundingClientRect();
+              sw = sbr.width;
+              sh = sbr.height;
+            }
+          } catch (eSt) {}
+          if (sw < 1 || sh < 1) {
+            var isMobileViewport = false;
+            try {
+              isMobileViewport =
+                !!window.matchMedia &&
+                window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+            } catch (eMm) {
+              isMobileViewport = false;
+            }
+            if (!isMobileViewport) {
+              try {
+                var hasTouch =
+                  ("ontouchstart" in window) || ((navigator && navigator.maxTouchPoints) || 0) > 0;
+                var compactScreen = Math.min(vw, vh) <= 900;
+                if (hasTouch && compactScreen) isMobileViewport = true;
+              } catch (eTouch) {}
+            }
+            if (isMobileViewport) {
+              W = Math.max(1, Math.floor(vw));
+              H = Math.max(1, Math.floor(vh));
+            } else {
+              if (vw / vh > arW / arH) {
+                H = vh;
+                W = Math.max(1, Math.floor((vh * arW) / arH));
+              } else {
+                W = vw;
+                H = Math.max(1, Math.floor((vw * arH) / arW));
+              }
+            }
+            if (H < 120) {
+              H = 120;
+              W = Math.max(1, Math.floor((120 * arW) / arH));
+            }
+          } else {
+            W = Math.max(1, Math.floor(sw));
+            H = Math.max(1, Math.floor(sh));
+          }
           /** 主画布顶对齐舞台，底图铺满舞台；顶栏为浮层，不缩短画布 */
           var topPx = 0;
           /** 已移除底部三按钮栏，主画布铺满至底部安全区 */
@@ -11221,11 +11282,7 @@
               );
             }
           } catch (e2) {}
-          if (H < 120) {
-            H = 120;
-            W = Math.max(1, Math.floor((120 * arW) / arH));
-          }
-          var leftPx = Math.max(0, Math.floor((vw - W) * 0.5));
+          var leftPx = 0;
           canvas.style.position = "fixed";
           canvas.style.left = leftPx + "px";
           canvas.style.right = "auto";
@@ -11250,6 +11307,11 @@
           syncScene4MaskGeometryAndVisibility();
           if (currentScene === 2) ensureScene2PathToWs(totalSteps + 500);
           ensureSceneStaticBackdropsPreload();
+          if (currentScene === 1) {
+            try {
+              layoutScene1ClickHotspotPositions();
+            } catch (eRes1) {}
+          }
         }
 
         /** CSV 里资源路径统一成站点根相对路径（与 index 同级） */
