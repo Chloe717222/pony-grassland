@@ -100,20 +100,20 @@
         --app-design-aspect-h: 16.2;
       }
       /**
-       * 整页舞台：始终铺满视口，主画布 + 全屏底图 + 同坐标系交互（与 resize、第一关 fixed 热点一致）。
-       * 已取消桌面 9:16.2 两侧留边，避免用户只看到「中间一条图」、互动与背景对不齐；舞台避免 transform
-       * 以免曾导致子 fixed 画布相对舞台错位、被 overflow 裁切。
+       * 整页内容舞台：在浏览器内作 9:16.2 contain（宽屏左右留边为墨绿背景），
+       * 主画布/背景/第一关互动均限定在这块舞台内。子树 position:fixed 在含 transform 的祖先内以本层为参照，故
+       * JS 里画布尺寸用 #appStage 的 getBoundingClientRect、left/top 用 0，不可再用 (vw-W)/2 对可视窗取偏。
        */
       #appStage {
         position: fixed;
         z-index: 2;
-        left: 0;
-        top: 0;
-        transform: none;
-        width: 100vw;
-        height: 100dvh;
-        max-width: none;
-        max-height: none;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: min(100vw, calc(100dvh * var(--app-design-aspect-w) / var(--app-design-aspect-h)));
+        height: min(100dvh, calc(100vw * var(--app-design-aspect-h) / var(--app-design-aspect-w)));
+        max-width: 100%;
+        max-height: 100%;
         overflow: hidden;
         pointer-events: auto;
         isolation: isolate;
@@ -127,6 +127,20 @@
          * 高窄屏 300px 见下方 @media (max-width: 460px) and (min-height: 880px) 内覆写。
          */
         --app-top-bar-width-max: min(90cqw, 340px);
+      }
+      /**
+       * 手机/触控、或较窄视口：舞台铺满，避免小屏上仍套一层 9:16.2 黑边。桌面宽屏 + 精指针 仍用上面 9:16.2 信箱。
+       */
+      @media (hover: none) and (pointer: coarse), (max-width: 900px) {
+        #appStage {
+          left: 0;
+          top: 0;
+          transform: none;
+          width: 100vw;
+          height: 100dvh;
+          max-width: none;
+          max-height: none;
+        }
       }
       /** 舞台内用 cqw/cqh 代替整窗 vw/vh，避免弹窗/信筒在宽屏上按整窗视口拉宽 */
       #appStage .modal-card,
@@ -227,7 +241,7 @@
           "Hiragino Sans GB",
           "Microsoft YaHei",
           sans-serif;
-        /** 全屏时若尚未绘完：墨绿底；主画面由 #appStage 内 canvas 全幅绘制 */
+        /** 9:16.2 舞台外留白：恢复墨绿背景，主画面仍由 #appStage 内 canvas 绘制 */
         background: #123629;
         -webkit-font-smoothing: antialiased;
       }
@@ -5187,7 +5201,7 @@
         var FORK_INTERVAL_STEPS = 500;
 
         var canvas = document.getElementById("gameCanvas");
-        /** 动态层（如第五关里程弹窗、年份大字号）应挂到 #appStage，与主界面同一全屏舞台坐标系，避免直接挂到 body */
+        /** 动态层（如第五关里程弹窗、年份大字号）应挂到 #appStage，与主界面同一 9:16.2 舞台坐标系，避免直接挂到 body */
         function mountToAppStage(node) {
           if (!node) return;
           var st = document.getElementById("appStage");
@@ -6466,7 +6480,7 @@
         }
 
         /**
-         * 视口坐标 → 主画布内坐标。以 canvas.getBoundingClientRect 为准；勿假定全窗即画布等宽。
+         * 视口坐标 → 主画布内坐标。画布在 #appStage（可含 transform）内，以 canvas.getBoundingClientRect 为准。
          */
         function clientToCanvasLocal(clientX, clientY) {
           if (canvas == null || W < 1 || H < 1) {
@@ -11215,8 +11229,8 @@
           var vw = window.innerWidth;
           var vh = window.innerHeight;
           /**
-           * 主画布 W×H 取 #appStage.getBoundingClientRect()（整窗铺满 100vw×100dvh），与静态底图 cover、
-           * 第一关热点同坐标；画布 left/top 为 0。若取不到再回退 vw/vh 的 9:16.2 计算。
+           * 主画布 W×H 必须等于 #appStage 的可见框（宽屏 9:16.2 信箱 或 移动/小屏 100% 视口，由 CSS 决定）；
+           * 与 drawSceneStaticBackdropCover、第一关 cover 比例热点一致。画布在舞台内 left/top=0，勿用 (vw-W)/2。
            */
           var arW = 9;
           var arH = 16.2;
