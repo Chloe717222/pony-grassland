@@ -5496,6 +5496,10 @@
           ctx.drawImage(st.img, dx, dy, dw, dh);
           return true;
         }
+        function sceneInlineBackdropPlaceholderActive(sid) {
+          var st = SCENE_INLINE_BACKDROP_PLACEHOLDER[sid];
+          return !!(st && st.ready && st.img && st.img.naturalWidth > 0);
+        }
 
         function sceneStaticBackdropActive(sid) {
           var st = SCENE_STATIC_BACKDROP[sid];
@@ -5819,6 +5823,34 @@
             }, 180);
           }
           return false;
+        }
+        function startGameLoopWhenBackdropReady() {
+          var sid = currentScene;
+          var hasStatic = !!SCENE_STATIC_BACKDROP[sid];
+          if (!hasStatic) {
+            startGameLoopIfNeeded();
+            return;
+          }
+          ensureInlineBackdropPlaceholderLoad(sid);
+          ensureSceneStaticBackdropLoad(sid, { fetchPriority: "high" });
+          if (sceneStaticBackdropActive(sid) || sceneInlineBackdropPlaceholderActive(sid)) {
+            startGameLoopIfNeeded();
+            return;
+          }
+          var waitTimer = setInterval(function () {
+            var curSid = currentScene;
+            if (!SCENE_STATIC_BACKDROP[curSid]) {
+              clearInterval(waitTimer);
+              startGameLoopIfNeeded();
+              return;
+            }
+            ensureInlineBackdropPlaceholderLoad(curSid);
+            ensureSceneStaticBackdropLoad(curSid, { fetchPriority: "high" });
+            if (sceneStaticBackdropActive(curSid) || sceneInlineBackdropPlaceholderActive(curSid)) {
+              clearInterval(waitTimer);
+              startGameLoopIfNeeded();
+            }
+          }, 120);
         }
 
         function resetEntryLineReveal() {
@@ -15961,10 +15993,10 @@
             syncEntryGateBackdropReadyState();
           } else {
             entryGateRoot.hidden = true;
-            startGameLoopIfNeeded();
+            startGameLoopWhenBackdropReady();
           }
         } else {
-          startGameLoopIfNeeded();
+          startGameLoopWhenBackdropReady();
         }
         syncBodyModalChromeClass();
         syncPlatePresentation();
