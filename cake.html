@@ -476,7 +476,8 @@
     <script>
       (function () {
         "use strict";
-        var CAKE_PAGE_BUILD = "20260425-barrage-readability";
+        /** 换音乐/大资源时递增，?v= 全页带载与 resolveCakeMedia 缓存破坏（避免浏览器还播旧 MP3） */
+        var CAKE_PAGE_BUILD = "20260426-zaichang2-letter-close-bgm";
         try {
           if (window.history && window.history.replaceState) {
             var uV = new URL(window.location.href);
@@ -627,7 +628,13 @@
           "content/happybirthday.aac",
           "content/0001.mp3",
         ];
-        var LETTER_CLOSE_BGM_SRC = "content/zaichang.mp3";
+        /**
+         * 长信流程结束/关闭时 #letterCloseBgm 播放的短 BGM（与主蛋糕循环 BGM 分离）。
+         * 文件放在仓库 content/ 下，走 media-cdn-config 同源 → CDN → COS 候选链。
+         * 2026-04-26 起使用 zaichang2.mp3（新曲）；原 zaichang.mp3 可保留作备份，线上以本路径为准。
+         * 若再次更换同路径文件，请同时递增上方 CAKE_PAGE_BUILD。
+         */
+        var LETTER_CLOSE_BGM_SRC = "content/zaichang2.mp3";
         var bgmSourceIdx = 0;
         var bgmCandidateUrls = [];
         var bgmCandidateCursor = 0;
