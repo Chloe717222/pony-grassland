@@ -691,25 +691,31 @@
 
         if (cakeBgm) {
           /**
-           * 主 BGM：须与长信结束曲同样「同源 content/ 优先」。
-           * 否则列表仅有 CDN + COS，线上 Worker/COS 未传齐或 404 时，GHP/仓库里已有 MP3
-           * 却永远不会被尝试，表现为生日页主循环一直静音（长信曲曾单独加过 ghp 优先）。
+           * 主 BGM 候选顺序：先 COS/远程基址（与现网大文件一致），**同源 GHP 仅作回退**。
+           * 若把同源放最前、仓库未提交 MP3 而只在桶里，会先试 404；error 只换 src 不调 play，且
+           * bgmHasStarted 仍为 true，会导致整页一直静音（用户体感「没背景音乐」）。
            */
           bgmCandidateUrls = [];
           for (var bi = 0; bi < BGM_SRC_CANDIDATES.length; bi++) {
             var bPath = BGM_SRC_CANDIDATES[bi];
-            var gBgm = sameOriginVersionedCakeMediaUrl(bPath);
-            if (gBgm && bgmCandidateUrls.indexOf(gBgm) < 0) bgmCandidateUrls.push(gBgm);
             var oneList = resolveCakeMediaCandidates(bPath);
             for (var bj = 0; bj < oneList.length; bj++) {
               var one = oneList[bj];
               if (one && bgmCandidateUrls.indexOf(one) < 0) bgmCandidateUrls.push(one);
             }
+            var gBgm = sameOriginVersionedCakeMediaUrl(bPath);
+            if (gBgm && bgmCandidateUrls.indexOf(gBgm) < 0) bgmCandidateUrls.push(gBgm);
           }
           applyBgmCandidateAt(0);
           cakeBgm.addEventListener("error", function () {
             var next = bgmCandidateCursor + 1;
-            if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) return;
+            if (next < bgmCandidateUrls.length && applyBgmCandidateAt(next)) {
+              try {
+                bgmHasStarted = false;
+                tryPlayBgm();
+              } catch (eRetry) {}
+              return;
+            }
           });
           cakeBgm.addEventListener("loadedmetadata", clearBgmFallbackTimer);
           cakeBgm.addEventListener("canplay", clearBgmFallbackTimer);
@@ -764,23 +770,21 @@
               var lcone = versionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
               if (lcone) letterCloseCandidateUrls.push(lcone);
             }
-            // 关信短曲：先同源本仓库/当前部署下的 content/，再走 CDN；新 mp3 常仅仓库有、CDN 未传完时，避免首链 404+短超时
+            // 与主 BGM 一致：桶/COS 链在前，同源仅兜底（大 mp3 多只在桶内）。
             try {
-              var ghpFirst = sameOriginVersionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
-              if (ghpFirst) {
-                var reord = [ghpFirst];
-                for (var rj = 0; rj < letterCloseCandidateUrls.length; rj++) {
-                  var uu = letterCloseCandidateUrls[rj];
-                  if (uu && reord.indexOf(uu) < 0) reord.push(uu);
-                }
-                letterCloseCandidateUrls = reord;
-              }
+              var ghpAppend = sameOriginVersionedCakeMediaUrl(LETTER_CLOSE_BGM_SRC);
+              if (ghpAppend && letterCloseCandidateUrls.indexOf(ghpAppend) < 0) letterCloseCandidateUrls.push(ghpAppend);
             } catch (eGh) {}
             if (letterCloseCandidateUrls.length) {
               applyLetterCloseCandidateAt(0);
               letterCloseBgm.addEventListener("error", function () {
                 var nextL = letterCloseCursor + 1;
-                if (nextL < letterCloseCandidateUrls.length && applyLetterCloseCandidateAt(nextL)) return;
+                if (nextL < letterCloseCandidateUrls.length && applyLetterCloseCandidateAt(nextL)) {
+                  try {
+                    tryPlayLetterCloseTrack();
+                  } catch (eLr) {}
+                  return;
+                }
               });
               letterCloseBgm.addEventListener("loadedmetadata", clearLetterCloseFallbackTimer);
               letterCloseBgm.addEventListener("canplay", clearLetterCloseFallbackTimer);

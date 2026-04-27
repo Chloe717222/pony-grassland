@@ -80,7 +80,7 @@
         --scene-hud-top-nudge: 17px;
         --gutter: max(10px, env(safe-area-inset-left, 0px));
         /** 刘海 + 顶栏 #sceneHud 下方起点；主画布全屏顶对齐，本变量仅用于信筒/板块叠层；含 --scene-hud-top-nudge 近似初值 */
-        --station-chrome-h: calc(env(safe-area-inset-top, 0px) + 52px + var(--scene-hud-top-nudge));
+        --station-chrome-h: calc(env(safe-area-inset-top, 0px) + 32px + var(--scene-hud-top-nudge));
         /** 窄屏由 resize 写入：主画布底部留白，避免玩法区与拇指区挤在屏底 */
         --play-bottom-inset: 0px;
         /** 叠层底部：仅 Home 指示条安全区（已移除底栏三按钮） */
@@ -622,7 +622,7 @@
       }
       #modalRoot {
         z-index: 100;
-        background: var(--modal-bg);
+        background: rgba(0, 0, 0, 0.62);
       }
       /* 祝福配图：点击后原图灯箱（PNG/JPG），高于主祝福弹窗 */
       #blessingImageLightboxRoot[hidden] {
@@ -688,12 +688,12 @@
         max-width: var(--app-top-bar-width-max);
         max-height: min(78cqh, 560px);
         overflow: auto;
-        background: var(--blessing-glass-bg);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: linear-gradient(180deg, rgba(12, 18, 28, 0.88), rgba(8, 14, 22, 0.86));
+        border: 1px solid rgba(190, 215, 255, 0.22);
         border-radius: 16px;
         padding: 20px 24px;
-        box-shadow: none;
-        color: var(--blessing-text);
+        box-shadow: 0 20px 54px rgba(0, 0, 0, 0.52);
+        color: #eef4ff;
         backdrop-filter: blur(var(--blessing-glass-blur));
         -webkit-backdrop-filter: blur(var(--blessing-glass-blur));
       }
@@ -719,7 +719,7 @@
         max-height: min(50cqh, 360px);
         object-fit: contain;
         border-radius: var(--radius-sm);
-        background: rgba(236, 248, 242, 0.9);
+        background: rgba(10, 14, 24, 0.86);
       }
       .modal-media audio {
         display: block;
@@ -730,30 +730,30 @@
         display: none !important;
       }
       .modal-card .modal-intro-text {
-        color: var(--blessing-text);
+        color: #eef4ff;
         line-height: 1.8;
       }
       .modal-card p {
         margin: 0 0 12px;
         font-size: 14px;
         line-height: 1.8;
-        color: var(--blessing-text);
+        color: #eef4ff;
       }
       .modal-nick {
         font-size: 11px;
-        color: var(--blessing-text);
+        color: #d8e6ff;
         margin-bottom: 14px;
         line-height: 1.8;
       }
       .modal-extra {
         font-size: 12px;
-        color: var(--forest-soft);
+        color: #c7dafb;
         line-height: 1.5;
         margin: 0 0 12px;
         padding: 10px 12px;
         border-radius: var(--radius-sm);
-        background: rgba(180, 220, 198, 0.28);
-        border: 1px solid rgba(32, 90, 58, 0.18);
+        background: rgba(120, 160, 230, 0.12);
+        border: 1px solid rgba(177, 207, 255, 0.24);
       }
       .modal-extra[hidden] {
         display: none !important;
@@ -761,7 +761,7 @@
       .modal-userid {
         font-size: 9px;
         font-weight: 500;
-        color: var(--blessing-text-id);
+        color: rgba(222, 236, 255, 0.74);
         text-align: right;
         margin: 0 0 12px;
         letter-spacing: 0.02em;
@@ -775,10 +775,10 @@
         margin-top: 4px;
         padding: 14px 16px;
         min-height: 48px;
-        border: 1.5px solid rgba(0, 0, 0, 0.16);
+        border: 1.5px solid rgba(196, 217, 255, 0.36);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.25);
-        color: var(--blessing-text);
+        background: rgba(20, 33, 52, 0.78);
+        color: #f2f7ff;
         font-size: clamp(13px, 3.6cqw, 15px);
         font-weight: 600;
         letter-spacing: 2px;
@@ -793,28 +793,28 @@
       }
       /** 主祝福弹窗内底栏三键：弱化实心绿，与毛玻璃卡配套 */
       .modal-card .wish-catch-actions--row .wish-catch-btn {
-        border: 1.5px solid rgba(0, 0, 0, 0.16);
-        background: rgba(255, 255, 255, 0.28);
-        color: var(--blessing-text);
+        border: 1.5px solid rgba(196, 217, 255, 0.3);
+        background: rgba(20, 33, 52, 0.74);
+        color: #eef4ff;
         -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         box-shadow: none;
       }
       .modal-card .wish-catch-actions--row .wish-catch-btn--ghost {
-        border: 1.5px solid rgba(0, 0, 0, 0.12);
-        background: rgba(255, 255, 255, 0.18);
+        border: 1.5px solid rgba(196, 217, 255, 0.22);
+        background: rgba(15, 28, 45, 0.64);
       }
       .modal-card .wish-catch-actions--row .wish-catch-btn--primary {
-        border: 1.5px solid rgba(0, 0, 0, 0.18);
-        background: rgba(255, 255, 255, 0.35);
-        color: var(--blessing-text);
+        border: 1.5px solid rgba(226, 238, 255, 0.42);
+        background: linear-gradient(180deg, rgba(44, 70, 108, 0.9), rgba(30, 52, 86, 0.9));
+        color: #f7fbff;
       }
       #listModalRoot[hidden] {
         display: none !important;
       }
       #listModalRoot {
         z-index: 320;
-        background: var(--modal-bg);
+        background: rgba(10, 24, 18, 0.26);
       }
       .list-modal-card {
         width: min(100%, calc(100cqw - max(12px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))));
@@ -823,20 +823,18 @@
         min-height: 0;
         display: flex;
         flex-direction: column;
-        background: var(--blessing-glass-bg);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 251, 247, 0.93));
+        border: 1px solid rgba(255, 255, 255, 0.74);
         border-radius: 16px;
         overflow: hidden;
-        box-shadow: none;
-        backdrop-filter: blur(var(--blessing-glass-blur));
-        -webkit-backdrop-filter: blur(var(--blessing-glass-blur));
+        box-shadow: 0 18px 42px rgba(8, 36, 24, 0.22);
       }
       .list-modal-head {
         padding: 18px 24px 14px;
         font-size: 15px;
         font-weight: 600;
-        color: var(--blessing-text);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+        color: #1f2733;
+        border-bottom: 1px solid rgba(26, 80, 52, 0.14);
         background: transparent;
       }
       .list-modal-body {
@@ -849,11 +847,17 @@
       .list-modal-scene-question__meta {
         font-size: 9px;
         font-weight: 600;
-        opacity: 0.86;
-        margin: 0 0 4px;
+        opacity: 0.98;
+        margin: 0 0 6px;
+        display: inline-block;
+        width: fit-content;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(44, 138, 91, 0.4);
+        border: 1px solid rgba(29, 109, 71, 0.56);
         letter-spacing: 0.02em;
         line-height: 1.35;
-        color: inherit;
+        color: #123522;
       }
       .list-modal-body > .blessing-scene-page__question--stream:first-child {
         margin-top: 0;
@@ -874,9 +878,11 @@
         margin-bottom: 12px;
         touch-action: manipulation;
         transition: background 0.12s ease;
+        background: #f4f8fc;
+        border-color: rgba(255, 255, 255, 0.78);
       }
       .list-modal-body .plate1-blessing-block.received-list-blessing-tile:active {
-        background: rgba(255, 255, 255, 0.75);
+        background: #eaf2fb;
       }
       .list-modal-body .plate1-blessing-block.received-list-blessing-tile:focus {
         outline: none;
@@ -887,14 +893,14 @@
       }
       .received-meta {
         font-size: 9px;
-        color: var(--blessing-text-id);
+        color: rgba(42, 64, 88, 0.74);
         margin-bottom: 6px;
         font-weight: 500;
       }
       .received-preview {
         font-size: 12px;
         line-height: 1.8;
-        color: var(--blessing-text);
+        color: #1f2733;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
@@ -905,18 +911,16 @@
         margin: 0 20px max(14px, env(safe-area-inset-bottom));
         padding: 14px 16px;
         min-height: 48px;
-        border: 1.5px solid rgba(0, 0, 0, 0.16);
+        border: 1.5px solid rgba(26, 80, 52, 0.18);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.25);
-        color: var(--blessing-text);
+        background: rgba(255, 255, 255, 0.68);
+        color: #1f2733;
         font-size: clamp(13px, 3.6cqw, 15px);
         font-weight: 600;
         letter-spacing: 2px;
         touch-action: manipulation;
-        box-shadow: none;
+        box-shadow: 0 4px 12px rgba(10, 36, 24, 0.12);
         cursor: pointer;
-        -webkit-backdrop-filter: blur(10px);
-        backdrop-filter: blur(10px);
       }
       .list-modal-close:active {
         opacity: 0.94;
@@ -926,7 +930,7 @@
         position: fixed;
         left: max(6px, env(safe-area-inset-left, 0px));
         right: max(6px, env(safe-area-inset-right, 0px));
-        top: calc(max(6px, env(safe-area-inset-top, 0px)) + var(--scene-hud-top-nudge, 0px));
+        top: calc(max(6px, env(safe-area-inset-top, 0px)) + var(--scene-hud-top-nudge, 0px) - 2px);
         z-index: 220;
         display: block;
         width: 100%;
@@ -949,15 +953,15 @@
         flex-direction: row;
         align-items: stretch;
         width: 100%;
-        min-height: 38px;
+        min-height: 24px;
         font-size: clamp(8px, 2.25cqw, 9px);
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        background: rgba(0, 0, 0, 0.1);
+        border-radius: 0;
+        border: none;
+        background: transparent;
         box-sizing: border-box;
         overflow: hidden;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
       .scene-hud-seg {
         flex: 1 1 0;
@@ -965,8 +969,8 @@
         margin: 0;
         border: none;
         border-radius: 0;
-        padding: 6px 3ch;
-        min-height: 36px;
+        padding: 1px 3ch;
+        min-height: 22px;
         box-sizing: border-box;
         background: transparent;
         color: #ffffff;
@@ -985,11 +989,18 @@
         font-family: inherit;
         -webkit-appearance: none;
         appearance: none;
-        box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.2);
-        opacity: 0.9;
+        box-shadow: none;
+        opacity: 1;
+        text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.68),
+          0 0 8px rgba(0, 0, 0, 0.35);
       }
       .scene-hud-seg:first-of-type {
         box-shadow: none;
+      }
+      .scene-hud-seg--center,
+      .scene-hud-unified-bar .top-toolbar__frac {
+        color: #ffffff;
       }
       .scene-hud-seg--center {
         flex: 1 1 0;
@@ -1004,7 +1015,6 @@
       .scene-hud-unified-bar .top-toolbar__frac {
         flex: 0 1 auto;
         align-self: center;
-        color: #ffffff;
         font-family: inherit;
         font-size: 1em;
         font-weight: 800;
@@ -1021,12 +1031,17 @@
       .dev-reset-btn:focus-visible,
       .blessing-badge-btn:hover,
       .blessing-badge-btn:focus-visible {
-        background: rgba(255, 255, 255, 0.06);
+        background: transparent;
+        text-decoration: underline;
+        text-underline-offset: 0.18em;
         outline: none;
       }
       .scene-hud-seg:active {
-        opacity: 1;
-        background: rgba(0, 0, 0, 0.08);
+        opacity: 0.9;
+        background: transparent;
+      }
+      #entryGateRoot:not([hidden]) ~ #sceneHud {
+        display: none !important;
       }
       .scene-hud-sr-bar {
         position: absolute !important;
@@ -1073,12 +1088,7 @@
         gap: 2px;
       }
       .blessing-badge-btn::before {
-        content: "✦";
-        flex: 0 0 auto;
-        margin: 0;
-        font-size: 0.85em;
-        line-height: 1;
-        color: rgba(180, 230, 200, 0.6);
+        content: none;
       }
       .blessing-badge-btn:active {
         transform: none;
@@ -1876,16 +1886,16 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 126%;
-        height: 126%;
+        width: 120%;
+        height: 120%;
         transform: translate(-50%, -50%);
         border-radius: 999px;
         box-sizing: border-box;
-        border: 2px solid rgba(255, 232, 140, 0.95);
+        border: 1.5px solid rgba(255, 224, 140, 0.58);
         box-shadow:
-          0 0 0 3px rgba(255, 208, 72, 0.36),
-          0 0 16px 5px rgba(255, 220, 110, 0.64),
-          0 0 26px 9px rgba(255, 230, 140, 0.36);
+          0 0 0 2px rgba(255, 208, 72, 0.18),
+          0 0 10px 3px rgba(255, 218, 118, 0.3),
+          0 0 16px 6px rgba(255, 230, 140, 0.16);
         animation: scene1HotspotHalo 2.1s ease-in-out infinite;
         pointer-events: none;
         z-index: 0;
@@ -2329,17 +2339,17 @@
         min-height: 44px;
         min-width: 96px;
         padding: 10px 18px;
-        border: 1.5px solid rgba(255, 255, 255, 0.8);
+        border: 1.5px solid rgba(255, 255, 255, 0.82);
         border-radius: 16px;
         cursor: pointer;
         font-size: clamp(10px, 3cqw, 12px);
         font-weight: 600;
         letter-spacing: 2px;
-        color: #ffffff;
-        background: rgba(255, 255, 255, 0.12);
+        color: #1f2733;
+        background: rgba(244, 248, 252, 0.92);
         -webkit-backdrop-filter: blur(12px);
         backdrop-filter: blur(12px);
-        box-shadow: none;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
         z-index: 162;
         touch-action: manipulation;
       }
@@ -2546,28 +2556,26 @@
       }
       .blessing-scene-page__question {
         flex: 0 0 auto;
-        margin: -10px 0 8px;
-        padding: 20px 24px;
+        margin: 0 0 8px;
+        padding: 18px 20px;
         font-size: 14px;
         font-weight: 600;
-        line-height: 1.8;
-        color: var(--blessing-text);
-        background: var(--blessing-glass-bg);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 16px;
+        line-height: 1.58;
+        color: #1f2733;
+        background: #f4f8fc;
+        border: 1.5px solid rgba(255, 255, 255, 0.8);
+        border-radius: 18px;
         box-sizing: border-box;
-        backdrop-filter: blur(var(--blessing-glass-blur));
-        -webkit-backdrop-filter: blur(var(--blessing-glass-blur));
-        box-shadow: none;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
       }
       .blessing-scene-page__question--stream {
-        margin: 6px 0 8px;
+        margin: 0 0 6px;
       }
       .blessing-scene-page__question--mail {
-        margin: -10px 0 10px;
+        margin: 0 0 10px;
       }
       .blessing-scene-page__question--scene5 {
-        margin: -10px 0 10px;
+        margin: 0 0 10px;
         font-size: 13px;
       }
       .blessing-scene-page .blessing-scene-page__answers {
@@ -2614,7 +2622,15 @@
         align-items: stretch;
         flex: 1 1 auto !important;
         min-height: 0;
-        padding: 0 2px 4px;
+        padding: 0 2px 10px;
+        border-radius: 18px;
+        background: transparent;
+      }
+      .plate1-bell-root.plate1-bell-root--paginated-showcase {
+        padding-top: 8px;
+      }
+      .plate-reader-root.plate-reader-root--blessing-showcase {
+        padding-top: 8px;
       }
       .plate-reader-scroll.plate-reader-scroll--plate1-blessing .plate1-bell-inner,
       .plate1-bell-root.plate1-bell-root--paginated-showcase .plate1-bell-inner {
@@ -2684,29 +2700,27 @@
         padding-bottom: 0;
       }
       .plate1-blessing-block {
-        margin-bottom: 16px;
-        padding: 20px 24px;
+        margin-bottom: 12px;
+        padding: 18px 20px;
         border-radius: 16px;
-        background: var(--blessing-glass-bg);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: none;
-        color: var(--blessing-text);
-        backdrop-filter: blur(var(--blessing-glass-blur));
-        -webkit-backdrop-filter: blur(var(--blessing-glass-blur));
+        background: #f4f8fc;
+        border: 1.5px solid rgba(255, 255, 255, 0.78);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        color: #1f2733;
       }
       .plate1-blessing-block__ring {
         font-size: 9px;
         font-weight: 700;
-        color: var(--blessing-text);
+        color: #223045;
         margin-bottom: 8px;
       }
       .plate1-blessing-block__text {
         margin: 0 0 10px;
         font-size: 13px;
-        line-height: 1.8;
+        line-height: 1.7;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-        color: var(--blessing-text);
+        color: #1f2733;
       }
       .plate1-blessing-block__userid {
         margin-top: 10px;
@@ -2716,7 +2730,7 @@
         font-size: 9px;
         font-weight: 500;
         font-variant-numeric: tabular-nums;
-        color: var(--blessing-text-id);
+        color: #6c7788;
         letter-spacing: 0.02em;
       }
       .plate1-blessing-block__media {
@@ -5246,6 +5260,8 @@
         /** 第二关：各吃到一次 G/H/I/J 共 4 种图标即满进度（同种重复不计）。 */
         var SCENE2_UNIQUE_ICON_TARGET = 4;
         var SCENE2_DROP_DECORS = ["scene2_drop_g", "scene2_drop_h", "scene2_drop_i", "scene2_drop_j"];
+        /** 第二关掉落顺序：书本 -> 耳机 -> 单车 -> 学士帽（收集后才切下一类） */
+        var SCENE2_DROP_ORDERED_DECORS = ["scene2_drop_i", "scene2_drop_h", "scene2_drop_g", "scene2_drop_j"];
         /** 第二关底部收集栏展示（每种首次收集只亮一次，与 scene2CollectedDropDecors 一致） */
         var SCENE2_COLLECT_BAR_SYMBOLS = {
           scene2_drop_g: "🚲",
@@ -5339,12 +5355,12 @@
          * 按插画中常见布局估算；若与成稿有偏差，只改此处 x/y 即可微调。
          */
         var SCENE1_CLICK_POSITIONS = [
-          { x: 67, y: 67 },
-          { x: 87, y: 42 },
-          { x: 50, y: 30 },
+          { x: 66, y: 67 },
+          { x: 88, y: 43 },
+          { x: 49, y: 29 },
           { x: 15, y: 30 },
           { x: 36, y: 58 },
-          { x: 86, y: 64 },
+          { x: 85, y: 65 },
         ];
         var scene1ClickItems = [];
         var scene1CollectedByPoolId = {};
@@ -6041,7 +6057,18 @@
         var modalNavEntries = null;
         var modalNavIndex = -1;
         var plate1AllReadViewActive = false;
-        var CAKE_PAGE_URL = "cake.html?v=20260425-barrage-readability";
+        /**
+         * 生日页：自定义域 + Cloudflare 常把 /cake 与 /cake.html 互 308，若主站只写其中一种会形成死循环
+         *（点「我看完了」反复挂起）。自定义域用无扩展名 cake?，与 lianbirthday.top/cake 一致；github.io
+         * 子路径部署时须带 cake.html 才能命中静态文件。
+         */
+        var CAKE_PAGE_URL = (function () {
+          try {
+            var h = (typeof location !== "undefined" && location.hostname ? location.hostname : "").toLowerCase();
+            if (h.indexOf("github.io") >= 0) return "cake.html?v=20260425-barrage-readability";
+          } catch (e) {}
+          return "cake?v=20260425-barrage-readability";
+        })();
         /** @type {Record<string, boolean>} */
         var sceneFullShowcaseSeen = {};
 
@@ -6147,22 +6174,23 @@
           2026: "此时此刻，我们正并肩而行。",
         };
         var SCENE4_MASK_PIECE_FLASH = [
-          "钱包 已就位",
-          "手速 已就位",
-          "时间 已就位",
-          "耳朵 已就位",
-          "目光 已就位",
-          "嗓子 已就位",
-          "掌声 已就位",
-          "应援 已就位",
-          "手幅 已就位",
-          "相册 已就位",
-          "心跳 已就位",
-          "恋姐上班！",
+          "期待为热爱买单的爽快",
+          "期待抢到前排的那一秒",
+          "期待赴约那天的倒计时",
+          "期待幕布拉开前的怦怦",
+          "期待演出开场的那个前奏",
+          "期待舞台灯亮时的第一眼",
+          "期待全场大合唱的和声",
+          "期待你谢幕时骄傲的笑",
+          "期待灯海亮起的瞬间",
+          "期待全场齐声的呼喊",
+          "期待把每一帧都存进永远",
+          "期待和你的每一次见面",
         ];
         /** 第五关小马像素画：年份 1990→2026 线性等比缩放；1996 年必须为 1（与改版前默认大小一致）⇒ 5*s1990 + s2026 = 6 */
         var SCENE5_PONY_DRAW_SCALE_AT_1990 = 0.9;
         var SCENE5_PONY_DRAW_SCALE_AT_2026 = 6 - 5 * SCENE5_PONY_DRAW_SCALE_AT_1990;
+        var GLOBAL_TASK_TARGET = 36;
         /** 第四关：须依次揭开 12 块蒙版，与顶栏 x/12 一致 */
         var SCENE4_MISSION_SCORE_TARGET = 12;
         function randInt(a, b) {
@@ -7049,6 +7077,7 @@
         function mountPlateReaderBlessingShowcaseLikeScene1(bodyEl, items, sid) {
           if (!bodyEl) return;
           bodyEl.classList.add("plate-reader-scroll--plate1-blessing");
+          if (plateReaderRoot) plateReaderRoot.classList.add("plate-reader-root--blessing-showcase");
           bodyEl.innerHTML = "";
           var sidN = parseInt(sid, 10);
           if (isNaN(sidN) || sidN < 1) sidN = 1;
@@ -7215,7 +7244,7 @@
           if (!wrapper || !mediaEl) return;
           var hint = document.createElement("p");
           hint.className = "plate1-blessing-block__text";
-          hint.textContent = "努力加载中...";
+          hint.textContent = "努力加载中（视频较大时可能需数十秒，请稍候）…";
           hint.setAttribute("data-media-loading-hint", "1");
           wrapper.appendChild(hint);
           function clearHint() {
@@ -7918,14 +7947,14 @@
           updateSceneHud();
           if (isSceneComplete(3)) {
             grantAllBlessingsForScene(3, { skipPlateReader: true });
-            scene3FoodResultText = "已收集 " + SCENE3_BUBBLE_POP_TARGET + " 个泡泡，通关成功！";
+            scene3FoodResultText = "你棒棒！！";
             syncScene3FoodGameUi();
             if (scene3FoodUi && scene3FoodUi.bubbleField) {
               scene3ClearBubbleTtlTimers();
               scene3FoodUi.bubbleField.innerHTML = "";
             }
             showTapDismissGameplayHint(
-              "已收集 " + SCENE3_BUBBLE_POP_TARGET + " 个灵感泡泡，通关成功！",
+              "你棒棒！！",
               GAMEPLAY_2S_POPUP_MS,
               {
                 onDismiss: function () {
@@ -8616,6 +8645,17 @@
             currentPlateUx = "mail";
             plateReaderRoot.className = "plate-reader-root plate-reader-root--over-grass plate-reader-root--mail";
             renderScene2AllBlessingsInPlateReader(list, 4);
+            applyInteractiveViewportFit();
+            return;
+          }
+          if (currentScene === 3 && scene3ReviewModeActive) {
+            if (plateReaderRoot && plateReaderRoot.dataset) plateReaderRoot.dataset.interactiveMode = "";
+            if (plateReaderRoot.dataset) plateReaderRoot.dataset.scene2AllRead = "1";
+            if (tools) tools.hidden = true;
+            if (lead) lead.hidden = true;
+            currentPlateUx = "mail";
+            plateReaderRoot.className = "plate-reader-root plate-reader-root--over-grass plate-reader-root--mail";
+            renderScene2AllBlessingsInPlateReader(list, 3);
             applyInteractiveViewportFit();
             return;
           }
@@ -9486,8 +9526,38 @@
         function updateBlessingBadge() {
           if (!blessingBadge) return;
           var n = receivedBlessings.length;
-          blessingBadge.textContent = "祝福 " + n;
-          blessingBadge.setAttribute("aria-label", "已收祝福 " + n + " 条");
+          if (n > 0) {
+            blessingBadge.textContent = "祝福 " + n;
+            blessingBadge.setAttribute("aria-label", "已收祝福 " + n + " 条");
+            return;
+          }
+          blessingBadge.textContent = "完成任务收集祝福哦~";
+          blessingBadge.setAttribute("aria-label", "完成任务收集祝福哦");
+        }
+
+        function getGlobalTaskProgressCount() {
+          var total = 0;
+          for (var s = 1; s <= SCENE_COUNT; s++) {
+            var target = getSceneProgressTargetCount(s);
+            if (!(target > 0)) continue;
+            var got = getSceneProgressCount(s);
+            if (s === 1 && !isSceneVisibleProgressEnded(1)) got = plate1RunnerScore;
+            if (s === 2 && !isSceneVisibleProgressEnded(2)) got = scene2RunnerScore;
+            if (got < 0) got = 0;
+            if (got > target) got = target;
+            total += got;
+          }
+          if (total > GLOBAL_TASK_TARGET) total = GLOBAL_TASK_TARGET;
+          return total;
+        }
+
+        function syncGlobalHudProgressDisplay() {
+          if (!sceneHudFrac || !sceneHudBarFill) return;
+          var got = getGlobalTaskProgressCount();
+          sceneHudFrac.textContent = got + "/" + GLOBAL_TASK_TARGET;
+          var pct = GLOBAL_TASK_TARGET > 0 ? (got / GLOBAL_TASK_TARGET) * 100 : 0;
+          pct = Math.max(0, Math.min(100, Math.round(pct)));
+          sceneHudBarFill.style.width = pct + "%";
         }
 
         function grantAllBlessingsForScene(sid, opts) {
@@ -9652,8 +9722,7 @@
               (sid === 5 && scene5ReviewModeActive);
             if (allReadHud) {
               sceneHudTitle.textContent = sceneStageTitle(sid);
-              sceneHudFrac.textContent = "–";
-              sceneHudBarFill.style.width = "0%";
+              syncGlobalHudProgressDisplay();
               syncSceneSwitchSelectFromState();
               syncStationChrome();
               maybeOfferBirthdayAfterFullShowcase();
@@ -9663,10 +9732,7 @@
             }
             if (sid === 5 && !scene5MolePassed && !scene5ReviewModeActive) {
               sceneHudTitle.textContent = sceneStageTitle(sid);
-              var t5 = getSceneProgressTargetCount(5);
-              var g5 = getSceneProgressCount(5);
-              sceneHudFrac.textContent = t5 > 0 ? g5 + "/" + t5 : "0/0";
-              sceneHudBarFill.style.width = "0%";
+              syncGlobalHudProgressDisplay();
               syncSceneSwitchSelectFromState();
               syncStationChrome();
               maybeOfferBirthdayAfterFullShowcase();
@@ -9684,18 +9750,14 @@
             }
             sceneHudTitle.textContent = sceneStageTitle(sid);
             if (target <= 0) {
-              sceneHudFrac.textContent = "0/0";
-              sceneHudBarFill.style.width = "0%";
+              syncGlobalHudProgressDisplay();
               syncSceneSwitchSelectFromState();
               syncStationChrome();
               if (sid === 1 || sid === 2 || sid === 5) syncPlate1RunnerHud();
               syncScene2CollectBar();
               return;
             }
-            sceneHudFrac.textContent = got + "/" + target;
-            var rawPct = target > 0 ? (got / target) * 100 : 0;
-            var pct = Math.max(0, Math.min(100, Math.round(rawPct)));
-            sceneHudBarFill.style.width = pct + "%";
+            syncGlobalHudProgressDisplay();
             syncSceneSwitchSelectFromState();
             syncStationChrome();
             maybeOfferBirthdayAfterFullShowcase();
@@ -10989,8 +11051,12 @@
           vid.setAttribute("playsinline", "");
           vid.setAttribute("webkit-playsinline", "true");
           vid.preload = shouldConservativeLoad ? "metadata" : "auto";
+          /**
+           * 勿用 no-referrer：腾讯云 COS 防盗链常校验 Referer 域名；发空 Refer 可能 403，而图片/音频
+           * 在其它路径上仍同桶可播时，会表现为「只有这一条视频出不来」。
+           */
           try {
-            vid.referrerPolicy = "no-referrer";
+            vid.referrerPolicy = "strict-origin-when-cross-origin";
           } catch (eVr) {}
           vid.style.width = "100%";
           if (opts.radius) vid.style.borderRadius = opts.radius;
@@ -10998,8 +11064,11 @@
           try {
             vid.setAttribute("data-blessing-media-raw", rawSrc);
           } catch (eMraw) {}
-          /** 大体积 mp4 首包/元数据可能 >3.4s，过短会误判换源、永远播不出 */
-          var vFailMs = isWeChatBrowser() ? 10000 : 15000;
+          /**
+           * 祝福视频可数十 MB：弱网/首屏下元数据很晚才就绪，超时过短会误判失败。单段等足，另配合
+           * assignBlessingMediaWithFailover 内「拉流中续等」。32MB 级在 4G 下常需 >30s 才出首帧/元数据。
+           */
+          var vFailMs = isWeChatBrowser() ? 50000 : isMobileView ? 90000 : 60000;
           assignBlessingMediaWithFailover(vid, urlCandidates, vFailMs);
           return vid;
         }
@@ -11586,8 +11655,12 @@
           return out;
         }
 
-        /** 30s 内仍无可用画面/可播状态时，只走桶域名再拉一次；图用「同源 stem 的 .webp」路径以匹配桶内主力格式 */
+        /**
+         * 图：30s 无画面则只走桶再拉。音/视频大文件 30s 内常仍无元数据/尺寸，若此时改 src 会掐断
+         * 已开始的 200 拉流，故音/视频用更长安全窗（与 appendOptimizedVideo 大超时一致）。
+         */
         var BLESSING_MEDIA_COS_SAFETY_MS = 30000;
+        var BLESSING_AV_COS_SAFETY_MS = 120000;
         function resolveCosOnlyBlessingUrl(relPath) {
           if (relPath == null || typeof relPath !== "string") return "";
           var s = relPath.replace(/^\.\//, "").trim();
@@ -11650,6 +11723,7 @@
             clearCosWatchdogOn(el);
           } catch (e0) {}
           var n = (tagHint || (el.tagName && el.tagName.toLowerCase()) || "").toLowerCase();
+          var safetyMs = n === "video" || n === "audio" ? BLESSING_AV_COS_SAFETY_MS : BLESSING_MEDIA_COS_SAFETY_MS;
           var tId = setTimeout(function () {
             try {
               el.removeAttribute("data-blessing-cos-tid");
@@ -11676,7 +11750,7 @@
               el.src = u2;
               if (typeof el.load === "function") el.load();
             }
-          }, BLESSING_MEDIA_COS_SAFETY_MS);
+          }, safetyMs);
           try {
             el.setAttribute("data-blessing-cos-tid", String(tId));
           } catch (eA) {}
@@ -12063,6 +12137,9 @@
           var idx = 0;
           var done = false;
           var timer = 0;
+          /** 大 MP4 在弱网下 200 已开始拉流但元数据未就绪，readyState 长期为 0；勿超时换源把正在下的一条掐掉。 */
+          var mediaStallWaits = 0;
+          var MEDIA_STALL_MAX = 5;
           function clearTimer() {
             if (!timer) return;
             clearTimeout(timer);
@@ -12088,17 +12165,33 @@
               return;
             }
             var nextUrl = list[idx++];
+            mediaStallWaits = 0;
             try {
               el.src = nextUrl;
               if (typeof el.load === "function") el.load();
             } catch (eSet) {}
             clearTimer();
             if (timeoutMs > 0) {
-              timer = setTimeout(function () {
-                if (done) return;
-                if (typeof el.readyState === "number" && el.readyState >= 1) return;
-                tryNext();
-              }, timeoutMs);
+              (function scheduleStallCheck() {
+                timer = setTimeout(function onStall() {
+                  if (done) return;
+                  if (typeof el.readyState === "number" && el.readyState >= 1) return;
+                  var tagn = (el.tagName && el.tagName.toLowerCase()) || "";
+                  if ((tagn === "video" || tagn === "audio") && mediaStallWaits < MEDIA_STALL_MAX) {
+                    try {
+                      var st = el.networkState;
+                      var hasBuf = el.buffered && el.buffered.length > 0;
+                      if (st === 2 || hasBuf) {
+                        mediaStallWaits++;
+                        clearTimer();
+                        scheduleStallCheck();
+                        return;
+                      }
+                    } catch (eN) {}
+                  }
+                  tryNext();
+                }, timeoutMs);
+              })();
             }
           }
           el.onerror = function () {
@@ -13321,23 +13414,18 @@
             alive++;
           }
           if (alive >= 6) return 0;
-          var goal = Math.random() < 0.72 ? 1 : 2;
+          var goal = 1;
           var spawned = 0;
-          function pickScene2DropDecorWeighted() {
-            var missing = [];
-            for (var mi = 0; mi < SCENE2_DROP_DECORS.length; mi++) {
-              var md = SCENE2_DROP_DECORS[mi];
-              if (!scene2CollectedDropDecors[md]) missing.push(md);
+          function pickScene2OrderedDropDecor() {
+            for (var oi = 0; oi < SCENE2_DROP_ORDERED_DECORS.length; oi++) {
+              var d = SCENE2_DROP_ORDERED_DECORS[oi];
+              if (!scene2CollectedDropDecors[d]) return d;
             }
-            if (missing.length > 0 && Math.random() < 0.68) {
-              return missing[(Math.random() * missing.length) | 0];
-            }
-            if (Math.random() < SCENE2_DROP_G_WEIGHT) return "scene2_drop_g";
-            var others = ["scene2_drop_h", "scene2_drop_i", "scene2_drop_j"];
-            return others[(Math.random() * others.length) | 0];
+            return null;
           }
           for (var n = 0; n < goal; n++) {
-            var decor = pickScene2DropDecorWeighted();
+            var decor = pickScene2OrderedDropDecor();
+            if (!decor) break;
             var ws = Math.max(
               0,
               totalSteps + SCENE2_DROP_AHEAD_MIN + ((Math.random() * SCENE2_DROP_AHEAD_SPAN) | 0)

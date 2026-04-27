@@ -11,6 +11,7 @@
     "start:local": "npm run build:data && node server/start-static-server.mjs",
     "sync:data": "node scripts/sync-test-datasets.mjs",
     "generate:webp": "node scripts/generate-webp-blessings.mjs",
+    "video:compress-zhufu": "node scripts/compress-blessing-web.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
